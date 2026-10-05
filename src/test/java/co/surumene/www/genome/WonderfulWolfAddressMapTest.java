@@ -45,8 +45,9 @@ final class WonderfulWolfAddressMapTest {
 
     private void assertRange(int type, int firstTarget, int lastTarget) {
         for (int target = firstTarget; target <= lastTarget; target++) {
-            assertTrue(profile.isDefinedAddress(new GenomeAddress(type, target)),
-                    () -> "expected defined address " + new GenomeAddress(type, target));
+            GenomeAddress address = new GenomeAddress(type, target);
+            assertTrue(profile.isDefinedAddress(address),
+                    "expected defined address " + address);
         }
     }
 }
