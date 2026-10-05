@@ -214,34 +214,39 @@ public final class WonderfulWolfGenomeProfile implements GenomeProfile<Wonderful
     public SynthesisSafetyPolicy synthesisSafetyPolicy() {
         WwwConfig.Synthesizer synth = config.genomeProfile().synthesizer();
         return (metrics, decodedGenome) -> {
-            for (var haplotype : metrics.haplotypes()) {
-                if (haplotype.geneCandidateCount() > synth.recognizableGenesHardMax()) {
-                    return false;
-                }
-                double recognizable = haplotype.recognizableRatio();
-                if (recognizable > synth.recognizableRegionMaxRatio() + EPS) {
-                    return false;
-                }
-                if (1.0 - recognizable < synth.noncodingRegionMinRatio() - EPS) {
-                    return false;
-                }
+            for (int haplotype = 0; haplotype <= 1; haplotype++) {
+                int lane = haplotype;
+                int candidateCount = metrics.haplotypes().stream()
+                        .filter(metric -> metric.haplotypeIndex() == lane)
+                        .mapToInt(metric -> metric.geneCandidateCount())
+                        .sum();
+                long recognizableBits = metrics.haplotypes().stream()
+                        .filter(metric -> metric.haplotypeIndex() == lane)
+                        .mapToLong(metric -> metric.recognizableBits())
+                        .sum();
+                long totalBits = metrics.haplotypes().stream()
+                        .filter(metric -> metric.haplotypeIndex() == lane)
+                        .mapToLong(metric -> metric.bitLength())
+                        .sum();
+                double recognizableRatio =
+                        totalBits == 0L ? 0.0 : recognizableBits / (double) totalBits;
 
-                int chromosome = haplotype.chromosomeIndex();
-                int lane = haplotype.haplotypeIndex();
                 long direct = decodedGenome.physicalGenes().stream()
                         .filter(DecodedGene::addressValid)
-                        .filter(gene -> gene.chromosomeIndex() == chromosome
-                                && gene.haplotypeIndex() == lane)
+                        .filter(gene -> gene.haplotypeIndex() == lane)
                         .filter(gene -> !gene.regulation())
                         .count();
                 long regulation = decodedGenome.physicalGenes().stream()
                         .filter(DecodedGene::addressValid)
-                        .filter(gene -> gene.chromosomeIndex() == chromosome
-                                && gene.haplotypeIndex() == lane)
+                        .filter(gene -> gene.haplotypeIndex() == lane)
                         .filter(DecodedGene::regulation)
                         .count();
-                if (direct > synth.directGenesHardMax()
-                        || regulation > synth.regulationGenesHardMax()) {
+
+                if (candidateCount > synth.recognizableGenesHardMax()
+                        || direct > synth.directGenesHardMax()
+                        || regulation > synth.regulationGenesHardMax()
+                        || recognizableRatio > synth.recognizableRegionMaxRatio() + EPS
+                        || 1.0 - recognizableRatio < synth.noncodingRegionMinRatio() - EPS) {
                     return false;
                 }
             }
