@@ -337,11 +337,19 @@ public final class WonderfulWolfBreedingContextFactory {
     private static List<AbilityCandidate> normalCandidates(
             WonderfulWolfInheritanceAnalyzer.ParentAnalysis analysis) {
         List<AbilityCandidate> result = new ArrayList<>();
+        boolean anyPositive = false;
         for (Ability ability : Ability.values()) {
             double base = analysis.baseAbility(ability);
-            result.add(new AbilityCandidate(ability, base * base));
+            double weight = base * base;
+            result.add(new AbilityCandidate(ability, weight));
+            anyPositive |= weight > 0.0;
         }
-        return List.copyOf(result);
+        if (!anyPositive) {
+            return List.copyOf(result);
+        }
+        return result.stream()
+                .filter(candidate -> candidate.weight() > 0.0)
+                .toList();
     }
 
     private static List<WonderfulWolfInheritanceAnalyzer.InheritanceBlock>
