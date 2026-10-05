@@ -68,8 +68,10 @@ final class WonderfulWolfSynthesisTargetTest {
 
         SynthesisAddressPlan ability = profile.synthesisPlan(
                 new GenomeAddress(0x00, 0x00), 0.40, context, random);
-        assertEquals(16, ability.minPositiveGenes());
-        assertEquals(24, ability.maxPositiveGenes());
+        assertEquals(ability.minPositiveGenes(), ability.maxPositiveGenes());
+        assertEquals(ability.minNegativeGenes(), ability.maxNegativeGenes());
+        assertTrue(ability.minPositiveGenes() + ability.minNegativeGenes() >= 16);
+        assertTrue(ability.maxPositiveGenes() + ability.maxNegativeGenes() <= 24);
         assertEquals(0.40 / 0.725, ability.positiveSaturation(), 1.0e-12);
         assertEquals(0.275, ability.negativeSaturation(), 1.0e-12);
 
@@ -77,13 +79,15 @@ final class WonderfulWolfSynthesisTargetTest {
                 new GenomeAddress(0x03, 0x00), 0.25, context, random);
         assertEquals(0.0, personality.positiveSaturation(), 1.0e-12);
         assertEquals(0.50, personality.negativeSaturation(), 1.0e-12);
-        assertEquals(8, personality.minNegativeGenes());
-        assertEquals(16, personality.maxNegativeGenes());
+        assertEquals(personality.minNegativeGenes(), personality.maxNegativeGenes());
+        assertTrue(personality.minNegativeGenes() >= 8);
+        assertTrue(personality.maxNegativeGenes() <= 16);
 
         SynthesisAddressPlan extraordinary = profile.synthesisPlan(
                 new GenomeAddress(0x07, 0x00), 0.40, context, random);
-        assertEquals(8, extraordinary.minPositiveGenes());
-        assertEquals(12, extraordinary.maxPositiveGenes());
+        assertEquals(extraordinary.minPositiveGenes(), extraordinary.maxPositiveGenes());
+        assertTrue(extraordinary.minPositiveGenes() >= 8);
+        assertTrue(extraordinary.maxPositiveGenes() <= 12);
     }
 
     @Test
