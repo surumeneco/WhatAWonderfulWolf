@@ -51,26 +51,24 @@ public final class WonderfulWolfBreedingContextFactory {
                         parentB.phenotypeSnapshot(), Trait.DIRECT_INHERITANCE);
 
         SoftSelection soft = selectSoft(
-                analysisA, directA,
-                analysisB, directB,
-                hard.parentA(), hard.parentB(),
+                analysisA, directA, hard.parentA(),
+                analysisB, directB, hard.parentB(),
                 policy, random);
 
-        List<InheritanceConstraint> finalA = combine(
-                hard.parentA(),
-                WonderfulWolfBreedingPolicy.resolveSoftAgainstHard(
-                        hard.parentA(), soft.parentA()));
-        List<InheritanceConstraint> finalB = combine(
-                hard.parentB(),
-                WonderfulWolfBreedingPolicy.resolveSoftAgainstHard(
-                        hard.parentB(), soft.parentB()));
+        List<InheritanceConstraint> finalA =
+                combine(hard.parentA(), soft.parentA());
+        List<InheritanceConstraint> finalB =
+                combine(hard.parentB(), soft.parentB());
 
-        return new BreedingContext(
-                profile.backbone(),
+        double mutationMultiplier =
                 WonderfulWolfBreedingPolicy.mutationMultiplier(
                         parentA.phenotypeSnapshot(),
                         parentB.phenotypeSnapshot(),
-                        policy),
+                        policy);
+
+        return new BreedingContext(
+                profile.backbone(),
+                mutationMultiplier,
                 WonderfulWolfBreedingPolicy.deNovoForbiddenAddresses(),
                 null,
                 false,
@@ -84,95 +82,99 @@ public final class WonderfulWolfBreedingContextFactory {
             WonderfulWolfIndividual parentB,
             WonderfulWolfInheritanceAnalyzer.ParentAnalysis analysisB,
             GenomeRandom random) {
-        List<AbilityWeight> weightsA = hardAbilityWeights(parentA);
-        List<AbilityWeight> weightsB = hardAbilityWeights(parentB);
+        List<AbilityCandidate> candidatesA =
+                new ArrayList<>(hardCandidates(parentA));
+        List<AbilityCandidate> candidatesB =
+                new ArrayList<>(hardCandidates(parentB));
 
-        if (weightsA.isEmpty() && weightsB.isEmpty()) {
-            return HardSelection.empty();
-        }
-        if (weightsA.isEmpty()) {
-            return hardSingle(analysisB, weightsB, random)
-                    .map(choice -> new HardSelection(
-                            List.of(),
-                            List.of(choice.block().hardConstraint())))
-                    .orElseGet(HardSelection::empty);
-        }
-        if (weightsB.isEmpty()) {
-            return hardSingle(analysisA, weightsA, random)
-                    .map(choice -> new HardSelection(
-                            List.of(choice.block().hardConstraint()),
-                            List.of()))
-                    .orElseGet(HardSelection::empty);
-        }
+        while (!candidatesA.isEmpty() || !candidatesB.isEmpty()) {
+            if (candidatesA.isEmpty()) {
+                Optional<InheritanceConstraint> chosen =
+                        chooseSingleHard(candidatesB, analysisB, random);
+                return new HardSelection(List.of(), chosen.stream().toList());
+            }
+            if (candidatesB.isEmpty()) {
+                Optional<InheritanceConstraint> chosen =
+                        chooseSingleHard(candidatesA, analysisA, random);
+                return new HardSelection(chosen.stream().toList(), List.of());
+            }
 
-        List<AbilityPair> pairs = distinctPairs(weightsA, weightsB);
-        while (!pairs.isEmpty()) {
-            AbilityPair selected =
-                    chooseWeighted(pairs, AbilityPair::weight, random);
+            List<AbilityPair> pairs = distinctPairs(candidatesA, candidatesB);
+            if (!pairs.isEmpty()) {
+                AbilityPair selected =
+                        chooseWeighted(pairs, AbilityPair::weight, random);
+                Optional<WonderfulWolfInheritanceAnalyzer.InheritanceBlock> blockA =
+                        bestExtraordinaryBlock(analysisA, selected.a().ability());
+                Optional<WonderfulWolfInheritanceAnalyzer.InheritanceBlock> blockB =
+                        bestExtraordinaryBlock(analysisB, selected.b().ability());
+
+                if (blockA.isPresent() && blockB.isPresent()) {
+                    return new HardSelection(
+                            List.of(blockA.orElseThrow().hardConstraint()),
+                            List.of(blockB.orElseThrow().hardConstraint()));
+                }
+                if (blockA.isEmpty()) {
+                    removeAbility(candidatesA, selected.a().ability());
+                }
+                if (blockB.isEmpty()) {
+                    removeAbility(candidatesB, selected.b().ability());
+                }
+                continue;
+            }
+
+            AbilityCandidate onlyA = candidatesA.getFirst();
+            AbilityCandidate onlyB = candidatesB.getFirst();
             Optional<WonderfulWolfInheritanceAnalyzer.InheritanceBlock> blockA =
-                    bestExtraordinaryBlock(analysisA, selected.a().ability());
+                    bestExtraordinaryBlock(analysisA, onlyA.ability());
             Optional<WonderfulWolfInheritanceAnalyzer.InheritanceBlock> blockB =
-                    bestExtraordinaryBlock(analysisB, selected.b().ability());
+                    bestExtraordinaryBlock(analysisB, onlyB.ability());
 
             if (blockA.isPresent() && blockB.isPresent()) {
+                if (blockA.orElseThrow().delta() >= blockB.orElseThrow().delta()) {
+                    return new HardSelection(
+                            List.of(blockA.orElseThrow().hardConstraint()),
+                            List.of());
+                }
                 return new HardSelection(
-                        List.of(blockA.orElseThrow().hardConstraint()),
+                        List.of(),
                         List.of(blockB.orElseThrow().hardConstraint()));
             }
-
             if (blockA.isEmpty()) {
-                pairs = pairs.stream()
-                        .filter(pair -> pair.a().ability() != selected.a().ability())
-                        .toList();
+                removeAbility(candidatesA, onlyA.ability());
             }
             if (blockB.isEmpty()) {
-                pairs = pairs.stream()
-                        .filter(pair -> pair.b().ability() != selected.b().ability())
-                        .toList();
+                removeAbility(candidatesB, onlyB.ability());
             }
         }
 
-        Optional<HardChoice> singleA =
-                hardSingle(analysisA, weightsA, random);
-        Optional<HardChoice> singleB =
-                hardSingle(analysisB, weightsB, random);
-        if (singleA.isEmpty() && singleB.isEmpty()) {
-            return HardSelection.empty();
-        }
-        if (singleA.isEmpty()) {
-            return new HardSelection(
-                    List.of(),
-                    List.of(singleB.orElseThrow().block().hardConstraint()));
-        }
-        if (singleB.isEmpty()) {
-            return new HardSelection(
-                    List.of(singleA.orElseThrow().block().hardConstraint()),
-                    List.of());
-        }
-
-        HardChoice a = singleA.orElseThrow();
-        HardChoice b = singleB.orElseThrow();
-        if (a.ability() != b.ability()) {
-            return new HardSelection(
-                    List.of(a.block().hardConstraint()),
-                    List.of(b.block().hardConstraint()));
-        }
-        return a.block().delta() >= b.block().delta()
-                ? new HardSelection(List.of(a.block().hardConstraint()), List.of())
-                : new HardSelection(List.of(), List.of(b.block().hardConstraint()));
+        return HardSelection.empty();
     }
 
-    private List<AbilityWeight> hardAbilityWeights(
-            WonderfulWolfIndividual parent) {
-        if (!parent.phenotypeSnapshot().divineLineageExpressed()) {
-            return List.of();
+    private Optional<InheritanceConstraint> chooseSingleHard(
+            List<AbilityCandidate> candidates,
+            WonderfulWolfInheritanceAnalyzer.ParentAnalysis analysis,
+            GenomeRandom random) {
+        while (!candidates.isEmpty()) {
+            AbilityCandidate selected =
+                    chooseWeighted(candidates, AbilityCandidate::weight, random);
+            Optional<WonderfulWolfInheritanceAnalyzer.InheritanceBlock> block =
+                    bestExtraordinaryBlock(analysis, selected.ability());
+            if (block.isPresent()) {
+                return Optional.of(block.orElseThrow().hardConstraint());
+            }
+            removeAbility(candidates, selected.ability());
         }
-        List<AbilityWeight> result = new ArrayList<>();
+        return Optional.empty();
+    }
+
+    private static List<AbilityCandidate> hardCandidates(
+            WonderfulWolfIndividual parent) {
+        List<AbilityCandidate> result = new ArrayList<>();
         for (Ability ability : Ability.values()) {
             double finalAbility =
                     parent.phenotypeSnapshot().abilities().get(ability);
             if (finalAbility > 1.0) {
-                result.add(new AbilityWeight(
+                result.add(new AbilityCandidate(
                         ability,
                         finalAbility - 1.0));
             }
@@ -180,30 +182,10 @@ public final class WonderfulWolfBreedingContextFactory {
         return List.copyOf(result);
     }
 
-    private Optional<HardChoice> hardSingle(
-            WonderfulWolfInheritanceAnalyzer.ParentAnalysis analysis,
-            List<AbilityWeight> original,
-            GenomeRandom random) {
-        List<AbilityWeight> remaining = new ArrayList<>(original);
-        while (!remaining.isEmpty()) {
-            AbilityWeight selected =
-                    chooseWeighted(remaining, AbilityWeight::weight, random);
-            Optional<WonderfulWolfInheritanceAnalyzer.InheritanceBlock> block =
-                    bestExtraordinaryBlock(analysis, selected.ability());
-            if (block.isPresent()) {
-                return Optional.of(new HardChoice(
-                        selected.ability(),
-                        block.orElseThrow()));
-            }
-            remaining.remove(selected);
-        }
-        return Optional.empty();
-    }
-
     private static Optional<WonderfulWolfInheritanceAnalyzer.InheritanceBlock>
-            bestExtraordinaryBlock(
-                    WonderfulWolfInheritanceAnalyzer.ParentAnalysis analysis,
-                    Ability ability) {
+    bestExtraordinaryBlock(
+            WonderfulWolfInheritanceAnalyzer.ParentAnalysis analysis,
+            Ability ability) {
         return analysis.extraordinaryBlocks(ability).stream()
                 .max(Comparator.comparingDouble(
                         WonderfulWolfInheritanceAnalyzer.InheritanceBlock::delta));
@@ -212,179 +194,147 @@ public final class WonderfulWolfBreedingContextFactory {
     private SoftSelection selectSoft(
             WonderfulWolfInheritanceAnalyzer.ParentAnalysis analysisA,
             Optional<TraitStrength> strengthA,
+            List<InheritanceConstraint> hardA,
             WonderfulWolfInheritanceAnalyzer.ParentAnalysis analysisB,
             Optional<TraitStrength> strengthB,
-            List<InheritanceConstraint> hardA,
             List<InheritanceConstraint> hardB,
             WwwConfig.BreedingPolicy policy,
             GenomeRandom random) {
-        if (strengthA.isEmpty() && strengthB.isEmpty()) {
-            return SoftSelection.empty();
-        }
+        List<AbilityCandidate> candidatesA = strengthA.isPresent()
+                ? new ArrayList<>(normalCandidates(analysisA))
+                : new ArrayList<>();
+        List<AbilityCandidate> candidatesB = strengthB.isPresent()
+                ? new ArrayList<>(normalCandidates(analysisB))
+                : new ArrayList<>();
 
-        List<AbilityWeight> weightsA =
-                strengthA.isPresent() ? directAbilityWeights(analysisA) : List.of();
-        List<AbilityWeight> weightsB =
-                strengthB.isPresent() ? directAbilityWeights(analysisB) : List.of();
+        while (!candidatesA.isEmpty() || !candidatesB.isEmpty()) {
+            if (candidatesA.isEmpty()) {
+                Optional<InheritanceConstraint> chosen =
+                        chooseSingleSoft(
+                                candidatesB, analysisB, hardB,
+                                strengthB.orElseThrow(), policy, random);
+                return new SoftSelection(List.of(), chosen.stream().toList());
+            }
+            if (candidatesB.isEmpty()) {
+                Optional<InheritanceConstraint> chosen =
+                        chooseSingleSoft(
+                                candidatesA, analysisA, hardA,
+                                strengthA.orElseThrow(), policy, random);
+                return new SoftSelection(chosen.stream().toList(), List.of());
+            }
 
-        if (weightsA.isEmpty()) {
-            return softSingle(analysisB, weightsB, hardB, random)
-                    .map(choice -> new SoftSelection(
-                            List.of(),
-                            List.of(choice.block().softConstraint(
-                                    WonderfulWolfBreedingPolicy.directRetentionProbability(
-                                            strengthB.orElseThrow(), policy),
-                                    policy.directInheritance().crossoverWeightInsideBlock()))))
-                    .orElseGet(SoftSelection::empty);
-        }
-        if (weightsB.isEmpty()) {
-            return softSingle(analysisA, weightsA, hardA, random)
-                    .map(choice -> new SoftSelection(
-                            List.of(choice.block().softConstraint(
-                                    WonderfulWolfBreedingPolicy.directRetentionProbability(
-                                            strengthA.orElseThrow(), policy),
-                                    policy.directInheritance().crossoverWeightInsideBlock())),
-                            List.of()))
-                    .orElseGet(SoftSelection::empty);
-        }
+            List<AbilityPair> pairs = distinctPairs(candidatesA, candidatesB);
+            if (!pairs.isEmpty()) {
+                AbilityPair selected =
+                        chooseWeighted(pairs, AbilityPair::weight, random);
+                List<WonderfulWolfInheritanceAnalyzer.InheritanceBlock> blocksA =
+                        eligibleNormalBlocks(
+                                analysisA, selected.a().ability(), hardA);
+                List<WonderfulWolfInheritanceAnalyzer.InheritanceBlock> blocksB =
+                        eligibleNormalBlocks(
+                                analysisB, selected.b().ability(), hardB);
 
-        List<AbilityPair> pairs = distinctPairs(weightsA, weightsB);
-        while (!pairs.isEmpty()) {
-            AbilityPair selected =
-                    chooseWeighted(pairs, AbilityPair::weight, random);
+                if (!blocksA.isEmpty() && !blocksB.isEmpty()) {
+                    return new SoftSelection(
+                            List.of(toSoftConstraint(
+                                    blocksA,
+                                    strengthA.orElseThrow(),
+                                    policy,
+                                    random)),
+                            List.of(toSoftConstraint(
+                                    blocksB,
+                                    strengthB.orElseThrow(),
+                                    policy,
+                                    random)));
+                }
+                if (blocksA.isEmpty()) {
+                    removeAbility(candidatesA, selected.a().ability());
+                }
+                if (blocksB.isEmpty()) {
+                    removeAbility(candidatesB, selected.b().ability());
+                }
+                continue;
+            }
+
+            AbilityCandidate onlyA = candidatesA.getFirst();
+            AbilityCandidate onlyB = candidatesB.getFirst();
             List<WonderfulWolfInheritanceAnalyzer.InheritanceBlock> blocksA =
-                    availableNormalBlocks(
-                            analysisA, selected.a().ability(), hardA);
+                    eligibleNormalBlocks(
+                            analysisA, onlyA.ability(), hardA);
             List<WonderfulWolfInheritanceAnalyzer.InheritanceBlock> blocksB =
-                    availableNormalBlocks(
-                            analysisB, selected.b().ability(), hardB);
+                    eligibleNormalBlocks(
+                            analysisB, onlyB.ability(), hardB);
 
             if (!blocksA.isEmpty() && !blocksB.isEmpty()) {
-                WonderfulWolfInheritanceAnalyzer.InheritanceBlock blockA =
-                        chooseWeighted(
-                                blocksA,
-                                block -> block.delta() * block.delta(),
-                                random);
-                WonderfulWolfInheritanceAnalyzer.InheritanceBlock blockB =
-                        chooseWeighted(
-                                blocksB,
-                                block -> block.delta() * block.delta(),
-                                random);
+                AbilityCandidate selectedParent = chooseWeighted(
+                        List.of(onlyA, onlyB),
+                        AbilityCandidate::weight,
+                        random);
+                if (selectedParent == onlyA) {
+                    return new SoftSelection(
+                            List.of(toSoftConstraint(
+                                    blocksA,
+                                    strengthA.orElseThrow(),
+                                    policy,
+                                    random)),
+                            List.of());
+                }
                 return new SoftSelection(
-                        List.of(blockA.softConstraint(
-                                WonderfulWolfBreedingPolicy.directRetentionProbability(
-                                        strengthA.orElseThrow(), policy),
-                                policy.directInheritance().crossoverWeightInsideBlock())),
-                        List.of(blockB.softConstraint(
-                                WonderfulWolfBreedingPolicy.directRetentionProbability(
-                                        strengthB.orElseThrow(), policy),
-                                policy.directInheritance().crossoverWeightInsideBlock())));
-            }
-
-            if (blocksA.isEmpty()) {
-                pairs = pairs.stream()
-                        .filter(pair -> pair.a().ability() != selected.a().ability())
-                        .toList();
-            }
-            if (blocksB.isEmpty()) {
-                pairs = pairs.stream()
-                        .filter(pair -> pair.b().ability() != selected.b().ability())
-                        .toList();
-            }
-        }
-
-        Optional<SoftChoice> singleA =
-                softSingle(analysisA, weightsA, hardA, random);
-        Optional<SoftChoice> singleB =
-                softSingle(analysisB, weightsB, hardB, random);
-        if (singleA.isEmpty() && singleB.isEmpty()) {
-            return SoftSelection.empty();
-        }
-        if (singleA.isEmpty()) {
-            return new SoftSelection(
-                    List.of(),
-                    List.of(toSoftConstraint(
-                            singleB.orElseThrow().block(),
-                            strengthB.orElseThrow(),
-                            policy)));
-        }
-        if (singleB.isEmpty()) {
-            return new SoftSelection(
-                    List.of(toSoftConstraint(
-                            singleA.orElseThrow().block(),
-                            strengthA.orElseThrow(),
-                            policy)),
-                    List.of());
-        }
-
-        SoftChoice a = singleA.orElseThrow();
-        SoftChoice b = singleB.orElseThrow();
-        if (a.ability() != b.ability()) {
-            return new SoftSelection(
-                    List.of(toSoftConstraint(
-                            a.block(), strengthA.orElseThrow(), policy)),
-                    List.of(toSoftConstraint(
-                            b.block(), strengthB.orElseThrow(), policy)));
-        }
-
-        double wa = a.block().delta() * a.block().delta();
-        double wb = b.block().delta() * b.block().delta();
-        boolean chooseA = (wa + wb) > 0.0
-                ? random.nextDouble() * (wa + wb) < wa
-                : random.nextBoolean();
-        return chooseA
-                ? new SoftSelection(
-                        List.of(toSoftConstraint(
-                                a.block(), strengthA.orElseThrow(), policy)),
-                        List.of())
-                : new SoftSelection(
                         List.of(),
                         List.of(toSoftConstraint(
-                                b.block(), strengthB.orElseThrow(), policy)));
-    }
-
-    private static List<AbilityWeight> directAbilityWeights(
-            WonderfulWolfInheritanceAnalyzer.ParentAnalysis analysis) {
-        List<AbilityWeight> result = new ArrayList<>();
-        for (Ability ability : Ability.values()) {
-            double base = analysis.baseAbility(ability);
-            result.add(new AbilityWeight(ability, base * base));
+                                blocksB,
+                                strengthB.orElseThrow(),
+                                policy,
+                                random)));
+            }
+            if (blocksA.isEmpty()) {
+                removeAbility(candidatesA, onlyA.ability());
+            }
+            if (blocksB.isEmpty()) {
+                removeAbility(candidatesB, onlyB.ability());
+            }
         }
-        return List.copyOf(result);
+
+        return SoftSelection.empty();
     }
 
-    private Optional<SoftChoice> softSingle(
+    private Optional<InheritanceConstraint> chooseSingleSoft(
+            List<AbilityCandidate> candidates,
             WonderfulWolfInheritanceAnalyzer.ParentAnalysis analysis,
-            List<AbilityWeight> original,
             List<InheritanceConstraint> hard,
+            TraitStrength strength,
+            WwwConfig.BreedingPolicy policy,
             GenomeRandom random) {
-        List<AbilityWeight> remaining = new ArrayList<>(original);
-        while (!remaining.isEmpty()) {
-            AbilityWeight selected =
-                    chooseWeighted(remaining, AbilityWeight::weight, random);
+        while (!candidates.isEmpty()) {
+            AbilityCandidate selected =
+                    chooseWeighted(candidates, AbilityCandidate::weight, random);
             List<WonderfulWolfInheritanceAnalyzer.InheritanceBlock> blocks =
-                    availableNormalBlocks(
+                    eligibleNormalBlocks(
                             analysis, selected.ability(), hard);
             if (!blocks.isEmpty()) {
-                WonderfulWolfInheritanceAnalyzer.InheritanceBlock block =
-                        chooseWeighted(
-                                blocks,
-                                candidate -> candidate.delta() * candidate.delta(),
-                                random);
-                return Optional.of(new SoftChoice(
-                        selected.ability(),
-                        block));
+                return Optional.of(toSoftConstraint(
+                        blocks, strength, policy, random));
             }
-            remaining.remove(selected);
+            removeAbility(candidates, selected.ability());
         }
         return Optional.empty();
     }
 
+    private static List<AbilityCandidate> normalCandidates(
+            WonderfulWolfInheritanceAnalyzer.ParentAnalysis analysis) {
+        List<AbilityCandidate> result = new ArrayList<>();
+        for (Ability ability : Ability.values()) {
+            double base = analysis.baseAbility(ability);
+            result.add(new AbilityCandidate(ability, base * base));
+        }
+        return List.copyOf(result);
+    }
+
     private static List<WonderfulWolfInheritanceAnalyzer.InheritanceBlock>
-            availableNormalBlocks(
-                    WonderfulWolfInheritanceAnalyzer.ParentAnalysis analysis,
-                    Ability ability,
-                    List<InheritanceConstraint> hard) {
+    eligibleNormalBlocks(
+            WonderfulWolfInheritanceAnalyzer.ParentAnalysis analysis,
+            Ability ability,
+            List<InheritanceConstraint> hard) {
         return analysis.normalBlocks(ability).stream()
                 .filter(block -> hard.stream().noneMatch(
                         constraint -> overlaps(constraint, block)))
@@ -392,9 +342,15 @@ public final class WonderfulWolfBreedingContextFactory {
     }
 
     private static InheritanceConstraint toSoftConstraint(
-            WonderfulWolfInheritanceAnalyzer.InheritanceBlock block,
+            List<WonderfulWolfInheritanceAnalyzer.InheritanceBlock> blocks,
             TraitStrength strength,
-            WwwConfig.BreedingPolicy policy) {
+            WwwConfig.BreedingPolicy policy,
+            GenomeRandom random) {
+        WonderfulWolfInheritanceAnalyzer.InheritanceBlock block =
+                chooseWeighted(
+                        blocks,
+                        candidate -> candidate.delta() * candidate.delta(),
+                        random);
         return block.softConstraint(
                 WonderfulWolfBreedingPolicy.directRetentionProbability(
                         strength, policy),
@@ -402,11 +358,11 @@ public final class WonderfulWolfBreedingContextFactory {
     }
 
     private static List<AbilityPair> distinctPairs(
-            List<AbilityWeight> a,
-            List<AbilityWeight> b) {
+            List<AbilityCandidate> a,
+            List<AbilityCandidate> b) {
         List<AbilityPair> result = new ArrayList<>();
-        for (AbilityWeight left : a) {
-            for (AbilityWeight right : b) {
+        for (AbilityCandidate left : a) {
+            for (AbilityCandidate right : b) {
                 if (left.ability() != right.ability()) {
                     result.add(new AbilityPair(
                             left,
@@ -426,13 +382,21 @@ public final class WonderfulWolfBreedingContextFactory {
                 && block.startBit() < constraint.endBitExclusive();
     }
 
+    private static void removeAbility(
+            List<AbilityCandidate> candidates,
+            Ability ability) {
+        candidates.removeIf(candidate -> candidate.ability() == ability);
+    }
+
     private static List<InheritanceConstraint> combine(
             List<InheritanceConstraint> hard,
             List<InheritanceConstraint> soft) {
         List<InheritanceConstraint> result =
                 new ArrayList<>(hard.size() + soft.size());
         result.addAll(hard);
-        result.addAll(soft);
+        result.addAll(
+                WonderfulWolfBreedingPolicy.resolveSoftAgainstHard(
+                        hard, soft));
         return List.copyOf(result);
     }
 
@@ -452,6 +416,7 @@ public final class WonderfulWolfBreedingContextFactory {
                 total += candidate;
             }
         }
+
         if (!(total > 0.0) || !Double.isFinite(total)) {
             return values.get(random.nextInt(values.size()));
         }
@@ -470,20 +435,14 @@ public final class WonderfulWolfBreedingContextFactory {
         return values.getLast();
     }
 
-    private record AbilityWeight(Ability ability, double weight) {
-        private AbilityWeight {
-            Objects.requireNonNull(ability, "ability");
-        }
-    }
-
-    private record AbilityPair(
-            AbilityWeight a,
-            AbilityWeight b,
+    private record AbilityCandidate(
+            Ability ability,
             double weight) {}
 
-    private record HardChoice(
-            Ability ability,
-            WonderfulWolfInheritanceAnalyzer.InheritanceBlock block) {}
+    private record AbilityPair(
+            AbilityCandidate a,
+            AbilityCandidate b,
+            double weight) {}
 
     private record HardSelection(
             List<InheritanceConstraint> parentA,
@@ -497,10 +456,6 @@ public final class WonderfulWolfBreedingContextFactory {
             return new HardSelection(List.of(), List.of());
         }
     }
-
-    private record SoftChoice(
-            Ability ability,
-            WonderfulWolfInheritanceAnalyzer.InheritanceBlock block) {}
 
     private record SoftSelection(
             List<InheritanceConstraint> parentA,
