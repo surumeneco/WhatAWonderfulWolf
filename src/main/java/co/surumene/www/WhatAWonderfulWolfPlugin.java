@@ -14,6 +14,9 @@ import co.surumene.www.runtime.BiologicalClockListener;
 import co.surumene.www.runtime.PaperAbilityProjector;
 import co.surumene.www.runtime.WonderfulWolfAbilityRuntime;
 import co.surumene.www.runtime.YamlBiologicalClockStateStore;
+import co.surumene.www.spawn.PaperWonderfulWolfFactory;
+import co.surumene.www.spawn.WonderfulWolfFactory;
+import co.surumene.www.spawn.WonderfulWolfNaturalSpawnListener;
 import co.surumene.wgl.plugin.WonderfulGenomeLibService;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
@@ -81,9 +84,28 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                         () -> lifecycle.currentConfig().runtime(),
                         new PaperAbilityProjector(getLogger()),
                         getLogger());
+        WonderfulWolfFactory founderFactory =
+                new WonderfulWolfFactory(
+                        genomeLib.engine(),
+                        lifecycle::currentWolfProfile);
+        PaperWonderfulWolfFactory paperFactory =
+                new PaperWonderfulWolfFactory(
+                        founderFactory,
+                        loaded,
+                        clock::currentTime,
+                        abilities::refresh,
+                        getLogger());
+        WonderfulWolfNaturalSpawnListener naturalSpawnListener =
+                new WonderfulWolfNaturalSpawnListener(
+                        paperFactory,
+                        () -> lifecycle.currentConfig().runtime().spawn(),
+                        () -> ThreadLocalRandom.current().nextDouble(),
+                        () -> ThreadLocalRandom.current().nextLong(),
+                        getLogger());
 
         Bukkit.getPluginManager().registerEvents(persistenceListener, this);
         Bukkit.getPluginManager().registerEvents(breedingListener, this);
+        Bukkit.getPluginManager().registerEvents(naturalSpawnListener, this);
         Bukkit.getPluginManager().registerEvents(
                 new BiologicalClockListener(clock, getLogger()),
                 this);

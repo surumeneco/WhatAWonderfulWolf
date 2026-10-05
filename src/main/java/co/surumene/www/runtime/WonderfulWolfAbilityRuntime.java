@@ -49,56 +49,73 @@ public final class WonderfulWolfAbilityRuntime {
         for (WonderfulWolfLoadedIndividuals.LoadedSnapshot snapshot :
                 loaded.snapshots()) {
             Wolf wolf = snapshot.entity();
-            UUID id = wolf.getUniqueId();
-            seen.add(id);
+            seen.add(wolf.getUniqueId());
+            refreshAt(wolf, snapshot.individual(), now, runtime);
+        }
 
-            if (!wolf.isValid()) {
-                current.remove(id);
-                continue;
-            }
-            if (!wolf.isAdult()) {
-                current.remove(id);
-                continue;
-            }
+        current.keySet().retainAll(seen);
+    }
 
-            WonderfulWolfIndividual individual = snapshot.individual();
-            if (individual.adultBiologicalTime() == 0L && now > 0L) {
-                individual = individual.withAdultBiologicalTime(now);
-                try {
-                    loaded.saveAndRegister(wolf, individual);
-                } catch (RuntimeException error) {
-                    logger.warning(
-                            "Failed to persist adult biological time for Wonderful Wolf "
-                                    + id
-                                    + ": "
-                                    + safeMessage(error));
-                    current.remove(id);
-                    continue;
-                }
-            }
+    public void refresh(Wolf wolf) {
+        Objects.requireNonNull(wolf, "wolf");
+        WonderfulWolfIndividual individual = loaded.find(wolf.getUniqueId())
+                .orElse(null);
+        if (individual == null) {
+            current.remove(wolf.getUniqueId());
+            return;
+        }
+        refreshAt(
+                wolf,
+                individual,
+                clock.currentTime(),
+                Objects.requireNonNull(runtimeConfig.get(), "runtime config"));
+    }
 
-            double ageGameDays = ageGameDays(
-                    now,
-                    individual.adultBiologicalTime());
+    private void refreshAt(
+            Wolf wolf,
+            WonderfulWolfIndividual individual,
+            long now,
+            WwwConfig.Runtime runtime) {
+        UUID id = wolf.getUniqueId();
+        if (!wolf.isValid() || !wolf.isAdult()) {
+            current.remove(id);
+            return;
+        }
+
+        if (individual.adultBiologicalTime() == 0L && now > 0L) {
+            individual = individual.withAdultBiologicalTime(now);
             try {
-                EffectiveAbilities abilities =
-                        EffectiveAbilityPipeline.evaluate(
-                                individual.phenotypeSnapshot(),
-                                ageGameDays,
-                                runtime);
-                projector.project(wolf, abilities);
-                current.put(id, abilities);
+                loaded.saveAndRegister(wolf, individual);
             } catch (RuntimeException error) {
                 logger.warning(
-                        "Failed to evaluate effective abilities for Wonderful Wolf "
+                        "Failed to persist adult biological time for Wonderful Wolf "
                                 + id
                                 + ": "
                                 + safeMessage(error));
                 current.remove(id);
+                return;
             }
         }
 
-        current.keySet().retainAll(seen);
+        double ageGameDays = ageGameDays(
+                now,
+                individual.adultBiologicalTime());
+        try {
+            EffectiveAbilities abilities =
+                    EffectiveAbilityPipeline.evaluate(
+                            individual.phenotypeSnapshot(),
+                            ageGameDays,
+                            runtime);
+            projector.project(wolf, abilities);
+            current.put(id, abilities);
+        } catch (RuntimeException error) {
+            logger.warning(
+                    "Failed to evaluate effective abilities for Wonderful Wolf "
+                            + id
+                            + ": "
+                            + safeMessage(error));
+            current.remove(id);
+        }
     }
 
     public Optional<EffectiveAbilities> find(UUID entityId) {
