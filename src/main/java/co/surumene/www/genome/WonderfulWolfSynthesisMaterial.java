@@ -145,10 +145,10 @@ final class WonderfulWolfSynthesisMaterial {
                 if (random.nextBoolean()) blocks0++; else blocks1++;
             }
 
-            List<BitSequence> genes0 = repeatedGenes(
-                    address, plan.magnitude(), plan.haplotype0Genes(), BitSequence.empty());
-            List<BitSequence> genes1 = repeatedGenes(
-                    address, plan.magnitude(), plan.haplotype1Genes(), BitSequence.empty());
+            List<BitSequence> genes0 = encodedGenes(
+                    address, plan.haplotype0Magnitudes(), BitSequence.empty());
+            List<BitSequence> genes1 = encodedGenes(
+                    address, plan.haplotype1Magnitudes(), BitSequence.empty());
             addPartitionedBlocks(out, genes0, blocks0, 0, random);
             addPartitionedBlocks(out, genes1, blocks1, 1, random);
         }
@@ -251,18 +251,44 @@ final class WonderfulWolfSynthesisMaterial {
             double target,
             WwwConfig.ExtraordinarySynthesizer config) {
         GeneCountPlan best = null;
+        DirectContributionModel model = modelFor.apply(address);
         for (int a = config.genesPerTargetMin(); a <= config.genesPerTargetMax(); a++) {
             for (int b = config.genesPerTargetMin(); b <= config.genesPerTargetMax(); b++) {
                 int total = a + b;
-                int magnitude = bestMagnitudeForAggregate(address, target, total);
-                double achieved = aggregateForMagnitude(address, magnitude, total);
-                double error = StrictMath.abs(achieved - target);
-                if (best == null || error < best.error()) {
-                    best = new GeneCountPlan(a, b, magnitude, error);
+                for (int common = 0; common <= 127; common++) {
+                    double commonU = saturation(model, address, common);
+                    double commonSurvival =
+                            StrictMath.pow(1.0 - commonU, Math.max(0, total - 1));
+                    for (int tail = 0; tail <= 127; tail++) {
+                        double tailU = saturation(model, address, tail);
+                        double achieved =
+                                1.0 - commonSurvival * (1.0 - tailU);
+                        double error = StrictMath.abs(achieved - target);
+                        if (best == null || error < best.error()) {
+                            List<Integer> all = new ArrayList<>(total);
+                            for (int i = 0; i < total - 1; i++) all.add(common);
+                            all.add(tail);
+                            best = new GeneCountPlan(
+                                    List.copyOf(all.subList(0, a)),
+                                    List.copyOf(all.subList(a, total)),
+                                    error);
+                            if (error <= 1.0e-12) {
+                                return best;
+                            }
+                        }
+                    }
                 }
             }
         }
         return Objects.requireNonNull(best);
+    }
+
+    private static double saturation(
+            DirectContributionModel model,
+            GenomeAddress address,
+            int magnitude) {
+        double d = model.baseEffect(address, false, magnitude, 15);
+        return model.saturation(address, StrictMath.abs(d));
     }
 
     private int bestMagnitudeForAggregate(GenomeAddress address, double target, int count) {
@@ -302,13 +328,12 @@ final class WonderfulWolfSynthesisMaterial {
         return bits;
     }
 
-    private List<BitSequence> repeatedGenes(
+    private List<BitSequence> encodedGenes(
             GenomeAddress address,
-            int magnitude,
-            int count,
+            List<Integer> magnitudes,
             BitSequence extension) {
-        List<BitSequence> genes = new ArrayList<>(count);
-        for (int i = 0; i < count; i++) {
+        List<BitSequence> genes = new ArrayList<>(magnitudes.size());
+        for (int magnitude : magnitudes) {
             genes.add(codec.encodeDirectGene(
                     address, false, magnitude, 15, extension));
         }
@@ -426,8 +451,7 @@ final class WonderfulWolfSynthesisMaterial {
     }
 
     private record GeneCountPlan(
-            int haplotype0Genes,
-            int haplotype1Genes,
-            int magnitude,
+            List<Integer> haplotype0Magnitudes,
+            List<Integer> haplotype1Magnitudes,
             double error) {}
 }
