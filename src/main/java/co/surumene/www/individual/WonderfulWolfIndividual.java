@@ -29,6 +29,23 @@ public record WonderfulWolfIndividual(
 
     public static final long MAX_ABSOLUTE_AFFECTION = 1_000_000_000_000_000L;
 
+    public WonderfulWolfIndividual withAdultBiologicalTime(long value) {
+        return new WonderfulWolfIndividual(
+                genome,
+                phenotypeSnapshot,
+                ownerId,
+                value,
+                mode,
+                commanderId,
+                actionDistance,
+                waitLocation,
+                affection,
+                weapon,
+                inventory,
+                generation,
+                pedigree);
+    }
+
     public WonderfulWolfIndividual {
         Objects.requireNonNull(genome, "genome");
         Objects.requireNonNull(phenotypeSnapshot, "phenotypeSnapshot");
