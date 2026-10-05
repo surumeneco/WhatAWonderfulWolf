@@ -7,12 +7,15 @@ import org.bukkit.event.world.ClockTimeSkipEvent;
 import org.bukkit.event.world.TimeSkipEvent;
 
 import java.util.Objects;
+import java.util.logging.Logger;
 
 public final class BiologicalClockListener implements Listener {
     private final BiologicalClock clock;
+    private final Logger logger;
 
-    public BiologicalClockListener(BiologicalClock clock) {
+    public BiologicalClockListener(BiologicalClock clock, Logger logger) {
         this.clock = Objects.requireNonNull(clock, "clock");
+        this.logger = Objects.requireNonNull(logger, "logger");
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -24,7 +27,14 @@ public final class BiologicalClockListener implements Listener {
         ClockTimeSkipEvent.SkipReason reason = event.getSkipReason();
         if (reason == ClockTimeSkipEvent.SkipReason.COMMAND
                 || reason == ClockTimeSkipEvent.SkipReason.CUSTOM) {
-            clock.recordIgnoredSkip(event.getSkipAmount());
+            try {
+                clock.recordIgnoredSkip(event.getSkipAmount());
+            } catch (RuntimeException error) {
+                logger.warning(
+                        "Could not persist ignored biological time skip; "
+                                + "the clock basis was left unchanged: "
+                                + error.getMessage());
+            }
         }
     }
 }
