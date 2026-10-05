@@ -66,14 +66,14 @@ final class EffectiveAbilityPipelineTest {
         PhenotypeSnapshot snapshot = snapshot(
                 Personality.SERIOUS,
                 List.of(),
-                List.of(new InjuryPhenotype(Ability.MOVEMENT_SPEED, 100.0, 4.5)),
+                List.of(new InjuryPhenotype(Ability.MOVEMENT_SPEED, 1000.0, 4.5)),
                 0.5);
 
         EffectiveAbility before =
-                EffectiveAbilityPipeline.evaluate(snapshot, 99.999, runtime)
+                EffectiveAbilityPipeline.evaluate(snapshot, 999.999, runtime)
                         .get(Ability.MOVEMENT_SPEED);
         EffectiveAbility after =
-                EffectiveAbilityPipeline.evaluate(snapshot, 100.0, runtime)
+                EffectiveAbilityPipeline.evaluate(snapshot, 1000.0, runtime)
                         .get(Ability.MOVEMENT_SPEED);
 
         assertFalse(before.injuryActive());
