@@ -37,6 +37,7 @@ final class WonderfulWolfSynthesisMaterialTest {
         assertTrue(codec.addresses.stream().anyMatch(a -> a.type() == 0x02));
         assertTrue(codec.addresses.stream().anyMatch(a -> a.type() == 0x08));
         assertTrue(codec.addresses.stream().anyMatch(a -> a.type() == 0x08 && a.target() == 0x06));
+        assertTrue(codec.relaySourceMagnitudes().stream().allMatch(magnitude -> magnitude == 1));
         assertFalse(codec.addresses.stream().anyMatch(a -> a.type() == 0x05));
         assertFalse(codec.addresses.stream().anyMatch(a -> a.type() == 0x07));
         assertFalse(target.continuousTargets().keySet().stream().anyMatch(a -> a.type() == 0x02));
@@ -85,6 +86,7 @@ final class WonderfulWolfSynthesisMaterialTest {
 
     private static final class RecordingCodec implements GeneSequenceCodec {
         private final List<GenomeAddress> addresses = new ArrayList<>();
+        private final List<Integer> magnitudes = new ArrayList<>();
 
         @Override
         public BitSequence encodeDirectGene(
@@ -94,6 +96,7 @@ final class WonderfulWolfSynthesisMaterialTest {
                 int expressionCode,
                 BitSequence extension) {
             addresses.add(address);
+            magnitudes.add(magnitudeCode);
             return BitSequence.fromBits("1");
         }
 
@@ -110,6 +113,17 @@ final class WonderfulWolfSynthesisMaterialTest {
         @Override
         public BitSequence encodeAddressHeader(GenomeAddress address) {
             return BitSequence.fromBits("0".repeat(22));
+        }
+
+        private List<Integer> relaySourceMagnitudes() {
+            List<Integer> out = new ArrayList<>();
+            for (int i = 0; i + 1 < addresses.size(); i++) {
+                GenomeAddress next = addresses.get(i + 1);
+                if (next.type() == 0x08 && next.target() == 0x06) {
+                    out.add(magnitudes.get(i));
+                }
+            }
+            return out;
         }
     }
 
