@@ -65,10 +65,18 @@ public final class WonderfulWolfBreedingService {
 
         WonderfulWolfBreedingContextFactory contextFactory =
                 new WonderfulWolfBreedingContextFactory(engine, profile);
-        BreedingContext context = contextFactory.create(
+        BreedingContext generatedContext = contextFactory.create(
                 parentA.individual(),
                 parentB.individual(),
                 random);
+        BreedingContext context = new BreedingContext(
+                generatedContext.backbone(),
+                generatedContext.mutationRateMultiplier(),
+                generatedContext.deNovoForbiddenAddresses(),
+                (ignoredA, ignoredB) -> compatibility,
+                generatedContext.allowSafetyOverride(),
+                generatedContext.parentAPolicy(),
+                generatedContext.parentBPolicy());
 
         BreedingResult result = engine.breed(
                 profile,
@@ -81,11 +89,15 @@ public final class WonderfulWolfBreedingService {
                     failure.reason() + ": " + failure.detail());
         }
 
-        DiploidGenome childGenome =
-                ((BreedingResult.Success) result).genome();
-        DecodeResult<WonderfulWolfDecodedPhenotype> canonical =
-                engine.decode(profile, childGenome);
-        PhenotypeSnapshot childSnapshot = canonical.phenotype().toSnapshot(
+        BreedingResult.Success success =
+                (BreedingResult.Success) result;
+        DiploidGenome childGenome = success.genome();
+        DecodeResult<?> canonical = success.decoded();
+        if (!(canonical.phenotype() instanceof WonderfulWolfDecodedPhenotype phenotype)) {
+            throw new IllegalStateException(
+                    "WGL breeding returned a non-WWW phenotype");
+        }
+        PhenotypeSnapshot childSnapshot = phenotype.toSnapshot(
                 canonical.identity(),
                 PhenotypeOrigin.BREEDING);
 
