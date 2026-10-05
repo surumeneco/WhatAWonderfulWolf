@@ -11,6 +11,7 @@ import co.surumene.www.domain.PersonalityFactor;
 import co.surumene.www.domain.RelationshipPerformance;
 import co.surumene.www.domain.Trait;
 import co.surumene.www.domain.TraitStrength;
+import co.surumene.www.founder.WonderfulWolfSynthesisTarget;
 import co.surumene.wgl.api.AddressAggregate;
 import co.surumene.wgl.api.BackboneDefinition;
 import co.surumene.wgl.api.DecodedGene;
@@ -23,8 +24,12 @@ import co.surumene.wgl.api.GenomeProfile;
 import co.surumene.wgl.api.ProfileDescriptor;
 import co.surumene.wgl.api.StandardDirectContributionModel;
 import co.surumene.wgl.api.GenomeRandom;
+import co.surumene.wgl.api.GeneSequenceCodec;
 import co.surumene.wgl.api.SynthesisAddressPlan;
 import co.surumene.wgl.api.SynthesisContext;
+import co.surumene.wgl.api.SynthesisBlock;
+import co.surumene.wgl.api.SynthesisSafetyPolicy;
+import co.surumene.wgl.api.SynthesisTarget;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -46,11 +51,17 @@ public final class WonderfulWolfGenomeProfile implements GenomeProfile<Wonderful
     private final WwwConfig config;
     private final ProfileDescriptor descriptor;
     private final BackboneDefinition backbone;
+    private final GeneSequenceCodec geneSequenceCodec;
 
     public WonderfulWolfGenomeProfile(WwwConfig config) {
+        this(config, null);
+    }
+
+    public WonderfulWolfGenomeProfile(WwwConfig config, GeneSequenceCodec geneSequenceCodec) {
         this.config = WwwConfigValidator.validate(Objects.requireNonNull(config, "config"));
         this.descriptor = WonderfulWolfProfileFoundation.descriptor(this.config);
         this.backbone = WonderfulWolfProfileFoundation.backbone(this.config);
+        this.geneSequenceCodec = geneSequenceCodec;
     }
 
     public WwwConfig config() {
@@ -174,6 +185,68 @@ public final class WonderfulWolfGenomeProfile implements GenomeProfile<Wonderful
                 range.min() * 2,
                 range.center() * 2,
                 range.max() * 2);
+    }
+
+    @Override
+    public List<SynthesisBlock> synthesisBlocks(
+            SynthesisTarget target,
+            SynthesisContext context,
+            GenomeRandom random) {
+        Objects.requireNonNull(target, "target");
+        Objects.requireNonNull(context, "context");
+        Objects.requireNonNull(random, "random");
+        if (!(target instanceof WonderfulWolfSynthesisTarget wonderfulWolfTarget)) {
+            return List.of();
+        }
+        if (geneSequenceCodec == null) {
+            throw new IllegalStateException(
+                    "Wonderful Wolf synthesis requires the WGL GeneSequenceCodec");
+        }
+        return new WonderfulWolfSynthesisMaterial(
+                config,
+                backbone,
+                geneSequenceCodec,
+                this::contributionModel)
+                .blocks(wonderfulWolfTarget, random);
+    }
+
+    @Override
+    public SynthesisSafetyPolicy synthesisSafetyPolicy() {
+        WwwConfig.Synthesizer synth = config.genomeProfile().synthesizer();
+        return (metrics, decodedGenome) -> {
+            for (var haplotype : metrics.haplotypes()) {
+                if (haplotype.geneCandidateCount() > synth.recognizableGenesHardMax()) {
+                    return false;
+                }
+                double recognizable = haplotype.recognizableRatio();
+                if (recognizable > synth.recognizableRegionMaxRatio() + EPS) {
+                    return false;
+                }
+                if (1.0 - recognizable < synth.noncodingRegionMinRatio() - EPS) {
+                    return false;
+                }
+
+                int chromosome = haplotype.chromosomeIndex();
+                int lane = haplotype.haplotypeIndex();
+                long direct = decodedGenome.physicalGenes().stream()
+                        .filter(DecodedGene::addressValid)
+                        .filter(gene -> gene.chromosomeIndex() == chromosome
+                                && gene.haplotypeIndex() == lane)
+                        .filter(gene -> !gene.regulation())
+                        .count();
+                long regulation = decodedGenome.physicalGenes().stream()
+                        .filter(DecodedGene::addressValid)
+                        .filter(gene -> gene.chromosomeIndex() == chromosome
+                                && gene.haplotypeIndex() == lane)
+                        .filter(DecodedGene::regulation)
+                        .count();
+                if (direct > synth.directGenesHardMax()
+                        || regulation > synth.regulationGenesHardMax()) {
+                    return false;
+                }
+            }
+            return true;
+        };
     }
 
     @Override
