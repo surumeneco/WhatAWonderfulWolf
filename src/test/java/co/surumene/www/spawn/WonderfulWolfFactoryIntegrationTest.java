@@ -35,7 +35,7 @@ final class WonderfulWolfFactoryIntegrationTest {
                         FounderOrigin.NATURAL,
                         Optional.of(owner),
                         987654L,
-                        202610060701L));
+                        2026100503L));
 
         WonderfulWolfIndividual individual = success.individual();
         assertEquals(Optional.of(owner), individual.ownerId());
@@ -61,7 +61,7 @@ final class WonderfulWolfFactoryIntegrationTest {
                         FounderOrigin.NATURAL,
                         Optional.empty(),
                         0L,
-                        202610060702L));
+                        2026100503L));
 
         assertEquals(0L, success.individual().adultBiologicalTime());
         assertTrue(success.individual().ownerId().isEmpty());
