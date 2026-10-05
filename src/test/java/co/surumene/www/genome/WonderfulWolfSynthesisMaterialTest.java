@@ -107,6 +107,7 @@ final class WonderfulWolfSynthesisMaterialTest {
                 int expressionCode,
                 BitSequence extension) {
             addresses.add(address);
+            magnitudes.add(-1);
             return BitSequence.fromBits("1");
         }
 
