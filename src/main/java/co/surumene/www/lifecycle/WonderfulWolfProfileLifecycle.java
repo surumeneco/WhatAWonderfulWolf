@@ -4,15 +4,24 @@ import co.surumene.www.config.WwwConfig;
 import co.surumene.www.config.WwwConfigValidator;
 import co.surumene.www.genome.WonderfulWolfGenomeProfile;
 import co.surumene.wgl.api.GenomeProfile;
+import co.surumene.wgl.api.GeneSequenceCodec;
 
 import java.util.Objects;
 
 public final class WonderfulWolfProfileLifecycle implements AutoCloseable {
     private final ProfileRegistryGateway registry;
+    private final GeneSequenceCodec geneSequenceCodec;
     private volatile State state;
 
     public WonderfulWolfProfileLifecycle(ProfileRegistryGateway registry) {
+        this(registry, null);
+    }
+
+    public WonderfulWolfProfileLifecycle(
+            ProfileRegistryGateway registry,
+            GeneSequenceCodec geneSequenceCodec) {
         this.registry = Objects.requireNonNull(registry, "registry");
+        this.geneSequenceCodec = geneSequenceCodec;
     }
 
     public synchronized void start(WwwConfig candidate) {
