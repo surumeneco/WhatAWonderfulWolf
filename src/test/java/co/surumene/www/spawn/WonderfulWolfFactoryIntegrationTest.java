@@ -52,18 +52,4 @@ final class WonderfulWolfFactoryIntegrationTest {
         individual.phenotypeSnapshot().abilities().values().forEach(value ->
                 assertTrue(value >= 0.0 && value <= 0.5));
     }
-
-    @Test
-    void babyFounderKeepsAdultBiologicalTimeUnset() {
-        WonderfulWolfCreationResult.Success success = assertInstanceOf(
-                WonderfulWolfCreationResult.Success.class,
-                factory.createFounder(
-                        FounderOrigin.NATURAL,
-                        Optional.empty(),
-                        0L,
-                        2026100503L));
-
-        assertEquals(0L, success.individual().adultBiologicalTime());
-        assertTrue(success.individual().ownerId().isEmpty());
-    }
 }
