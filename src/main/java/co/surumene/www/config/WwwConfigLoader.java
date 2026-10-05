@@ -161,11 +161,11 @@ public final class WwwConfigLoader {
                         number(runtime, "spawn.wolf-trap-lightning-probability"),
                         number(runtime, "spawn.wolf-trap-activation-radius-blocks")));
 
-        return new WwwConfig(
+        return WwwConfigValidator.validate(new WwwConfig(
                 integer(root, "config-version"),
                 founderTarget,
                 new WwwConfig.GenomeProfile(decoderConfig, synthesizer, breedingPolicy),
-                runtimeConfig);
+                runtimeConfig));
     }
 
     private static WwwConfig.Distribution distribution(ConfigurationSection root, String path) {
