@@ -60,6 +60,7 @@ public record WonderfulWolfDecodedPhenotype(
                 expressedTraits,
                 developmentFactors,
                 injuries,
+                divineLineage.totalScore(),
                 divineLineage.expressed());
     }
 

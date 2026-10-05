@@ -93,6 +93,8 @@ final class WonderfulWolfQuantitativeDecoderTest {
         PhenotypeSnapshot wolfTrap = phenotype.toSnapshot(identity, PhenotypeOrigin.WOLF_TRAP_FOUNDER);
 
         assertEquals(1.30, breeding.abilities().get(Ability.HEALTH), 1.0e-12);
+        assertEquals(0.72, breeding.divineLineageTotalScore(), 1.0e-12);
+        assertTrue(breeding.divineLineageExpressed());
         assertEquals(1.30, wolfTrap.abilities().get(Ability.HEALTH), 1.0e-12);
     }
 
