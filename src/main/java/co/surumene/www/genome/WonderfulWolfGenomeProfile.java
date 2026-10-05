@@ -45,7 +45,23 @@ public final class WonderfulWolfGenomeProfile implements GenomeProfile<Phenotype
     @Override
     public boolean isDefinedAddress(GenomeAddress address) {
         Objects.requireNonNull(address, "address");
-        return false;
+        return switch (address.type()) {
+            case 0x00 -> address.target() <= 0x09;
+            case 0x01 -> address.target() <= 0x04;
+            case 0x02 -> address.target() <= 0x09;
+            case 0x03 -> address.target() <= 0x05;
+            case 0x04 -> address.target() <= 0x11;
+            case 0x05 -> address.target() == 0x00;
+            case 0x06 -> address.target() <= 0x01;
+            case 0x07 -> address.target() <= 0x09;
+            default -> false;
+        };
+    }
+
+    @Override
+    public int minimumExtensionBits(GenomeAddress address) {
+        Objects.requireNonNull(address, "address");
+        return address.type() == 0x02 && address.target() <= 0x09 ? 16 : 0;
     }
 
     @Override
