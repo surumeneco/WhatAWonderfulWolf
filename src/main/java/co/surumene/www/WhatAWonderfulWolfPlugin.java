@@ -1,5 +1,7 @@
 package co.surumene.www;
 
+import co.surumene.www.breeding.WonderfulWolfBreedingListener;
+import co.surumene.www.breeding.WonderfulWolfBreedingService;
 import co.surumene.www.config.WwwConfig;
 import co.surumene.www.config.WwwConfigLoader;
 import co.surumene.www.lifecycle.WglProfileRegistryGateway;
@@ -11,6 +13,8 @@ import co.surumene.wgl.plugin.WonderfulGenomeLibService;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Wolf;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.util.concurrent.ThreadLocalRandom;
 
 public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
     private WonderfulGenomeLibService genomeLib;
@@ -40,8 +44,19 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                 new WonderfulWolfLoadedIndividuals(entityStore);
         WonderfulWolfPersistenceListener persistenceListener =
                 new WonderfulWolfPersistenceListener(loaded, getLogger());
+        WonderfulWolfBreedingService breedingService =
+                new WonderfulWolfBreedingService(
+                        genomeLib.engine(),
+                        lifecycle::currentWolfProfile);
+        WonderfulWolfBreedingListener breedingListener =
+                new WonderfulWolfBreedingListener(
+                        loaded,
+                        breedingService,
+                        () -> ThreadLocalRandom.current().nextLong(),
+                        getLogger());
 
         Bukkit.getPluginManager().registerEvents(persistenceListener, this);
+        Bukkit.getPluginManager().registerEvents(breedingListener, this);
         Bukkit.getWorlds().forEach(world ->
                 persistenceListener.restoreAll(world.getEntitiesByClass(Wolf.class)));
         loadedIndividuals = loaded;
