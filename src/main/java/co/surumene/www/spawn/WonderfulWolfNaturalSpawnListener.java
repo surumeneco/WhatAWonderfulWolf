@@ -35,7 +35,7 @@ public final class WonderfulWolfNaturalSpawnListener implements Listener {
         this.logger = Objects.requireNonNull(logger, "logger");
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onCreatureSpawn(CreatureSpawnEvent event) {
         if (!(event.getEntity() instanceof Wolf wolf)
                 || event.getSpawnReason() != CreatureSpawnEvent.SpawnReason.NATURAL) {
