@@ -147,10 +147,25 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         World nextClockWorld =
                 requireClockWorld(candidate.runtime().age().clockWorld());
 
-        lifecycle().reload(candidate);
-        biologicalClock().reconfigure(
-                nextClockWorld.getName(),
-                nextClockWorld::getFullTime);
+        WonderfulWolfProfileLifecycle lifecycle = lifecycle();
+        BiologicalClock clock = biologicalClock();
+        WwwConfig previous = lifecycle.currentConfig();
+
+        lifecycle.reload(candidate);
+        try {
+            if (!clock.worldName().equals(nextClockWorld.getName())) {
+                clock.reconfigure(
+                        nextClockWorld.getName(),
+                        nextClockWorld::getFullTime);
+            }
+        } catch (RuntimeException clockError) {
+            try {
+                lifecycle.reload(previous);
+            } catch (RuntimeException rollbackError) {
+                clockError.addSuppressed(rollbackError);
+            }
+            throw clockError;
+        }
 
         WonderfulWolfAbilityRuntime abilities = abilityRuntime;
         if (abilities != null) {
