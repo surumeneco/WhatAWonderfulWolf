@@ -30,7 +30,8 @@ public final class WonderfulWolfProfileLifecycle implements AutoCloseable {
         }
 
         WwwConfig validated = WwwConfigValidator.validate(candidate);
-        WonderfulWolfGenomeProfile profile = new WonderfulWolfGenomeProfile(validated);
+        WonderfulWolfGenomeProfile profile =
+                new WonderfulWolfGenomeProfile(validated, geneSequenceCodec);
         registry.register(profile);
         state = new State(validated, profile);
     }
@@ -39,7 +40,8 @@ public final class WonderfulWolfProfileLifecycle implements AutoCloseable {
         requireState();
 
         WwwConfig validated = WwwConfigValidator.validate(candidate);
-        WonderfulWolfGenomeProfile profile = new WonderfulWolfGenomeProfile(validated);
+        WonderfulWolfGenomeProfile profile =
+                new WonderfulWolfGenomeProfile(validated, geneSequenceCodec);
 
         registry.replace(profile);
         state = new State(validated, profile);
