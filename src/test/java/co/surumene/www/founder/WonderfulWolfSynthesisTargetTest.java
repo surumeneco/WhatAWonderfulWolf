@@ -56,9 +56,8 @@ final class WonderfulWolfSynthesisTargetTest {
             assertEquals(base,
                     target.continuousTargets().get(new GenomeAddress(0x00, ability.targetId())),
                     1.0e-12);
-            assertEquals(2.0 * extraordinary,
-                    target.continuousTargets().get(new GenomeAddress(0x07, ability.targetId())),
-                    1.0e-12);
+            assertFalse(target.continuousTargets().containsKey(
+                    new GenomeAddress(0x07, ability.targetId())));
         }
     }
 
