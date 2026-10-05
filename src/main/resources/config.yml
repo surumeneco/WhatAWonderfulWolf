@@ -1,0 +1,159 @@
+# What a Wonderful Wolf configuration.
+# Genomeそのものではなく、Wonderful WolfのTarget生成・Profile固有Genome設定・runtime balanceを設定します。
+config-version: 1
+
+founder-target:
+  natural:
+    abilities:
+      # 採用範囲0.0～0.5は仕様固定。範囲外はclampせず再抽選します。
+      mean: 0.42
+      standard-deviation: 0.22
+  wolf-trap:
+    abilities:
+      # 採用範囲0.5～1.5は仕様固定。範囲外はclampせず再抽選します。
+      mean: 0.42
+      standard-deviation: 0.22
+  development:
+    mean: 0.5
+    standard-deviation: 0.20
+  relationship:
+    mean: 0.5
+    standard-deviation: 0.20
+
+genome-profile:
+  decoder:
+    personality:
+      mean: 0.50
+      sigma: 0.16666666666666666
+      dominant-gap-sigma: 0.75
+      neutral-factor-sigma: 0.50
+      neutral-spread-sigma: 0.75
+    trait:
+      expression-threshold: 0.50
+      strong-gap: 0.125
+    injury:
+      expression-threshold: 0.45
+      onset-max-game-days: 7872.0
+      severity-rank-min: 3.0
+      severity-rank-max: 6.0
+    divine:
+      min-haplotype-score: 0.18
+      total-score: 0.65
+
+  synthesizer:
+    injury:
+      blocks-lambda: 1.5
+      blocks-max: 6
+      genes-per-block: 3
+      load-mean: 0.43
+      load-standard-deviation: 0.035
+      load-min: 0.30
+      load-max: 0.55
+      bilateral-probability: 0.002
+      onset-mean: 0.50
+      onset-standard-deviation: 0.22
+      severity-mean: 0.50
+      severity-standard-deviation: 0.18
+    divine:
+      supply-probability: 0.30
+      genes-min: 6
+      genes-center: 8
+      genes-max: 10
+      major-haplotype-probability: 0.93
+      gene-d-min: 0.06
+      gene-d-max: 0.16
+    extraordinary:
+      genes-per-target-min: 4
+      genes-per-target-max: 6
+      blocks-per-target-min: 2
+      blocks-per-target-max: 3
+      transfer-max: 0.15
+    cancellation-min: 0.20
+    cancellation-max: 0.35
+    high-target-headroom: 0.02
+    genes-per-target:
+      ability-min: 8
+      ability-center: 9
+      ability-max: 12
+      personality-min: 4
+      personality-center: 6
+      personality-max: 8
+      development-min: 3
+      development-center: 5
+      development-max: 7
+      relationship-min: 4
+      relationship-center: 6
+      relationship-max: 8
+      trait-min: 1
+      trait-center: 2
+      trait-max: 4
+    chromosome-length-standard-deviation-ratio: 0.05
+    chromosome-length-min-ratio: 0.90
+    chromosome-length-max-ratio: 1.10
+    direct-genes-soft-min: 180
+    direct-genes-soft-max: 220
+    direct-genes-hard-max: 256
+    regulation-genes-min: 35
+    regulation-genes-center: 40
+    regulation-genes-max: 50
+    regulation-genes-hard-max: 64
+    recognizable-genes-hard-max: 320
+    recognizable-region-max-ratio: 0.65
+    noncoding-region-min-ratio: 0.35
+    relay:
+      attachment-min-ratio: 0.05
+      attachment-max-ratio: 0.08
+      normal-secondary-min-ratio: 0.15
+      normal-secondary-max-ratio: 0.45
+      strong-secondary-min-ratio: 0.60
+      strong-secondary-max-ratio: 0.75
+      positive-ratio: 0.75
+
+  breeding-policy:
+    direct-inheritance:
+      weak-prefer-probability: 0.75
+      crossover-weight-inside-block: 0.25
+    wild-trait:
+      weak-parent-multiplier: 2.0
+      strong-parent-multiplier: 4.0
+
+runtime:
+  combat:
+    retreat-min-ticks: 20
+  action-distance:
+    narrow-blocks: 5.0
+    normal-blocks: 10.0
+    wide-blocks: 20.0
+    very-wide-blocks: 30.0
+  wan-wand:
+    target-max-distance-blocks: 96.0
+  age:
+    clock-world: world
+    base-growth-game-days: 672.0
+    base-peak-duration-game-days: 2880.0
+    base-aging-duration-game-days: 4320.0
+    sensitivity:
+      health: 0.7
+      defense: 0.5
+      patience: 0.3
+      size: 0.0
+      inventory: 0.0
+      movement-speed: 1.0
+      jump: 1.0
+      step-height: 0.4
+      attack-damage: 0.8
+      attack-speed: 1.0
+  relationship:
+    passive-increase-interval-ticks: 1200
+    passive-increase-probability: 0.10
+  personality:
+    modifier-rate: 0.10
+  traits:
+    aura-radius-blocks: 7.5
+    watchman-distance-multiplier: 1.5
+    watchman-warning-min-ticks: 10
+    watchman-warning-max-ticks: 80
+  spawn:
+    natural-conversion-probability: 0.05
+    wolf-trap-lightning-probability: 0.05
+    wolf-trap-activation-radius-blocks: 10.0
