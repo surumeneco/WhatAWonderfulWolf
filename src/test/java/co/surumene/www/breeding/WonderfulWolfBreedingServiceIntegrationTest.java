@@ -9,12 +9,15 @@ import co.surumene.www.individual.*;
 import co.surumene.wgl.api.*;
 import co.surumene.wgl.core.EngineConfig;
 import co.surumene.wgl.core.WonderfulGenomeEngine;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 final class WonderfulWolfBreedingServiceIntegrationTest {
     private final WwwConfig config = WwwConfigLoader.loadDefaults();
     private final WonderfulGenomeEngine engine =
@@ -23,11 +26,19 @@ final class WonderfulWolfBreedingServiceIntegrationTest {
             new WonderfulWolfGenomeProfile(config, engine.geneSequenceCodec());
     private final WonderfulWolfBreedingService service =
             new WonderfulWolfBreedingService(engine, () -> profile);
+    private WonderfulWolfIndividual alpha;
+    private WonderfulWolfIndividual beta;
+
+    @BeforeAll
+    void setUpParents() {
+        alpha = founder(0.35, 2026100601L);
+        beta = founder(0.45, 2026100602L);
+    }
 
     @Test
     void breedsF1FromParentGenomesAndBuildsStaticSnapshotAndPedigree() {
-        WonderfulWolfIndividual a = founder(0.35, 2026100601L);
-        WonderfulWolfIndividual b = founder(0.45, 2026100602L);
+        WonderfulWolfIndividual a = alpha;
+        WonderfulWolfIndividual b = beta;
 
         WonderfulWolfBreedingOutcome.Success success = assertInstanceOf(
                 WonderfulWolfBreedingOutcome.Success.class,
@@ -67,7 +78,7 @@ final class WonderfulWolfBreedingServiceIntegrationTest {
 
     @Test
     void incompatibleParentsFallBackWithoutSynthesizingAReplacementChild() {
-        WonderfulWolfIndividual valid = founder(0.40, 2026100604L);
+        WonderfulWolfIndividual valid = alpha;
         DiploidGenome incompatibleGenome = new DiploidGenome(
                 valid.genome().genomeFormatVersion(),
                 List.of(valid.genome().chromosomePairs().getFirst()));
@@ -97,8 +108,8 @@ final class WonderfulWolfBreedingServiceIntegrationTest {
 
     @Test
     void childGenomeComesFromParentGenomesNotEditedParentAbilitySnapshots() {
-        WonderfulWolfIndividual a = founder(0.35, 2026100621L);
-        WonderfulWolfIndividual b = founder(0.45, 2026100622L);
+        WonderfulWolfIndividual a = alpha;
+        WonderfulWolfIndividual b = beta;
 
         WonderfulWolfBreedingOutcome.Success baseline = assertInstanceOf(
                 WonderfulWolfBreedingOutcome.Success.class,
@@ -126,11 +137,11 @@ final class WonderfulWolfBreedingServiceIntegrationTest {
     @Test
     void copiesParentPedigreesIntoTheFourGrandparentSlots() {
         WonderfulWolfIndividual a = withPedigree(
-                founder(0.35, 2026100624L),
+                alpha,
                 "A-A",
                 "A-B");
         WonderfulWolfIndividual b = withPedigree(
-                founder(0.45, 2026100625L),
+                beta,
                 "B-A",
                 "B-B");
 
