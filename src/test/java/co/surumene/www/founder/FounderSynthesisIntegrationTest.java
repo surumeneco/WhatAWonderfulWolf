@@ -17,6 +17,7 @@ import java.util.EnumMap;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -44,14 +45,25 @@ final class FounderSynthesisIntegrationTest {
     }
 
     @Test
-    void sameSeedProducesTheSameFounderGenome() {
-        FounderTarget founder = fixedFounder(FounderOrigin.NATURAL, 0.40);
-        SynthesisRun first = synthesize(founder, 2026100503L);
-        SynthesisRun second = synthesize(founder, 2026100503L);
+    void sameSeedReproducesTheWholeFounderGenerationPipeline() {
+        WonderfulWolfFounderSynthesizer synthesizer =
+                new WonderfulWolfFounderSynthesizer(engine, profile);
+
+        FounderGenomeSynthesis first =
+                synthesizer.synthesize(FounderOrigin.NATURAL, 2026100503L);
+        FounderGenomeSynthesis second =
+                synthesizer.synthesize(FounderOrigin.NATURAL, 2026100503L);
+
+        assertEquals(first.founderTarget(), second.founderTarget());
+        assertEquals(first.synthesisTarget().continuousTargets(),
+                second.synthesisTarget().continuousTargets());
 
         SynthesisResult.Success a = requireSuccess(first.result());
         SynthesisResult.Success b = requireSuccess(second.result());
         assertArrayEquals(engine.encode(a.genome()), engine.encode(b.genome()));
+        assertTrue(first.synthesisTarget().isSatisfied(
+                a.decoded().decodedGenome(),
+                EngineConfig.defaults().synthesizer().convergenceTolerance()));
     }
 
     private static SynthesisResult.Success requireSuccess(SynthesisResult result) {
