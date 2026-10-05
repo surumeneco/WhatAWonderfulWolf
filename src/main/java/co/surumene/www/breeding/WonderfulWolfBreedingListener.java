@@ -69,7 +69,15 @@ public final class WonderfulWolfBreedingListener implements Listener {
         }
 
         if (outcome instanceof WonderfulWolfBreedingOutcome.Success success) {
-            loaded.saveAndRegister(child, success.child());
+            try {
+                loaded.saveAndRegister(child, success.child());
+            } catch (RuntimeException error) {
+                logger.warning(
+                        "Failed to persist WWW breeding child "
+                                + child.getUniqueId()
+                                + "; leaving vanilla child unchanged: "
+                                + safeMessage(error));
+            }
         }
     }
 
