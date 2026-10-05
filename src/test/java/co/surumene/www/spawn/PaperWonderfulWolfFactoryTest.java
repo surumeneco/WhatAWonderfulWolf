@@ -86,6 +86,32 @@ final class PaperWonderfulWolfFactoryTest {
     }
 
     @Test
+    void convertedFounderRestoresThroughAFreshRegistryAfterEntityReplacement() {
+        UUID id = UUID.fromString("dddddddd-dddd-dddd-dddd-dddddddddddd");
+        MemoryPdc pdc = new MemoryPdc();
+        Wolf original = wolf(id, pdc.proxy(), true, false, null);
+        WonderfulWolfLoadedIndividuals firstRegistry = loaded(pdc);
+
+        PaperWonderfulWolfFactory factory = new PaperWonderfulWolfFactory(
+                founderSource(),
+                firstRegistry,
+                () -> 456789L,
+                ignored -> {});
+        WonderfulWolfEntityCreationResult.Success created = assertInstanceOf(
+                WonderfulWolfEntityCreationResult.Success.class,
+                factory.convertExisting(original, FounderOrigin.NATURAL, 4L));
+
+        firstRegistry.clear();
+        Wolf replacement = wolf(id, pdc.proxy(), true, false, null);
+        WonderfulWolfLoadedIndividuals restartedRegistry = loaded(pdc);
+
+        RestoreResult.Success restored = assertInstanceOf(
+                RestoreResult.Success.class,
+                restartedRegistry.register(replacement));
+        assertEquals(created.individual(), restored.individual());
+    }
+
+    @Test
     void existingWonderfulWolfIsNotReplacedByAnotherFounder() {
         MemoryPdc pdc = new MemoryPdc();
         Wolf wolf = wolf(
@@ -218,6 +244,10 @@ final class PaperWonderfulWolfFactoryTest {
                     case "isAdult" -> adult;
                     case "isTamed" -> tamed;
                     case "getOwner" -> owner;
+                    case "setAdult", "setBaby", "setTamed", "setOwner" ->
+                            throw new AssertionError(
+                                    "Phase 7 conversion must preserve vanilla Wolf state: "
+                                            + method.getName());
                     case "isValid" -> true;
                     case "toString" -> "Wolf[" + id + "]";
                     case "hashCode" -> System.identityHashCode(proxy);
