@@ -48,6 +48,22 @@ final class WonderfulWolfBreedingContextIntegrationTest {
     }
 
     @Test
+    void extraordinaryAbilityWithoutExpressedDivineLineageDoesNotCreateHardProtection() {
+        WonderfulWolfIndividual extraordinary = founder(
+                FounderOrigin.WOLF_TRAP, 1.20, List.of(), 2026100617L);
+        extraordinary = withDivineState(extraordinary, false);
+        WonderfulWolfIndividual plain = founder(
+                FounderOrigin.NATURAL, 0.40, List.of(), 2026100618L);
+
+        BreedingContext context =
+                factory.create(extraordinary, plain, engine.standardRandom(2026100619L));
+
+        assertTrue(context.parentAPolicy().inheritanceConstraints().stream().noneMatch(
+                InheritanceConstraint::hardProtection));
+        assertTrue(context.parentBPolicy().inheritanceConstraints().isEmpty());
+    }
+
+    @Test
     void expressedDivineLineageCreatesHardExtraordinaryBlockProtection() {
         WonderfulWolfIndividual extraordinary = founder(
                 FounderOrigin.WOLF_TRAP, 1.20, List.of(), 2026100614L);
@@ -79,6 +95,24 @@ final class WonderfulWolfBreedingContextIntegrationTest {
                 Math.max(0.65, p.divineLineageTotalScore()),
                 true);
         return copyWithSnapshot(source, divine);
+    }
+
+    private WonderfulWolfIndividual withDivineState(
+            WonderfulWolfIndividual source,
+            boolean expressed) {
+        PhenotypeSnapshot p = source.phenotypeSnapshot();
+        PhenotypeSnapshot adjusted = new PhenotypeSnapshot(
+                p.decoderIdentity(),
+                p.abilities(),
+                p.relationshipPerformance(),
+                p.personalityFactors(),
+                p.personality(),
+                p.expressedTraits(),
+                p.developmentFactors(),
+                p.injuries(),
+                p.divineLineageTotalScore(),
+                expressed);
+        return copyWithSnapshot(source, adjusted);
     }
 
     private WonderfulWolfIndividual founder(
