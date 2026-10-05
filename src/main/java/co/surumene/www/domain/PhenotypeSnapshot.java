@@ -20,12 +20,18 @@ public record PhenotypeSnapshot(
         List<ExpressedTrait> expressedTraits,
         Map<DevelopmentFactor, Double> developmentFactors,
         List<InjuryPhenotype> injuries,
+        double divineLineageTotalScore,
         boolean divineLineageExpressed) {
 
     public PhenotypeSnapshot {
         Objects.requireNonNull(decoderIdentity, "decoderIdentity");
         Objects.requireNonNull(relationshipPerformance, "relationshipPerformance");
         Objects.requireNonNull(personality, "personality");
+        if (!Double.isFinite(divineLineageTotalScore)
+                || divineLineageTotalScore < 0.0
+                || divineLineageTotalScore > 2.0) {
+            throw new IllegalArgumentException("divineLineageTotalScore must be finite and in [0, 2]");
+        }
 
         abilities = copyCompleteScores(Ability.class, abilities, 0.0, 1.5, "abilities");
         personalityFactors = copyCompleteScores(
