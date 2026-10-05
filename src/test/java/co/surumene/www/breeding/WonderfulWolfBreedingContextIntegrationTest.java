@@ -9,12 +9,15 @@ import co.surumene.www.individual.*;
 import co.surumene.wgl.api.*;
 import co.surumene.wgl.core.EngineConfig;
 import co.surumene.wgl.core.WonderfulGenomeEngine;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 final class WonderfulWolfBreedingContextIntegrationTest {
     private final WwwConfig config = WwwConfigLoader.loadDefaults();
     private final WonderfulGenomeEngine engine =
@@ -23,16 +26,35 @@ final class WonderfulWolfBreedingContextIntegrationTest {
             new WonderfulWolfGenomeProfile(config, engine.geneSequenceCodec());
     private final WonderfulWolfBreedingContextFactory factory =
             new WonderfulWolfBreedingContextFactory(engine, profile);
+    private WonderfulWolfIndividual directFounder;
+    private WonderfulWolfIndividual plainFounder;
+    private WonderfulWolfIndividual extraordinaryFounder;
+
+    @BeforeAll
+    void setUpParents() {
+        directFounder = founder(
+                FounderOrigin.NATURAL,
+                0.45,
+                List.of(new ExpressedTrait(
+                        Trait.DIRECT_INHERITANCE,
+                        TraitStrength.WEAK)),
+                2026100611L);
+        plainFounder = founder(
+                FounderOrigin.NATURAL,
+                0.40,
+                List.of(),
+                2026100612L);
+        extraordinaryFounder = founder(
+                FounderOrigin.WOLF_TRAP,
+                1.20,
+                List.of(),
+                2026100614L);
+    }
 
     @Test
     void directInheritanceCreatesOnlySoftPhysicalConstraints() {
-        WonderfulWolfIndividual direct = founder(
-                FounderOrigin.NATURAL,
-                0.45,
-                List.of(new ExpressedTrait(Trait.DIRECT_INHERITANCE, TraitStrength.WEAK)),
-                2026100611L);
-        WonderfulWolfIndividual plain = founder(
-                FounderOrigin.NATURAL, 0.40, List.of(), 2026100612L);
+        WonderfulWolfIndividual direct = directFounder;
+        WonderfulWolfIndividual plain = plainFounder;
 
         BreedingContext context =
                 factory.create(direct, plain, engine.standardRandom(2026100613L));
@@ -49,11 +71,9 @@ final class WonderfulWolfBreedingContextIntegrationTest {
 
     @Test
     void extraordinaryAbilityWithoutExpressedDivineLineageDoesNotCreateHardProtection() {
-        WonderfulWolfIndividual extraordinary = founder(
-                FounderOrigin.WOLF_TRAP, 1.20, List.of(), 2026100617L);
-        extraordinary = withDivineState(extraordinary, false);
-        WonderfulWolfIndividual plain = founder(
-                FounderOrigin.NATURAL, 0.40, List.of(), 2026100618L);
+        WonderfulWolfIndividual extraordinary =
+                withDivineState(extraordinaryFounder, false);
+        WonderfulWolfIndividual plain = plainFounder;
 
         BreedingContext context =
                 factory.create(extraordinary, plain, engine.standardRandom(2026100619L));
@@ -65,11 +85,9 @@ final class WonderfulWolfBreedingContextIntegrationTest {
 
     @Test
     void expressedDivineLineageCreatesHardExtraordinaryBlockProtection() {
-        WonderfulWolfIndividual extraordinary = founder(
-                FounderOrigin.WOLF_TRAP, 1.20, List.of(), 2026100614L);
-        extraordinary = withDivineExpressed(extraordinary);
-        WonderfulWolfIndividual plain = founder(
-                FounderOrigin.NATURAL, 0.40, List.of(), 2026100615L);
+        WonderfulWolfIndividual extraordinary =
+                withDivineExpressed(extraordinaryFounder);
+        WonderfulWolfIndividual plain = plainFounder;
 
         BreedingContext context =
                 factory.create(extraordinary, plain, engine.standardRandom(2026100616L));
