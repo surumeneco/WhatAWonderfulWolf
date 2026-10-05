@@ -169,6 +169,9 @@ public final class WonderfulWolfBreedingContextFactory {
 
     private static List<AbilityCandidate> hardCandidates(
             WonderfulWolfIndividual parent) {
+        if (!parent.phenotypeSnapshot().divineLineageExpressed()) {
+            return List.of();
+        }
         List<AbilityCandidate> result = new ArrayList<>();
         for (Ability ability : Ability.values()) {
             double finalAbility =
