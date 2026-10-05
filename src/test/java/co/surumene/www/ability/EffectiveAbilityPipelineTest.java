@@ -125,7 +125,7 @@ final class EffectiveAbilityPipelineTest {
                         new byte[32],
                         new ProfileDescriptor("wonderful-wolf", 1, new byte[32])),
                 abilities,
-                new RelationshipPerformance(0L, 1L),
+                new RelationshipPerformance(0, 1),
                 factors,
                 personality,
                 traits,
