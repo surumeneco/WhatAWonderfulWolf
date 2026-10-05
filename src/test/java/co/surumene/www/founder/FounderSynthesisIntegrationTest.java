@@ -17,8 +17,8 @@ import java.util.EnumMap;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 final class FounderSynthesisIntegrationTest {
     private final WwwConfig config = WwwConfigLoader.loadDefaults();
@@ -31,8 +31,7 @@ final class FounderSynthesisIntegrationTest {
     void naturalFounderRoundTripsThroughCanonicalDecoderWithinTolerance() {
         SynthesisRun run = synthesize(fixedFounder(FounderOrigin.NATURAL, 0.40), 2026100501L);
 
-        SynthesisResult.Success success =
-                assertInstanceOf(SynthesisResult.Success.class, run.result());
+        SynthesisResult.Success success = requireSuccess(run.result());
         assertTrue(run.target().isSatisfied(success.decoded().decodedGenome(), 0.002));
     }
 
@@ -40,8 +39,7 @@ final class FounderSynthesisIntegrationTest {
     void extraordinaryWolfTrapFounderRoundTripsThroughCanonicalDecoderWithinTolerance() {
         SynthesisRun run = synthesize(fixedFounder(FounderOrigin.WOLF_TRAP, 1.20), 2026100502L);
 
-        SynthesisResult.Success success =
-                assertInstanceOf(SynthesisResult.Success.class, run.result());
+        SynthesisResult.Success success = requireSuccess(run.result());
         assertTrue(run.target().isSatisfied(success.decoded().decodedGenome(), 0.002));
     }
 
@@ -51,11 +49,18 @@ final class FounderSynthesisIntegrationTest {
         SynthesisRun first = synthesize(founder, 2026100503L);
         SynthesisRun second = synthesize(founder, 2026100503L);
 
-        SynthesisResult.Success a =
-                assertInstanceOf(SynthesisResult.Success.class, first.result());
-        SynthesisResult.Success b =
-                assertInstanceOf(SynthesisResult.Success.class, second.result());
+        SynthesisResult.Success a = requireSuccess(first.result());
+        SynthesisResult.Success b = requireSuccess(second.result());
         assertArrayEquals(engine.encode(a.genome()), engine.encode(b.genome()));
+    }
+
+    private static SynthesisResult.Success requireSuccess(SynthesisResult result) {
+        if (result instanceof SynthesisResult.Success success) {
+            return success;
+        }
+        SynthesisResult.Failure failure = (SynthesisResult.Failure) result;
+        fail("synthesis failed: " + failure.reason() + " / " + failure.detail());
+        throw new AssertionError("unreachable");
     }
 
     private SynthesisRun synthesize(FounderTarget founder, long seed) {
