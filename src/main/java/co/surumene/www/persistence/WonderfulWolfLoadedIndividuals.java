@@ -4,7 +4,9 @@ import co.surumene.www.individual.WonderfulWolfIndividual;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Wolf;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -61,8 +63,23 @@ public final class WonderfulWolfLoadedIndividuals {
         return loaded.size();
     }
 
+    public List<LoadedSnapshot> snapshots() {
+        List<LoadedSnapshot> snapshots = new ArrayList<>(loaded.size());
+        for (LoadedIndividual current : loaded.values()) {
+            snapshots.add(new LoadedSnapshot(current.entity(), current.individual()));
+        }
+        return List.copyOf(snapshots);
+    }
+
     public void clear() {
         loaded.clear();
+    }
+
+    public record LoadedSnapshot(Wolf entity, WonderfulWolfIndividual individual) {
+        public LoadedSnapshot {
+            Objects.requireNonNull(entity, "entity");
+            Objects.requireNonNull(individual, "individual");
+        }
     }
 
     private record LoadedIndividual(Wolf entity, WonderfulWolfIndividual individual) {
