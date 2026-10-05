@@ -11,6 +11,7 @@ import co.surumene.www.domain.PersonalityFactor;
 import co.surumene.www.domain.RelationshipPerformance;
 import co.surumene.www.domain.Trait;
 import co.surumene.www.domain.TraitStrength;
+import co.surumene.www.founder.WonderfulWolfSynthesisTarget;
 import co.surumene.wgl.api.AddressAggregate;
 import co.surumene.wgl.api.BackboneDefinition;
 import co.surumene.wgl.api.DecodedGene;
@@ -20,8 +21,18 @@ import co.surumene.wgl.api.DirectContributionModel;
 import co.surumene.wgl.api.EffectiveContribution;
 import co.surumene.wgl.api.GenomeAddress;
 import co.surumene.wgl.api.GenomeProfile;
+import co.surumene.wgl.api.BitSequence;
+import co.surumene.wgl.api.ChromosomeTemplate;
+import co.surumene.wgl.api.AnchorSeed;
 import co.surumene.wgl.api.ProfileDescriptor;
 import co.surumene.wgl.api.StandardDirectContributionModel;
+import co.surumene.wgl.api.GenomeRandom;
+import co.surumene.wgl.api.GeneSequenceCodec;
+import co.surumene.wgl.api.SynthesisAddressPlan;
+import co.surumene.wgl.api.SynthesisContext;
+import co.surumene.wgl.api.SynthesisBlock;
+import co.surumene.wgl.api.SynthesisSafetyPolicy;
+import co.surumene.wgl.api.SynthesisTarget;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -43,11 +54,17 @@ public final class WonderfulWolfGenomeProfile implements GenomeProfile<Wonderful
     private final WwwConfig config;
     private final ProfileDescriptor descriptor;
     private final BackboneDefinition backbone;
+    private final GeneSequenceCodec geneSequenceCodec;
 
     public WonderfulWolfGenomeProfile(WwwConfig config) {
+        this(config, null);
+    }
+
+    public WonderfulWolfGenomeProfile(WwwConfig config, GeneSequenceCodec geneSequenceCodec) {
         this.config = WwwConfigValidator.validate(Objects.requireNonNull(config, "config"));
         this.descriptor = WonderfulWolfProfileFoundation.descriptor(this.config);
         this.backbone = WonderfulWolfProfileFoundation.backbone(this.config);
+        this.geneSequenceCodec = geneSequenceCodec;
     }
 
     public WwwConfig config() {
@@ -61,6 +78,43 @@ public final class WonderfulWolfGenomeProfile implements GenomeProfile<Wonderful
     @Override
     public ProfileDescriptor descriptor() {
         return descriptor;
+    }
+
+    @Override
+    public BitSequence founderTemplateBits(
+            int chromosomeIndex,
+            int haplotypeIndex,
+            ChromosomeTemplate template,
+            GenomeRandom random) {
+        Objects.requireNonNull(template, "template");
+        Objects.requireNonNull(random, "random");
+
+        BitSequence varied = template.templateBits();
+        if (template.markerLocus() == null) {
+            return varied;
+        }
+
+        varied = varyFounderMarkerAnchor(
+                varied,
+                template.markerLocus().first(),
+                random.nextInt(49));
+        varied = varyFounderMarkerAnchor(
+                varied,
+                template.markerLocus().second(),
+                random.nextInt(49));
+        return varied;
+    }
+
+    private static BitSequence varyFounderMarkerAnchor(
+            BitSequence bits,
+            AnchorSeed anchor,
+            int choice) {
+        if (choice < 0 || choice > 48) {
+            throw new IllegalArgumentException("marker variation choice must be in [0,48]");
+        }
+        return choice == 0
+                ? bits
+                : bits.flip(anchor.position() + choice - 1);
     }
 
     @Override
@@ -97,6 +151,185 @@ public final class WonderfulWolfGenomeProfile implements GenomeProfile<Wonderful
             throw new IllegalArgumentException("undefined Wonderful Wolf address: " + address);
         }
         return address.type() == 0x07 ? EXTRAORDINARY_CONTRIBUTION : STANDARD_CONTRIBUTION;
+    }
+
+    @Override
+    public SynthesisAddressPlan synthesisPlan(
+            GenomeAddress address,
+            double target,
+            SynthesisContext context,
+            GenomeRandom random) {
+        Objects.requireNonNull(address, "address");
+        Objects.requireNonNull(context, "context");
+        Objects.requireNonNull(random, "random");
+        if (!isDefinedAddress(address)) {
+            throw new IllegalArgumentException("undefined Wonderful Wolf address: " + address);
+        }
+
+        WwwConfig.Synthesizer synth = config.genomeProfile().synthesizer();
+        return switch (address.type()) {
+            case 0x00 -> boundedPlan(target, synth.genesPerTarget().ability(), synth, random);
+            case 0x01 -> centeredPlan(target, synth.genesPerTarget().development(), random);
+            case 0x03 -> centeredPlan(target, synth.genesPerTarget().personality(), random);
+            case 0x04 -> boundedPlan(target, synth.genesPerTarget().trait(), synth, random);
+            case 0x06 -> centeredPlan(target, synth.genesPerTarget().relationship(), random);
+            case 0x07 -> boundedPlan(
+                    target,
+                    new WwwConfig.Range(
+                            synth.extraordinary().genesPerTargetMin(),
+                            (synth.extraordinary().genesPerTargetMin()
+                                    + synth.extraordinary().genesPerTargetMax()) / 2,
+                            synth.extraordinary().genesPerTargetMax()),
+                    synth,
+                    random);
+            default -> GenomeProfile.super.synthesisPlan(address, target, context, random);
+        };
+    }
+
+    private static SynthesisAddressPlan centeredPlan(
+            double target,
+            WwwConfig.Range perHaplotypeRange,
+            GenomeRandom random) {
+        int totalGenes = 2 * triangularInt(
+                perHaplotypeRange.min(),
+                perHaplotypeRange.center(),
+                perHaplotypeRange.max(),
+                random);
+        if (target == 0.5) {
+            return new SynthesisAddressPlan(0.0, 0.0, 0, 0, 0, 0);
+        }
+        double delta = 2.0 * target - 1.0;
+        if (delta > 0.0) {
+            return new SynthesisAddressPlan(delta, 0.0, totalGenes, totalGenes, 0, 0);
+        }
+        return new SynthesisAddressPlan(0.0, -delta, 0, 0, totalGenes, totalGenes);
+    }
+
+    private static SynthesisAddressPlan boundedPlan(
+            double target,
+            WwwConfig.Range perHaplotypeRange,
+            WwwConfig.Synthesizer synth,
+            GenomeRandom random) {
+        if (!Double.isFinite(target) || target < 0.0 || target > 1.0) {
+            throw new IllegalArgumentException("target must be finite and in [0,1]");
+        }
+        if (target == 0.0) {
+            return new SynthesisAddressPlan(0.0, 0.0, 0, 0, 0, 0);
+        }
+
+        double draw = synth.cancellationMin()
+                + (synth.cancellationMax() - synth.cancellationMin()) * random.nextDouble();
+        double cancellation = Math.min(
+                draw,
+                Math.max(0.0, 1.0 - synth.highTargetHeadroom() - target));
+        double survival = 1.0 - cancellation;
+        double positive = target / survival;
+
+        int totalGenes = 2 * triangularInt(
+                perHaplotypeRange.min(),
+                perHaplotypeRange.center(),
+                perHaplotypeRange.max(),
+                random);
+        if (cancellation == 0.0) {
+            return new SynthesisAddressPlan(
+                    positive, 0.0,
+                    totalGenes, totalGenes,
+                    0, 0);
+        }
+
+        double negativeShare = cancellation / (positive + cancellation);
+        int negativeGenes = Math.max(1,
+                Math.min(totalGenes - 1,
+                        (int) StrictMath.round(totalGenes * negativeShare)));
+        int positiveGenes = totalGenes - negativeGenes;
+        return new SynthesisAddressPlan(
+                positive,
+                cancellation,
+                positiveGenes,
+                positiveGenes,
+                negativeGenes,
+                negativeGenes);
+    }
+
+    private static int triangularInt(
+            int min,
+            int mode,
+            int max,
+            GenomeRandom random) {
+        if (min == max) return min;
+        double u = random.nextDouble();
+        double split = (mode - min) / (double) (max - min);
+        double value = u < split
+                ? min + StrictMath.sqrt(u * (max - min) * (mode - min))
+                : max - StrictMath.sqrt((1.0 - u) * (max - min) * (max - mode));
+        return Math.max(min, Math.min(max, (int) StrictMath.round(value)));
+    }
+
+    @Override
+    public List<SynthesisBlock> synthesisBlocks(
+            SynthesisTarget target,
+            SynthesisContext context,
+            GenomeRandom random) {
+        Objects.requireNonNull(target, "target");
+        Objects.requireNonNull(context, "context");
+        Objects.requireNonNull(random, "random");
+        if (!(target instanceof WonderfulWolfSynthesisTarget wonderfulWolfTarget)) {
+            return List.of();
+        }
+        if (geneSequenceCodec == null) {
+            throw new IllegalStateException(
+                    "Wonderful Wolf synthesis requires the WGL GeneSequenceCodec");
+        }
+        return new WonderfulWolfSynthesisMaterial(
+                config,
+                backbone,
+                geneSequenceCodec,
+                this::contributionModel)
+                .blocks(wonderfulWolfTarget, random);
+    }
+
+    @Override
+    public SynthesisSafetyPolicy synthesisSafetyPolicy() {
+        WwwConfig.Synthesizer synth = config.genomeProfile().synthesizer();
+        return (metrics, decodedGenome) -> {
+            for (int haplotype = 0; haplotype <= 1; haplotype++) {
+                int lane = haplotype;
+                int candidateCount = metrics.haplotypes().stream()
+                        .filter(metric -> metric.haplotypeIndex() == lane)
+                        .mapToInt(metric -> metric.geneCandidateCount())
+                        .sum();
+                long recognizableBits = metrics.haplotypes().stream()
+                        .filter(metric -> metric.haplotypeIndex() == lane)
+                        .mapToLong(metric -> metric.recognizableBits())
+                        .sum();
+                long totalBits = metrics.haplotypes().stream()
+                        .filter(metric -> metric.haplotypeIndex() == lane)
+                        .mapToLong(metric -> metric.bitLength())
+                        .sum();
+                double recognizableRatio =
+                        totalBits == 0L ? 0.0 : recognizableBits / (double) totalBits;
+
+                long direct = decodedGenome.physicalGenes().stream()
+                        .filter(DecodedGene::addressValid)
+                        .filter(gene -> gene.haplotypeIndex() == lane)
+                        .filter(gene -> !gene.regulation())
+                        .count();
+                long regulation = decodedGenome.physicalGenes().stream()
+                        .filter(DecodedGene::addressValid)
+                        .filter(gene -> gene.haplotypeIndex() == lane)
+                        .filter(DecodedGene::regulation)
+                        .count();
+
+                if (candidateCount > synth.recognizableGenesHardMax()
+                        || direct > synth.directGenesHardMax()
+                        || regulation > synth.regulationGenesHardMax()
+                        || recognizableRatio > synth.recognizableRegionMaxRatio() + EPS
+                        || 1.0 - recognizableRatio < synth.noncodingRegionMinRatio() - EPS) {
+                    return false;
+                }
+            }
+            return true;
+        };
     }
 
     @Override

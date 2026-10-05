@@ -23,7 +23,9 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         WwwConfig config = WwwConfigLoader.load(getConfig());
 
         WonderfulWolfProfileLifecycle lifecycle =
-                new WonderfulWolfProfileLifecycle(new WglProfileRegistryGateway(genomeLib, this));
+                new WonderfulWolfProfileLifecycle(
+                        new WglProfileRegistryGateway(genomeLib, this),
+                        genomeLib.engine().geneSequenceCodec());
         lifecycle.start(config);
         profileLifecycle = lifecycle;
     }

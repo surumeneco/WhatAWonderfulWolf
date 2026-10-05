@@ -25,6 +25,7 @@ dependencies {
 
     testImplementation("io.papermc.paper:paper-api:26.2.build.129-stable")
     testImplementation("co.surumene:wgl-plugin:0.1.0-SNAPSHOT")
+    testImplementation("co.surumene:wgl-core:0.1.0-SNAPSHOT")
     testImplementation(platform("org.junit:junit-bom:6.0.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -37,6 +38,10 @@ tasks.withType<JavaCompile>().configureEach {
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
+    testLogging {
+        events("failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
 }
 
 tasks.named<ProcessResources>("processResources") {
