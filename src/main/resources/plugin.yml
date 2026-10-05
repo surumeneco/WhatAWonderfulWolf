@@ -1,0 +1,9 @@
+name: WhatAWonderfulWolf
+version: '${version}'
+main: co.surumene.www.WhatAWonderfulWolfPlugin
+api-version: '26.2'
+author: surumeneco
+description: Wonderful Wolf gameplay plugin for XPlayServer.
+website: https://github.com/surumeneco/WhatAWonderfulWolf
+depend:
+  - WonderfulGenomeLib
