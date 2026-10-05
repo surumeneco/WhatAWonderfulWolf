@@ -23,7 +23,7 @@ public final class AbilityScale {
             case ATTACK_SPEED -> 0.2 + 1.8 * normalized;
             case DEFENSE -> 30.0 * normalized;
             case PATIENCE -> normalized;
-            case INVENTORY -> 45.0 * normalized;
+            case INVENTORY -> 30.0 * normalized;
         };
         return canonicalizeBase(ability, value);
     }
