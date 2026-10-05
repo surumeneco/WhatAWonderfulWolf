@@ -139,18 +139,22 @@ final class WonderfulWolfInheritanceAnalyzer {
         }
 
         int index = lane.indexOf(direct);
-        int neighborIndex = direct.orientation() == GeneOrientation.FORWARD
-                ? index + 1
-                : index - 1;
-        if (index >= 0 && neighborIndex >= 0 && neighborIndex < lane.size()) {
-            DecodedGene neighbor = lane.get(neighborIndex);
-            if (neighbor.address() != null
-                    && neighbor.addressValid()
-                    && neighbor.address().type() == 0x08
-                    && neighbor.address().target() == 0x06
-                    && neighbor.orientation() == direct.orientation()) {
-                start = Math.min(start, neighbor.startBit());
-                end = Math.max(end, neighbor.endBitExclusive());
+        if (index >= 0) {
+            if (index + 1 < lane.size()) {
+                DecodedGene after = lane.get(index + 1);
+                if (isRelay(after)
+                        && after.orientation() == GeneOrientation.FORWARD) {
+                    start = Math.min(start, after.startBit());
+                    end = Math.max(end, after.endBitExclusive());
+                }
+            }
+            if (index > 0) {
+                DecodedGene before = lane.get(index - 1);
+                if (isRelay(before)
+                        && before.orientation() == GeneOrientation.REVERSE) {
+                    start = Math.min(start, before.startBit());
+                    end = Math.max(end, before.endBitExclusive());
+                }
             }
         }
 
@@ -159,6 +163,13 @@ final class WonderfulWolfInheritanceAnalyzer {
                 direct.haplotypeIndex(),
                 start,
                 end);
+    }
+
+    private static boolean isRelay(DecodedGene gene) {
+        return gene.addressValid()
+                && gene.address() != null
+                && gene.address().type() == 0x08
+                && gene.address().target() == 0x06;
     }
 
     private static boolean isCis(DecodedGene gene) {
