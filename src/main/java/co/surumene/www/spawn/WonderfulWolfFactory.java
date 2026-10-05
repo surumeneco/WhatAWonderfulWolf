@@ -21,7 +21,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Supplier;
 
-public final class WonderfulWolfFactory {
+public final class WonderfulWolfFactory implements FounderIndividualSource {
     private final GenomeEngine engine;
     private final Supplier<WonderfulWolfGenomeProfile> profileSupplier;
 
@@ -33,6 +33,7 @@ public final class WonderfulWolfFactory {
                 Objects.requireNonNull(profileSupplier, "profileSupplier");
     }
 
+    @Override
     public WonderfulWolfCreationResult createFounder(
             FounderOrigin origin,
             Optional<UUID> ownerId,
