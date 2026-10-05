@@ -128,31 +128,46 @@ public final class WonderfulWolfGenomeProfile implements GenomeProfile<Wonderful
 
         WwwConfig.Synthesizer synth = config.genomeProfile().synthesizer();
         return switch (address.type()) {
-            case 0x00 -> boundedPlan(target, doubled(synth.genesPerTarget().ability()), synth, random);
-            case 0x01 -> centeredPlan(target, doubled(synth.genesPerTarget().development()));
-            case 0x03 -> centeredPlan(target, doubled(synth.genesPerTarget().personality()));
-            case 0x04 -> boundedPlan(target, doubled(synth.genesPerTarget().trait()), synth, random);
-            case 0x06 -> centeredPlan(target, doubled(synth.genesPerTarget().relationship()));
+            case 0x00 -> boundedPlan(target, synth.genesPerTarget().ability(), synth, random);
+            case 0x01 -> centeredPlan(target, synth.genesPerTarget().development(), random);
+            case 0x03 -> centeredPlan(target, synth.genesPerTarget().personality(), random);
+            case 0x04 -> boundedPlan(target, synth.genesPerTarget().trait(), synth, random);
+            case 0x06 -> centeredPlan(target, synth.genesPerTarget().relationship(), random);
             case 0x07 -> boundedPlan(
                     target,
                     new WwwConfig.Range(
-                            synth.extraordinary().genesPerTargetMin() * 2,
+                            synth.extraordinary().genesPerTargetMin(),
                             (synth.extraordinary().genesPerTargetMin()
-                                    + synth.extraordinary().genesPerTargetMax()),
-                            synth.extraordinary().genesPerTargetMax() * 2),
+                                    + synth.extraordinary().genesPerTargetMax()) / 2,
+                            synth.extraordinary().genesPerTargetMax()),
                     synth,
                     random);
             default -> GenomeProfile.super.synthesisPlan(address, target, context, random);
         };
     }
 
-    private static SynthesisAddressPlan centeredPlan(double target, WwwConfig.Range range) {
-        return SynthesisAddressPlan.centeredDifference(target, range.min(), range.max());
+    private static SynthesisAddressPlan centeredPlan(
+            double target,
+            WwwConfig.Range perHaplotypeRange,
+            GenomeRandom random) {
+        int totalGenes = 2 * triangularInt(
+                perHaplotypeRange.min(),
+                perHaplotypeRange.center(),
+                perHaplotypeRange.max(),
+                random);
+        if (target == 0.5) {
+            return new SynthesisAddressPlan(0.0, 0.0, 0, 0, 0, 0);
+        }
+        double delta = 2.0 * target - 1.0;
+        if (delta > 0.0) {
+            return new SynthesisAddressPlan(delta, 0.0, totalGenes, totalGenes, 0, 0);
+        }
+        return new SynthesisAddressPlan(0.0, -delta, 0, 0, totalGenes, totalGenes);
     }
 
     private static SynthesisAddressPlan boundedPlan(
             double target,
-            WwwConfig.Range range,
+            WwwConfig.Range perHaplotypeRange,
             WwwConfig.Synthesizer synth,
             GenomeRandom random) {
         if (!Double.isFinite(target) || target < 0.0 || target > 1.0) {
@@ -169,22 +184,45 @@ public final class WonderfulWolfGenomeProfile implements GenomeProfile<Wonderful
                 Math.max(0.0, 1.0 - synth.highTargetHeadroom() - target));
         double survival = 1.0 - cancellation;
         double positive = target / survival;
-        int negativeMax = cancellation == 0.0 ? 0 : Math.max(1, range.max() / 2);
 
+        int totalGenes = 2 * triangularInt(
+                perHaplotypeRange.min(),
+                perHaplotypeRange.center(),
+                perHaplotypeRange.max(),
+                random);
+        if (cancellation == 0.0) {
+            return new SynthesisAddressPlan(
+                    positive, 0.0,
+                    totalGenes, totalGenes,
+                    0, 0);
+        }
+
+        double negativeShare = cancellation / (positive + cancellation);
+        int negativeGenes = Math.max(1,
+                Math.min(totalGenes - 1,
+                        (int) StrictMath.round(totalGenes * negativeShare)));
+        int positiveGenes = totalGenes - negativeGenes;
         return new SynthesisAddressPlan(
                 positive,
                 cancellation,
-                range.min(),
-                range.max(),
-                cancellation == 0.0 ? 0 : 1,
-                negativeMax);
+                positiveGenes,
+                positiveGenes,
+                negativeGenes,
+                negativeGenes);
     }
 
-    private static WwwConfig.Range doubled(WwwConfig.Range range) {
-        return new WwwConfig.Range(
-                range.min() * 2,
-                range.center() * 2,
-                range.max() * 2);
+    private static int triangularInt(
+            int min,
+            int mode,
+            int max,
+            GenomeRandom random) {
+        if (min == max) return min;
+        double u = random.nextDouble();
+        double split = (mode - min) / (double) (max - min);
+        double value = u < split
+                ? min + StrictMath.sqrt(u * (max - min) * (mode - min))
+                : max - StrictMath.sqrt((1.0 - u) * (max - min) * (max - mode));
+        return Math.max(min, Math.min(max, (int) StrictMath.round(value)));
     }
 
     @Override
