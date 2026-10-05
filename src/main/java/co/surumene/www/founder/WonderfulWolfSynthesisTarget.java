@@ -63,9 +63,6 @@ public final class WonderfulWolfSynthesisTarget implements SynthesisTarget {
             base.put(ability, b);
             extraordinary.put(ability, e);
             continuous.put(new GenomeAddress(0x00, ability.targetId()), b);
-            if (e > 0.0) {
-                continuous.put(new GenomeAddress(0x07, ability.targetId()), 2.0 * e);
-            }
         }
 
         for (DevelopmentFactor factor : DevelopmentFactor.values()) {
@@ -119,6 +116,14 @@ public final class WonderfulWolfSynthesisTarget implements SynthesisTarget {
                 default -> aggregate.score();
             };
             if (StrictMath.abs(actual - entry.getValue()) > tolerance) {
+                return false;
+            }
+        }
+        for (Ability ability : Ability.values()) {
+            double expected = extraordinaryTargets.get(ability);
+            double actual = 0.5 * decoded.aggregate(
+                    new GenomeAddress(0x07, ability.targetId())).score();
+            if (StrictMath.abs(actual - expected) > tolerance) {
                 return false;
             }
         }
