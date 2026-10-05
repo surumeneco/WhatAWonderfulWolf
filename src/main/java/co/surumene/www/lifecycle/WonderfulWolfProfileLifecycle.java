@@ -55,6 +55,10 @@ public final class WonderfulWolfProfileLifecycle implements AutoCloseable {
         return requireState().profile();
     }
 
+    public WonderfulWolfGenomeProfile currentWolfProfile() {
+        return requireState().profile();
+    }
+
     @Override
     public synchronized void close() {
         if (state == null) {
