@@ -5,14 +5,16 @@ import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 
+import java.util.Locale;
 import java.util.Objects;
 
 final class PaperPersistentValueStore implements PersistentValueStore {
-    private final Plugin plugin;
+    private final String namespace;
     private final PersistentDataContainer container;
 
     PaperPersistentValueStore(Plugin plugin, PersistentDataContainer container) {
-        this.plugin = Objects.requireNonNull(plugin, "plugin");
+        Plugin checkedPlugin = Objects.requireNonNull(plugin, "plugin");
+        this.namespace = checkedPlugin.getName().toLowerCase(Locale.ROOT);
         this.container = Objects.requireNonNull(container, "container");
     }
 
@@ -56,6 +58,6 @@ final class PaperPersistentValueStore implements PersistentValueStore {
     }
 
     private NamespacedKey key(String key) {
-        return new NamespacedKey(plugin, key);
+        return new NamespacedKey(namespace, key);
     }
 }
