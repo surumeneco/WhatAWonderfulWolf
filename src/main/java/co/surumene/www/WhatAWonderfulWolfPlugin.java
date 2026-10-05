@@ -85,7 +85,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(persistenceListener, this);
         Bukkit.getPluginManager().registerEvents(breedingListener, this);
         Bukkit.getPluginManager().registerEvents(
-                new BiologicalClockListener(clock),
+                new BiologicalClockListener(clock, getLogger()),
                 this);
 
         Bukkit.getWorlds().forEach(world ->
