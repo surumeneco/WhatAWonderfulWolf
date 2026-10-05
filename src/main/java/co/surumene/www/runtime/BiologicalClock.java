@@ -72,9 +72,14 @@ public final class BiologicalClock {
 
     public synchronized void recordIgnoredSkip(long skipAmount) {
         long before = currentTime();
-        ignoredSkipOffset = Math.addExact(ignoredSkipOffset, skipAmount);
+        long nextOffset = Math.addExact(ignoredSkipOffset, skipAmount);
+        BiologicalClockState next = new BiologicalClockState(
+                worldName,
+                nextOffset,
+                before);
+        store.save(next);
+        ignoredSkipOffset = nextOffset;
         lastKnownBiologicalTime = before;
-        saveState();
     }
 
     public synchronized void reconfigure(
@@ -86,11 +91,17 @@ public final class BiologicalClock {
         long biological = currentTime();
         long newRaw = newRawFullTime.getAsLong();
 
+        long nextOffset = newRaw - biological;
+        BiologicalClockState next = new BiologicalClockState(
+                world,
+                nextOffset,
+                biological);
+        store.save(next);
+
         worldName = world;
         rawFullTime = newRawFullTime;
-        ignoredSkipOffset = newRaw - biological;
+        ignoredSkipOffset = nextOffset;
         lastKnownBiologicalTime = biological;
-        saveState();
     }
 
     public synchronized void persist() {
