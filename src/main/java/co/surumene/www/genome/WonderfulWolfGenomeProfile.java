@@ -5,6 +5,7 @@ import co.surumene.www.config.WwwConfigValidator;
 import co.surumene.www.domain.Ability;
 import co.surumene.www.domain.DevelopmentFactor;
 import co.surumene.www.domain.ExpressedTrait;
+import co.surumene.www.domain.InjuryPhenotype;
 import co.surumene.www.domain.Personality;
 import co.surumene.www.domain.PersonalityFactor;
 import co.surumene.www.domain.RelationshipPerformance;
@@ -12,7 +13,9 @@ import co.surumene.www.domain.Trait;
 import co.surumene.www.domain.TraitStrength;
 import co.surumene.wgl.api.AddressAggregate;
 import co.surumene.wgl.api.BackboneDefinition;
+import co.surumene.wgl.api.DecodedGene;
 import co.surumene.wgl.api.DecodedGenome;
+import co.surumene.wgl.api.DecodedHomologyBlock;
 import co.surumene.wgl.api.DirectContributionModel;
 import co.surumene.wgl.api.EffectiveContribution;
 import co.surumene.wgl.api.GenomeAddress;
@@ -83,6 +86,11 @@ public final class WonderfulWolfGenomeProfile implements GenomeProfile<Wonderful
     }
 
     @Override
+    public boolean requiresHomologyContext() {
+        return true;
+    }
+
+    @Override
     public DirectContributionModel contributionModel(GenomeAddress address) {
         Objects.requireNonNull(address, "address");
         if (!isDefinedAddress(address)) {
@@ -137,7 +145,7 @@ public final class WonderfulWolfGenomeProfile implements GenomeProfile<Wonderful
                 decodePersonality(personalityFactors),
                 decodeTraits(decodedGenome),
                 development,
-                List.of(),
+                decodeInjuries(decodedGenome),
                 divine);
     }
 
@@ -230,6 +238,114 @@ public final class WonderfulWolfGenomeProfile implements GenomeProfile<Wonderful
                 new ExpressedTrait(second.trait(), TraitStrength.WEAK));
     }
 
+    private List<InjuryPhenotype> decodeInjuries(DecodedGenome decodedGenome) {
+        List<InjuryPhenotype> injuries = new ArrayList<>();
+        WwwConfig.InjuryDecoder decoder = config.genomeProfile().decoder().injury();
+
+        for (Ability ability : Ability.values()) {
+            GenomeAddress address = new GenomeAddress(0x02, ability.targetId());
+            List<EffectiveContribution> contributions = decodedGenome.aggregate(address).contributions();
+            if (contributions.isEmpty()) {
+                continue;
+            }
+
+            List<InjuryPair> pairs = new ArrayList<>();
+            double injurySurvival = 1.0;
+            for (DecodedHomologyBlock block : decodedGenome.homologyBlocks()) {
+                List<EffectiveContribution> sideA = injuryContributions(contributions, block, 0);
+                List<EffectiveContribution> sideB = injuryContributions(contributions, block, 1);
+                double loadA = boundedScore(sideA);
+                double loadB = boundedScore(sideB);
+                if (loadA <= 0.0 || loadB <= 0.0) {
+                    continue;
+                }
+
+                List<DecodedGene> genes = injuryGenes(decodedGenome.physicalGenes(), address, block);
+                if (genes.isEmpty()) {
+                    continue;
+                }
+
+                double pairLoad = StrictMath.sqrt(loadA * loadB);
+                injurySurvival *= 1.0 - pairLoad;
+                double onset = genes.stream()
+                        .mapToDouble(gene -> gene.extension().toLong(0, 8) / 255.0)
+                        .average()
+                        .orElseThrow();
+                double severity = genes.stream()
+                        .mapToDouble(gene -> gene.extension().toLong(8, 8) / 255.0)
+                        .average()
+                        .orElseThrow();
+                pairs.add(new InjuryPair(pairLoad, onset, severity));
+            }
+
+            double score = 1.0 - injurySurvival;
+            if (score < decoder.expressionThreshold() - EPS || pairs.isEmpty()) {
+                continue;
+            }
+
+            double totalWeight = pairs.stream().mapToDouble(InjuryPair::weight).sum();
+            double onsetNormalized = pairs.stream()
+                    .mapToDouble(pair -> pair.weight() * pair.onsetNormalized())
+                    .sum() / totalWeight;
+            double severityNormalized = pairs.stream()
+                    .mapToDouble(pair -> pair.weight() * pair.severityNormalized())
+                    .sum() / totalWeight;
+
+            double onsetGameDay = Math.round(decoder.onsetMaxGameDays() * onsetNormalized);
+            double severityRank = decoder.severityRankMin()
+                    + (decoder.severityRankMax() - decoder.severityRankMin()) * severityNormalized;
+            injuries.add(new InjuryPhenotype(ability, onsetGameDay, severityRank));
+        }
+
+        return List.copyOf(injuries);
+    }
+
+    private static List<EffectiveContribution> injuryContributions(
+            List<EffectiveContribution> contributions,
+            DecodedHomologyBlock block,
+            int haplotype) {
+        int start = haplotype == 0 ? block.startA() : block.startB();
+        int end = haplotype == 0 ? block.endAExclusive() : block.endBExclusive();
+        return contributions.stream()
+                .filter(contribution -> !contribution.secondary())
+                .filter(contribution -> contribution.chromosomeIndex() == block.chromosomeIndex())
+                .filter(contribution -> contribution.haplotypeIndex() == haplotype)
+                .filter(contribution -> contribution.startBit() >= start && contribution.startBit() < end)
+                .toList();
+    }
+
+    private static List<DecodedGene> injuryGenes(
+            List<DecodedGene> genes,
+            GenomeAddress address,
+            DecodedHomologyBlock block) {
+        return genes.stream()
+                .filter(DecodedGene::addressValid)
+                .filter(gene -> address.equals(gene.address()))
+                .filter(gene -> gene.extension().bitLength() >= 16)
+                .filter(gene -> gene.chromosomeIndex() == block.chromosomeIndex())
+                .filter(gene -> {
+                    int start = gene.haplotypeIndex() == 0 ? block.startA() : block.startB();
+                    int end = gene.haplotypeIndex() == 0 ? block.endAExclusive() : block.endBExclusive();
+                    return gene.haplotypeIndex() >= 0
+                            && gene.startBit() >= start
+                            && gene.startBit() < end;
+                })
+                .toList();
+    }
+
+    private static double boundedScore(List<EffectiveContribution> contributions) {
+        double positiveSurvival = 1.0;
+        double negativeSurvival = 1.0;
+        for (EffectiveContribution contribution : contributions) {
+            if (contribution.effect() >= 0.0) {
+                positiveSurvival *= 1.0 - contribution.saturation();
+            } else {
+                negativeSurvival *= 1.0 - contribution.saturation();
+            }
+        }
+        return (1.0 - positiveSurvival) * negativeSurvival;
+    }
+
     static double centeredScore(AddressAggregate aggregate) {
         double negative = 1.0 - aggregate.negativeSurvival();
         return clamp01(0.5 + 0.5 * (aggregate.positiveSaturation() - negative));
@@ -266,4 +382,9 @@ public final class WonderfulWolfGenomeProfile implements GenomeProfile<Wonderful
     }
 
     private record TraitScore(Trait trait, double score) {}
+
+    private record InjuryPair(
+            double weight,
+            double onsetNormalized,
+            double severityNormalized) {}
 }
