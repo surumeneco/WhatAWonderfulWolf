@@ -64,6 +64,34 @@ final class WonderfulWolfInjuryDecoderTest {
         assertEquals(6.0, phenotype.severityRank(), 1.0e-12);
     }
 
+
+    @Test
+    void multipleHomologyBlocksUsePairLoadAsOnsetAndSeverityWeight() {
+        GenomeAddress injury = new GenomeAddress(0x02, Ability.HEALTH.targetId());
+        List<EffectiveContribution> contributions = List.of(
+                contribution(injury, 0, 120, 0.60),
+                contribution(injury, 1, 130, 0.60),
+                contribution(injury, 0, 320, 0.30),
+                contribution(injury, 1, 330, 0.30));
+        List<DecodedGene> genes = List.of(
+                gene(injury, 0, 120, 0, 0),
+                gene(injury, 1, 130, 0, 0),
+                gene(injury, 0, 320, 255, 255),
+                gene(injury, 1, 330, 255, 255));
+        DecodedGenome decoded = decoded(
+                injury,
+                contributions,
+                genes,
+                List.of(
+                        new DecodedHomologyBlock(0, 100, 200, 100, 200),
+                        new DecodedHomologyBlock(0, 300, 400, 300, 400)));
+
+        InjuryPhenotype phenotype = profile.mapPhenotype(decoded).injuries().getFirst();
+
+        assertEquals(2624.0, phenotype.onsetGameDay(), 1.0e-12);
+        assertEquals(4.0, phenotype.severityRank(), 1.0e-12);
+    }
+
     private static DecodedGenome decoded(
             GenomeAddress address,
             List<EffectiveContribution> contributions,
