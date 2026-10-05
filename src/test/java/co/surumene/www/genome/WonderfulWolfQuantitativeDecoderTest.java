@@ -53,7 +53,7 @@ final class WonderfulWolfQuantitativeDecoderTest {
         Map<GenomeAddress, AddressAggregate> aggregates = Map.of(
                 new GenomeAddress(0x00, Ability.HEALTH.targetId()), aggregate(0.80, 0.75),
                 new GenomeAddress(0x07, Ability.HEALTH.targetId()), aggregate(0.60, 0.50),
-                new GenomeAddress(0x06, 0x00), aggregate(0.70, 0.80),
+                new GenomeAddress(0x06, 0x00), aggregate(0.80, 0.80),
                 new GenomeAddress(0x06, 0x01), aggregate(0.20, 0.50),
                 new GenomeAddress(0x01, DevelopmentFactor.MATURITY.targetId()), aggregate(0.60, 0.75));
 
