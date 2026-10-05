@@ -185,7 +185,10 @@ final class WonderfulWolfSynthesisMaterial {
                 GenomeAddress secondaryAddress =
                         targetAddresses.get(random.nextInt(targetAddresses.size()));
 
-                int sourceMagnitude = 6 + random.nextInt(19);
+                // Relay helper sources must not distort the already-planned phenotype target.
+                // A magnitude code of 1 remains a real direct gene while keeping its
+                // unplanned contribution well below the WGL convergence tolerance.
+                int sourceMagnitude = 1;
                 BitSequence source = codec.encodeDirectGene(
                         sourceAddress, false, sourceMagnitude, 15, BitSequence.empty());
 
