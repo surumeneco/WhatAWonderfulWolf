@@ -112,6 +112,42 @@ final class PaperWonderfulWolfFactoryTest {
     }
 
     @Test
+    void corruptWonderfulMarkerFailsClosedInsteadOfBeingOverwrittenAsANewFounder() {
+        MemoryPdc pdc = new MemoryPdc();
+        pdc.putRaw(
+                new NamespacedKey("whatawonderfulwolf", "type"),
+                "wonderful_wolf");
+        Wolf wolf = wolf(
+                UUID.fromString("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
+                pdc.proxy(),
+                true,
+                false,
+                null);
+        WonderfulWolfLoadedIndividuals loaded = loaded(pdc);
+        AtomicInteger generated = new AtomicInteger();
+
+        PaperWonderfulWolfFactory factory = new PaperWonderfulWolfFactory(
+                (origin, owner, adultTime, seed) -> {
+                    generated.incrementAndGet();
+                    return new WonderfulWolfCreationResult.Success(
+                            individual(owner, adultTime));
+                },
+                loaded,
+                () -> 7777L,
+                ignored -> {});
+
+        WonderfulWolfEntityCreationResult.Failure failure = assertInstanceOf(
+                WonderfulWolfEntityCreationResult.Failure.class,
+                factory.convertExisting(wolf, FounderOrigin.NATURAL, 5L));
+
+        assertTrue(failure.reason().startsWith("PERSISTED_STATE_"));
+        assertEquals(0, generated.get());
+        assertEquals(
+                "wonderful_wolf",
+                pdc.raw(new NamespacedKey("whatawonderfulwolf", "type")));
+    }
+
+    @Test
     void existingWonderfulWolfIsNotReplacedByAnotherFounder() {
         MemoryPdc pdc = new MemoryPdc();
         Wolf wolf = wolf(
@@ -274,6 +310,14 @@ final class PaperWonderfulWolfFactoryTest {
 
         Set<NamespacedKey> keys() {
             return Set.copyOf(values.keySet());
+        }
+
+        void putRaw(NamespacedKey key, Object value) {
+            values.put(key, value);
+        }
+
+        Object raw(NamespacedKey key) {
+            return values.get(key);
         }
 
         PersistentDataContainer proxy() {
