@@ -1,0 +1,49 @@
+name: build
+
+on:
+  push:
+    branches: [ main, develop, 'feature/**' ]
+  pull_request:
+    branches: [ main, develop ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout WWW
+        uses: actions/checkout@v5
+        with:
+          path: WhatAWonderfulWolf
+
+      - name: Checkout WGL develop
+        uses: actions/checkout@v5
+        with:
+          repository: surumeneco/WonderfulGenomeLib
+          ref: develop
+          path: WonderfulGenomeLib
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.1.0'
+
+      - name: Verify WGL
+        working-directory: WonderfulGenomeLib
+        run: gradle clean build --no-daemon
+
+      - name: Build WWW against WGL
+        working-directory: WhatAWonderfulWolf
+        run: gradle clean build --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WhatAWonderfulWolf
+          path: WhatAWonderfulWolf/build/libs/WhatAWonderfulWolf-*.jar
