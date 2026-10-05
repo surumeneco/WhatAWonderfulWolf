@@ -41,9 +41,11 @@ final class WonderfulWolfBreedingServiceIntegrationTest {
         assertEquals(1, child.generation());
         assertEquals("Alpha", child.pedigree().parentA().orElseThrow().ancestor().displayName());
         assertEquals("Beta", child.pedigree().parentB().orElseThrow().ancestor().displayName());
-        assertEquals(engine.marker(profile.backbone(), a.genome()).formatted(),
+        assertEquals(
+                engine.marker(profile.backbone(), a.genome()).formatted(),
                 child.pedigree().parentA().orElseThrow().ancestor().lineageId());
-        assertEquals(engine.marker(profile.backbone(), b.genome()).formatted(),
+        assertEquals(
+                engine.marker(profile.backbone(), b.genome()).formatted(),
                 child.pedigree().parentB().orElseThrow().ancestor().lineageId());
         assertTrue(child.pedigree().grandparentAA().isEmpty());
         assertTrue(child.ownerId().isEmpty());
@@ -54,80 +56,14 @@ final class WonderfulWolfBreedingServiceIntegrationTest {
         DecodeResult<WonderfulWolfDecodedPhenotype> canonical =
                 engine.decode(profile, child.genome());
         assertEquals(
-                canonical.phenotype().toSnapshot(canonical.identity(), PhenotypeOrigin.BREEDING),
+                canonical.phenotype().toSnapshot(
+                        canonical.identity(),
+                        PhenotypeOrigin.BREEDING),
                 child.phenotypeSnapshot());
-        assertEquals(engine.marker(profile.backbone(), child.genome()).formatted(),
+        assertEquals(
+                engine.marker(profile.backbone(), child.genome()).formatted(),
                 success.lineageId());
-    
-    private static WonderfulWolfIndividual withAbilities(
-            WonderfulWolfIndividual source,
-            double value) {
-        PhenotypeSnapshot p = source.phenotypeSnapshot();
-        EnumMap<Ability, Double> abilities = new EnumMap<>(Ability.class);
-        for (Ability ability : Ability.values()) abilities.put(ability, value);
-        PhenotypeSnapshot edited = new PhenotypeSnapshot(
-                p.decoderIdentity(),
-                abilities,
-                p.relationshipPerformance(),
-                p.personalityFactors(),
-                p.personality(),
-                p.expressedTraits(),
-                p.developmentFactors(),
-                p.injuries(),
-                p.divineLineageTotalScore(),
-                false);
-        return copy(source, edited, source.generation(), source.pedigree());
     }
-
-    private static WonderfulWolfIndividual withPedigree(
-            WonderfulWolfIndividual source,
-            String parentAName,
-            String parentBName) {
-        ParentSnapshot parentA = new ParentSnapshot(
-                new AncestorSnapshot(parentAName, 0, "01-02-03-04-05-06"),
-                Personality.SERIOUS.name(),
-                List.of(),
-                false);
-        ParentSnapshot parentB = new ParentSnapshot(
-                new AncestorSnapshot(parentBName, 0, "11-12-13-14-15-16"),
-                Personality.SERIOUS.name(),
-                List.of(),
-                false);
-        return copy(
-                source,
-                source.phenotypeSnapshot(),
-                1,
-                new PedigreeSnapshot(
-                        Optional.of(parentA),
-                        Optional.of(parentB),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty()));
-    }
-
-    private static WonderfulWolfIndividual copy(
-            WonderfulWolfIndividual source,
-            PhenotypeSnapshot snapshot,
-            int generation,
-            PedigreeSnapshot pedigree) {
-        return new WonderfulWolfIndividual(
-                source.genome(),
-                snapshot,
-                source.ownerId(),
-                source.adultBiologicalTime(),
-                source.mode(),
-                source.commanderId(),
-                source.actionDistance(),
-                source.waitLocation(),
-                source.affection(),
-                source.weapon(),
-                source.inventory(),
-                generation,
-                pedigree);
-    }
-
-}
 
     @Test
     void incompatibleParentsFallBackWithoutSynthesizingAReplacementChild() {
@@ -158,7 +94,6 @@ final class WonderfulWolfBreedingServiceIntegrationTest {
                         Optional.empty(),
                         2026100605L));
     }
-
 
     @Test
     void childGenomeComesFromParentGenomesNotEditedParentAbilitySnapshots() {
@@ -209,19 +144,35 @@ final class WonderfulWolfBreedingServiceIntegrationTest {
 
         PedigreeSnapshot pedigree = success.child().pedigree();
         assertEquals(2, success.child().generation());
-        assertEquals("A-A", pedigree.grandparentAA().orElseThrow().displayName());
-        assertEquals("A-B", pedigree.grandparentAB().orElseThrow().displayName());
-        assertEquals("B-A", pedigree.grandparentBA().orElseThrow().displayName());
-        assertEquals("B-B", pedigree.grandparentBB().orElseThrow().displayName());
+        assertEquals(
+                "A-A",
+                pedigree.grandparentAA().orElseThrow().displayName());
+        assertEquals(
+                "A-B",
+                pedigree.grandparentAB().orElseThrow().displayName());
+        assertEquals(
+                "B-A",
+                pedigree.grandparentBA().orElseThrow().displayName());
+        assertEquals(
+                "B-B",
+                pedigree.grandparentBB().orElseThrow().displayName());
     }
 
     private WonderfulWolfIndividual founder(double ability, long seed) {
         EnumMap<Ability, Double> abilities = new EnumMap<>(Ability.class);
-        for (Ability value : Ability.values()) abilities.put(value, ability);
-        EnumMap<PersonalityFactor, Double> personality = new EnumMap<>(PersonalityFactor.class);
-        for (PersonalityFactor value : PersonalityFactor.values()) personality.put(value, 0.5);
-        EnumMap<DevelopmentFactor, Double> development = new EnumMap<>(DevelopmentFactor.class);
-        for (DevelopmentFactor value : DevelopmentFactor.values()) development.put(value, 0.5);
+        for (Ability value : Ability.values()) {
+            abilities.put(value, ability);
+        }
+        EnumMap<PersonalityFactor, Double> personality =
+                new EnumMap<>(PersonalityFactor.class);
+        for (PersonalityFactor value : PersonalityFactor.values()) {
+            personality.put(value, 0.5);
+        }
+        EnumMap<DevelopmentFactor, Double> development =
+                new EnumMap<>(DevelopmentFactor.class);
+        for (DevelopmentFactor value : DevelopmentFactor.values()) {
+            development.put(value, 0.5);
+        }
 
         FounderTarget target = new FounderTarget(
                 FounderOrigin.NATURAL,
@@ -247,7 +198,8 @@ final class WonderfulWolfBreedingServiceIntegrationTest {
         return new WonderfulWolfIndividual(
                 synthesized.genome(),
                 canonical.phenotype().toSnapshot(
-                        canonical.identity(), PhenotypeOrigin.NATURAL_FOUNDER),
+                        canonical.identity(),
+                        PhenotypeOrigin.NATURAL_FOUNDER),
                 Optional.empty(),
                 0,
                 Mode.WANDER,
@@ -259,5 +211,85 @@ final class WonderfulWolfBreedingServiceIntegrationTest {
                 Map.of(),
                 0,
                 PedigreeSnapshot.founder());
+    }
+
+    private static WonderfulWolfIndividual withAbilities(
+            WonderfulWolfIndividual source,
+            double value) {
+        PhenotypeSnapshot p = source.phenotypeSnapshot();
+        EnumMap<Ability, Double> abilities = new EnumMap<>(Ability.class);
+        for (Ability ability : Ability.values()) {
+            abilities.put(ability, value);
+        }
+        PhenotypeSnapshot edited = new PhenotypeSnapshot(
+                p.decoderIdentity(),
+                abilities,
+                p.relationshipPerformance(),
+                p.personalityFactors(),
+                p.personality(),
+                p.expressedTraits(),
+                p.developmentFactors(),
+                p.injuries(),
+                p.divineLineageTotalScore(),
+                false);
+        return copy(
+                source,
+                edited,
+                source.generation(),
+                source.pedigree());
+    }
+
+    private static WonderfulWolfIndividual withPedigree(
+            WonderfulWolfIndividual source,
+            String parentAName,
+            String parentBName) {
+        ParentSnapshot parentA = new ParentSnapshot(
+                new AncestorSnapshot(
+                        parentAName,
+                        0,
+                        "01-02-03-04-05-06"),
+                Personality.SERIOUS.name(),
+                List.of(),
+                false);
+        ParentSnapshot parentB = new ParentSnapshot(
+                new AncestorSnapshot(
+                        parentBName,
+                        0,
+                        "11-12-13-14-15-16"),
+                Personality.SERIOUS.name(),
+                List.of(),
+                false);
+        return copy(
+                source,
+                source.phenotypeSnapshot(),
+                1,
+                new PedigreeSnapshot(
+                        Optional.of(parentA),
+                        Optional.of(parentB),
+                        Optional.empty(),
+                        Optional.empty(),
+                        Optional.empty(),
+                        Optional.empty()));
+    }
+
+    private static WonderfulWolfIndividual copy(
+            WonderfulWolfIndividual source,
+            PhenotypeSnapshot snapshot,
+            int generation,
+            PedigreeSnapshot pedigree) {
+        return new WonderfulWolfIndividual(
+                source.genome(),
+                snapshot,
+                source.ownerId(),
+                source.adultBiologicalTime(),
+                source.mode(),
+                source.commanderId(),
+                source.actionDistance(),
+                source.waitLocation(),
+                source.affection(),
+                source.weapon(),
+                source.inventory(),
+                generation,
+                pedigree);
     }
 }
