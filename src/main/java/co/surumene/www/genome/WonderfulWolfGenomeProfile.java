@@ -22,6 +22,9 @@ import co.surumene.wgl.api.GenomeAddress;
 import co.surumene.wgl.api.GenomeProfile;
 import co.surumene.wgl.api.ProfileDescriptor;
 import co.surumene.wgl.api.StandardDirectContributionModel;
+import co.surumene.wgl.api.GenomeRandom;
+import co.surumene.wgl.api.SynthesisAddressPlan;
+import co.surumene.wgl.api.SynthesisContext;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -97,6 +100,80 @@ public final class WonderfulWolfGenomeProfile implements GenomeProfile<Wonderful
             throw new IllegalArgumentException("undefined Wonderful Wolf address: " + address);
         }
         return address.type() == 0x07 ? EXTRAORDINARY_CONTRIBUTION : STANDARD_CONTRIBUTION;
+    }
+
+    @Override
+    public SynthesisAddressPlan synthesisPlan(
+            GenomeAddress address,
+            double target,
+            SynthesisContext context,
+            GenomeRandom random) {
+        Objects.requireNonNull(address, "address");
+        Objects.requireNonNull(context, "context");
+        Objects.requireNonNull(random, "random");
+        if (!isDefinedAddress(address)) {
+            throw new IllegalArgumentException("undefined Wonderful Wolf address: " + address);
+        }
+
+        WwwConfig.Synthesizer synth = config.genomeProfile().synthesizer();
+        return switch (address.type()) {
+            case 0x00 -> boundedPlan(target, doubled(synth.genesPerTarget().ability()), synth, random);
+            case 0x01 -> centeredPlan(target, doubled(synth.genesPerTarget().development()));
+            case 0x03 -> centeredPlan(target, doubled(synth.genesPerTarget().personality()));
+            case 0x04 -> boundedPlan(target, doubled(synth.genesPerTarget().trait()), synth, random);
+            case 0x06 -> centeredPlan(target, doubled(synth.genesPerTarget().relationship()));
+            case 0x07 -> boundedPlan(
+                    target,
+                    new WwwConfig.Range(
+                            synth.extraordinary().genesPerTargetMin() * 2,
+                            (synth.extraordinary().genesPerTargetMin()
+                                    + synth.extraordinary().genesPerTargetMax()),
+                            synth.extraordinary().genesPerTargetMax() * 2),
+                    synth,
+                    random);
+            default -> GenomeProfile.super.synthesisPlan(address, target, context, random);
+        };
+    }
+
+    private static SynthesisAddressPlan centeredPlan(double target, WwwConfig.Range range) {
+        return SynthesisAddressPlan.centeredDifference(target, range.min(), range.max());
+    }
+
+    private static SynthesisAddressPlan boundedPlan(
+            double target,
+            WwwConfig.Range range,
+            WwwConfig.Synthesizer synth,
+            GenomeRandom random) {
+        if (!Double.isFinite(target) || target < 0.0 || target > 1.0) {
+            throw new IllegalArgumentException("target must be finite and in [0,1]");
+        }
+        if (target == 0.0) {
+            return new SynthesisAddressPlan(0.0, 0.0, 0, 0, 0, 0);
+        }
+
+        double draw = synth.cancellationMin()
+                + (synth.cancellationMax() - synth.cancellationMin()) * random.nextDouble();
+        double cancellation = Math.min(
+                draw,
+                Math.max(0.0, 1.0 - synth.highTargetHeadroom() - target));
+        double survival = 1.0 - cancellation;
+        double positive = target / survival;
+        int negativeMax = cancellation == 0.0 ? 0 : Math.max(1, range.max() / 2);
+
+        return new SynthesisAddressPlan(
+                positive,
+                cancellation,
+                range.min(),
+                range.max(),
+                cancellation == 0.0 ? 0 : 1,
+                negativeMax);
+    }
+
+    private static WwwConfig.Range doubled(WwwConfig.Range range) {
+        return new WwwConfig.Range(
+                range.min() * 2,
+                range.center() * 2,
+                range.max() * 2);
     }
 
     @Override
