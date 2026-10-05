@@ -19,6 +19,14 @@ import java.util.Objects;
  * phenotype mapping are implemented in Phase 2.
  */
 public final class WonderfulWolfGenomeProfile implements GenomeProfile<PhenotypeSnapshot> {
+    private static final DirectContributionModel STANDARD_CONTRIBUTION =
+            co.surumene.wgl.api.StandardDirectContributionModel.defaultModel();
+    private static final DirectContributionModel EXTRAORDINARY_CONTRIBUTION =
+            new co.surumene.wgl.api.StandardDirectContributionModel(
+                    co.surumene.wgl.api.StandardDirectContributionModel.DEFAULT_ALPHA,
+                    2.0,
+                    address -> 2.0);
+
     private final WwwConfig config;
     private final ProfileDescriptor descriptor;
     private final BackboneDefinition backbone;
@@ -66,7 +74,11 @@ public final class WonderfulWolfGenomeProfile implements GenomeProfile<Phenotype
 
     @Override
     public DirectContributionModel contributionModel(GenomeAddress address) {
-        throw new IllegalArgumentException("Wonderful Wolf decoder addresses are not available before Phase 2");
+        Objects.requireNonNull(address, "address");
+        if (!isDefinedAddress(address)) {
+            throw new IllegalArgumentException("undefined Wonderful Wolf address: " + address);
+        }
+        return address.type() == 0x07 ? EXTRAORDINARY_CONTRIBUTION : STANDARD_CONTRIBUTION;
     }
 
     @Override
