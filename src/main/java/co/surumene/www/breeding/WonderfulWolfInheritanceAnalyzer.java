@@ -10,6 +10,7 @@ import java.util.*;
 
 final class WonderfulWolfInheritanceAnalyzer {
     private static final double EPS = 1.0e-12;
+    private static final int START_MOTIF_BITS = 16;
 
     private final GenomeEngine engine;
     private final WonderfulWolfGenomeProfile profile;
@@ -132,7 +133,7 @@ final class WonderfulWolfInheritanceAnalyzer {
                 continue;
             }
             int radius = 32 * (((gene.rawEffectByte() >>> 4) & 0x0F) + 1);
-            if (Math.abs(gene.startBit() - direct.startBit()) <= radius) {
+            if (Math.abs(startMotifPosition(gene) - startMotifPosition(direct)) <= radius) {
                 start = Math.min(start, gene.startBit());
                 end = Math.max(end, gene.endBitExclusive());
             }
@@ -163,6 +164,12 @@ final class WonderfulWolfInheritanceAnalyzer {
                 direct.haplotypeIndex(),
                 start,
                 end);
+    }
+
+    private static int startMotifPosition(DecodedGene gene) {
+        return gene.orientation() == GeneOrientation.FORWARD
+                ? gene.startBit()
+                : gene.endBitExclusive() - START_MOTIF_BITS;
     }
 
     private static boolean isRelay(DecodedGene gene) {
