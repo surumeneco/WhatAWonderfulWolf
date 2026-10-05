@@ -38,9 +38,10 @@ final class AbilityScaleTest {
     @Test
     void canonicalDiscreteAbilitiesUseNearestIntegerAndNormalInventoryCapsAt45() {
         assertEquals(40.0, AbilityScale.toCanonical(Ability.HEALTH, 0.5));
-        assertEquals(23.0, AbilityScale.toCanonical(Ability.INVENTORY, 0.5));
-        assertEquals(68.0, AbilityScale.toCanonical(Ability.INVENTORY, 1.5));
-        assertEquals(45.0, AbilityScale.finalizeEffective(Ability.INVENTORY, 67.5));
+        assertEquals(15.0, AbilityScale.toCanonical(Ability.INVENTORY, 0.5));
+        assertEquals(30.0, AbilityScale.toCanonical(Ability.INVENTORY, 1.0));
+        assertEquals(45.0, AbilityScale.toCanonical(Ability.INVENTORY, 1.5));
+        assertEquals(45.0, AbilityScale.finalizeEffective(Ability.INVENTORY, 49.5));
     }
 
     @Test
