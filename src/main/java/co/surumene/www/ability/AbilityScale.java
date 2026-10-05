@@ -25,7 +25,7 @@ public final class AbilityScale {
             case PATIENCE -> normalized;
             case INVENTORY -> 45.0 * normalized;
         };
-        return finalizeValue(ability, value);
+        return canonicalizeBase(ability, value);
     }
 
     public static double finalizeEffective(Ability ability, double value) {
@@ -33,15 +33,18 @@ public final class AbilityScale {
         if (!Double.isFinite(value) || value < 0.0) {
             throw new IllegalArgumentException("value must be finite and >= 0");
         }
-        return finalizeValue(ability, value);
-    }
-
-    private static double finalizeValue(Ability ability, double value) {
         if (ability == Ability.HEALTH) {
             return Math.round(value);
         }
         if (ability == Ability.INVENTORY) {
             return Math.min(45.0, Math.round(value));
+        }
+        return value;
+    }
+
+    private static double canonicalizeBase(Ability ability, double value) {
+        if (ability == Ability.HEALTH || ability == Ability.INVENTORY) {
+            return Math.round(value);
         }
         return value;
     }
