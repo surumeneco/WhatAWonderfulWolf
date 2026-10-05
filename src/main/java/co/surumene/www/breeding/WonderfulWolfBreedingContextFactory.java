@@ -33,22 +33,26 @@ public final class WonderfulWolfBreedingContextFactory {
 
         WwwConfig.BreedingPolicy policy =
                 profile.config().genomeProfile().breedingPolicy();
-        WonderfulWolfInheritanceAnalyzer.ParentAnalysis analysisA =
-                analyzer.analyze(parentA);
-        WonderfulWolfInheritanceAnalyzer.ParentAnalysis analysisB =
-                analyzer.analyze(parentB);
-
-        HardSelection hard = selectHard(
-                parentA, analysisA,
-                parentB, analysisB,
-                random);
-
         Optional<TraitStrength> directA =
                 WonderfulWolfBreedingPolicy.expressedTrait(
                         parentA.phenotypeSnapshot(), Trait.DIRECT_INHERITANCE);
         Optional<TraitStrength> directB =
                 WonderfulWolfBreedingPolicy.expressedTrait(
                         parentB.phenotypeSnapshot(), Trait.DIRECT_INHERITANCE);
+
+        WonderfulWolfInheritanceAnalyzer.ParentAnalysis analysisA =
+                directA.isPresent() || hasHardCandidate(parentA)
+                        ? analyzer.analyze(parentA)
+                        : null;
+        WonderfulWolfInheritanceAnalyzer.ParentAnalysis analysisB =
+                directB.isPresent() || hasHardCandidate(parentB)
+                        ? analyzer.analyze(parentB)
+                        : null;
+
+        HardSelection hard = selectHard(
+                parentA, analysisA,
+                parentB, analysisB,
+                random);
 
         SoftSelection soft = selectSoft(
                 analysisA, directA, hard.parentA(),
@@ -74,6 +78,13 @@ public final class WonderfulWolfBreedingContextFactory {
                 false,
                 new ParentMeiosisPolicy(finalA),
                 new ParentMeiosisPolicy(finalB));
+    }
+
+    private static boolean hasHardCandidate(
+            WonderfulWolfIndividual parent) {
+        return parent.phenotypeSnapshot().divineLineageExpressed()
+                && parent.phenotypeSnapshot().abilities().values().stream()
+                        .anyMatch(value -> value > 1.0);
     }
 
     private HardSelection selectHard(
