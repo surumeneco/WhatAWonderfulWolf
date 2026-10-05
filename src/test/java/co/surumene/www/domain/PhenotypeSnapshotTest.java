@@ -43,7 +43,8 @@ final class PhenotypeSnapshotTest {
                 traits,
                 development,
                 injuries,
-                false);
+                0.72,
+                true);
 
         abilities.put(Ability.HEALTH, 0.1);
         traits.clear();
@@ -52,6 +53,7 @@ final class PhenotypeSnapshotTest {
         assertEquals(0.5, snapshot.abilities().get(Ability.HEALTH));
         assertEquals(1, snapshot.expressedTraits().size());
         assertEquals(1, snapshot.injuries().size());
+        assertEquals(0.72, snapshot.divineLineageTotalScore());
         assertThrows(UnsupportedOperationException.class,
                 () -> snapshot.abilities().put(Ability.HEALTH, 0.2));
     }
@@ -78,6 +80,7 @@ final class PhenotypeSnapshotTest {
                 List.of(),
                 development,
                 List.of(),
+                0.0,
                 false));
     }
 }
