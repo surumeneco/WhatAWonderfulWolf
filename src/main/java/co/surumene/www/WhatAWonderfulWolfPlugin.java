@@ -142,6 +142,12 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                         loaded,
                         manualTargets,
                         behavior::onCommandStateChanged);
+        co.surumene.www.wolftrap.WolfTrapBootstrap.install(
+                this,
+                paperFactory,
+                loaded,
+                behavior,
+                () -> lifecycle.currentConfig().runtime());
         WonderfulWolfWeaponRuntime weapons =
                 new WonderfulWolfWeaponRuntime(
                         loaded,

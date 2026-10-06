@@ -16,9 +16,7 @@ public final class TargetSelectionPolicy {
             List<TargetCandidate> candidates) {
         Objects.requireNonNull(mode, "mode");
         Objects.requireNonNull(candidates, "candidates");
-        if (retreating) {
-            return Optional.empty();
-        }
+        if (retreating) return Optional.empty();
 
         return candidates.stream()
                 .filter(Objects::nonNull)
@@ -36,11 +34,10 @@ public final class TargetSelectionPolicy {
             Mode mode,
             TargetCandidate candidate) {
         if (mode == Mode.WANDER) {
-            return candidate.source() == TargetSource.SELF_ATTACKER;
+            return candidate.source() == TargetSource.TRAP_RIDER
+                    || candidate.source() == TargetSource.SELF_ATTACKER;
         }
-        if (!candidate.withinActionDistance()) {
-            return false;
-        }
+        if (!candidate.withinActionDistance()) return false;
         if (mode == Mode.FOLLOW
                 && candidate.source() == TargetSource.ACTIVE_SEARCH) {
             return false;
@@ -50,7 +47,7 @@ public final class TargetSelectionPolicy {
 
     private static int priority(TargetSource source) {
         return switch (source) {
-            case MANUAL -> 0;
+            case MANUAL, TRAP_RIDER -> 0;
             case SELF_ATTACKER, COMMAND_COMBAT -> 1;
             case PVP_INTERVENTION -> 2;
             case ACTIVE_SEARCH -> 3;

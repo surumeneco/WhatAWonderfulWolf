@@ -50,6 +50,7 @@ public final class WonderfulWolfBehaviorRuntime {
     private final Logger logger;
     private WonderfulWolfTraitRuntime traitRuntime;
 
+    private final Map<UUID, UUID> trapRiderTargets = new HashMap<>();
     private final Map<UUID, UUID> selfAttackers = new HashMap<>();
     private final Map<UUID, UUID> commandCombat = new HashMap<>();
     private final Map<UUID, UUID> pvpIntervention = new HashMap<>();
@@ -159,6 +160,29 @@ public final class WonderfulWolfBehaviorRuntime {
                 issuer.getUniqueId(),
                 target.getUniqueId(),
                 draw);
+    }
+
+    public void setTrapRiderTarget(
+            Wolf wolf,
+            LivingEntity target) {
+        Objects.requireNonNull(wolf, "wolf");
+        Objects.requireNonNull(target, "target");
+        trapRiderTargets.put(
+                wolf.getUniqueId(),
+                target.getUniqueId());
+    }
+
+    public void clearTrapRiderTarget(Wolf wolf) {
+        Objects.requireNonNull(wolf, "wolf");
+        UUID id = wolf.getUniqueId();
+        if (trapRiderTargets.remove(id) == null) {
+            return;
+        }
+        selectedTargets.remove(id);
+        if (wolf.getTarget() != null) {
+            wolf.setTarget(null);
+        }
+        tickWolfNow(wolf);
     }
 
     public void recordSelfAttacker(
@@ -276,6 +300,7 @@ public final class WonderfulWolfBehaviorRuntime {
     }
 
     public void clear() {
+        trapRiderTargets.clear();
         selfAttackers.clear();
         commandCombat.clear();
         pvpIntervention.clear();
@@ -388,6 +413,14 @@ public final class WonderfulWolfBehaviorRuntime {
         }
 
         List<TargetCandidate> candidates = new ArrayList<>();
+        addTransientCandidate(
+                candidates,
+                trapRiderTargets,
+                wolf,
+                individual,
+                reference,
+                radius,
+                TargetSource.TRAP_RIDER);
         addManualCandidate(
                 candidates, wolf, individual, reference, radius);
         addTransientCandidate(
@@ -793,6 +826,7 @@ public final class WonderfulWolfBehaviorRuntime {
 
     private void clearTransient(UUID id) {
         manualTargets.clear(id);
+        trapRiderTargets.remove(id);
         selfAttackers.remove(id);
         commandCombat.remove(id);
         pvpIntervention.remove(id);
@@ -802,6 +836,7 @@ public final class WonderfulWolfBehaviorRuntime {
 
     private void retain(Set<UUID> seen) {
         manualTargets.retain(seen);
+        trapRiderTargets.keySet().retainAll(seen);
         selfAttackers.keySet().retainAll(seen);
         commandCombat.keySet().retainAll(seen);
         pvpIntervention.keySet().retainAll(seen);
