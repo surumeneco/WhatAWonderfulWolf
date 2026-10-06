@@ -18,6 +18,7 @@ import co.surumene.www.individual.PedigreeSnapshot;
 import co.surumene.www.individual.WonderfulWolfIndividual;
 import co.surumene.www.individual.WorldPosition;
 import co.surumene.www.ui.PaperItemStackCodec;
+import co.surumene.www.runtime.PaperAbilityProjector;
 import co.surumene.wgl.api.GenomeEngine;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -216,7 +217,10 @@ public final class WonderfulWolfAdminInfo {
                 .map(v -> v.get(ability).baseCanonical())
                 .orElseGet(() -> AbilityScale.toCanonical(ability, normalized));
         double current = effective
-                .map(v -> v.get(ability).effectiveCanonical())
+                .map(v -> observedCanonical(
+                        wolf,
+                        ability,
+                        v.get(ability).effectiveCanonical()))
                 .orElse(base);
         AbilityRank rank = AbilityRank.fromNormalized(normalized);
         boolean injury = effective
@@ -235,6 +239,34 @@ public final class WonderfulWolfAdminInfo {
                 .append(Component.text(
                         " (" + String.format(Locale.ROOT, "%.3f", normalized) + ")",
                         NamedTextColor.DARK_GRAY));
+    }
+
+    private static double observedCanonical(
+            Wolf wolf,
+            Ability ability,
+            double fallback) {
+        Attribute attribute = switch (ability) {
+            case HEALTH -> Attribute.MAX_HEALTH;
+            case SIZE -> Attribute.SCALE;
+            case MOVEMENT_SPEED -> Attribute.MOVEMENT_SPEED;
+            case JUMP -> Attribute.JUMP_STRENGTH;
+            case STEP_HEIGHT -> Attribute.STEP_HEIGHT;
+            case ATTACK_DAMAGE -> Attribute.ATTACK_DAMAGE;
+            case ATTACK_SPEED -> Attribute.ATTACK_SPEED;
+            case DEFENSE -> Attribute.ARMOR;
+            case PATIENCE, INVENTORY -> null;
+        };
+        if (attribute == null || wolf.getAttribute(attribute) == null) {
+            return fallback;
+        }
+        double value = wolf.getAttribute(attribute).getValue();
+        return switch (ability) {
+            case MOVEMENT_SPEED ->
+                    PaperAbilityProjector.blocksPerSecondForMovementAttribute(value);
+            case JUMP ->
+                    PaperAbilityProjector.heightForJumpStrength(value);
+            default -> value;
+        };
     }
 
     private Component ageLine(Optional<EffectiveAbilities> effective) {
