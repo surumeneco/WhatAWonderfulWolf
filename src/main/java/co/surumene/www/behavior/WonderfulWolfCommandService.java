@@ -56,7 +56,7 @@ public final class WonderfulWolfCommandService {
         if (mode == Mode.WANDER) {
             manualTargets.clear(wolf.getUniqueId());
         }
-        if (mode != Mode.WAIT && wolf.isSitting()) {
+        if (wolf.isSitting()) {
             wolf.setSitting(false);
         }
         wolf.setTarget(null);
