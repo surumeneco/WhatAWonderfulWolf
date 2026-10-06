@@ -304,7 +304,9 @@ public final class WolfTrapRuntime {
             }
 
             behavior.setTrapRiderTarget(wolf, target);
-            wolf.getPathfinder().moveTo(target, 1.2);
+            if (!behavior.isRetreating(wolf.getUniqueId())) {
+                wolf.getPathfinder().moveTo(target, 1.2);
+            }
         }
     }
 
@@ -341,6 +343,8 @@ public final class WolfTrapRuntime {
                 origin.clone().add(1.0, 0.0, 0.0),
                 Evoker.class,
                 CreatureSpawnEvent.SpawnReason.CUSTOM);
+        initial.setPersistent(true);
+        secondRider.setPersistent(true);
 
         armedEvokers.remove(initial.getUniqueId());
         states.markRider(initial, first.getUniqueId());
@@ -374,6 +378,7 @@ public final class WolfTrapRuntime {
                 location,
                 Evoker.class,
                 CreatureSpawnEvent.SpawnReason.CUSTOM);
+        evoker.setPersistent(true);
         states.markArmed(evoker, graceUntilMillis);
         armedEvokers.add(evoker.getUniqueId());
     }
