@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 final class TargetSelectionPolicyTest {
     private static final UUID MANUAL = UUID.fromString("10000000-0000-0000-0000-000000000001");
+    private static final UUID TRAP = UUID.fromString("15000000-0000-0000-0000-000000000001");
     private static final UUID SELF = UUID.fromString("20000000-0000-0000-0000-000000000002");
     private static final UUID COMMAND = UUID.fromString("30000000-0000-0000-0000-000000000003");
     private static final UUID PVP = UUID.fromString("40000000-0000-0000-0000-000000000004");
@@ -33,6 +34,18 @@ final class TargetSelectionPolicyTest {
 
         assertEquals(
                 SELF,
+                TargetSelectionPolicy.select(Mode.WANDER, false, candidates)
+                        .orElseThrow().targetId());
+    }
+
+    @Test
+    void trapRiderCanDriveAWanderingWolfAndBeatsSelfDefense() {
+        List<TargetCandidate> candidates = List.of(
+                candidate(SELF, TargetSource.SELF_ATTACKER, true, 1, 1),
+                candidate(TRAP, TargetSource.TRAP_RIDER, true, 100, 100));
+
+        assertEquals(
+                TRAP,
                 TargetSelectionPolicy.select(Mode.WANDER, false, candidates)
                         .orElseThrow().targetId());
     }
