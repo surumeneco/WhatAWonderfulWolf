@@ -736,6 +736,7 @@ public final class WonderfulWolfBehaviorRuntime {
     }
 
     private void retain(Set<UUID> seen) {
+        manualTargets.retain(seen);
         selfAttackers.keySet().retainAll(seen);
         commandCombat.keySet().retainAll(seen);
         pvpIntervention.keySet().retainAll(seen);
