@@ -175,7 +175,9 @@ public final class WonderfulWolfBehaviorRuntime {
     public void clearTrapRiderTarget(Wolf wolf) {
         Objects.requireNonNull(wolf, "wolf");
         UUID id = wolf.getUniqueId();
-        trapRiderTargets.remove(id);
+        if (trapRiderTargets.remove(id) == null) {
+            return;
+        }
         selectedTargets.remove(id);
         if (wolf.getTarget() != null) {
             wolf.setTarget(null);
