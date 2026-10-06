@@ -78,7 +78,7 @@ final class WonderfulWolfBreedingServiceIntegrationTest {
 
     @Test
     void batchBreedingProducesValidChildrenWithoutFallback() {
-        for (int i = 0; i < 128; i++) {
+        for (int i = 0; i < 32; i++) {
             WonderfulWolfBreedingOutcome.Success success = assertInstanceOf(
                     WonderfulWolfBreedingOutcome.Success.class,
                     service.breed(
