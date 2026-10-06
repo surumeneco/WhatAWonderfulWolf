@@ -1,5 +1,14 @@
 package co.surumene.www;
 
+import co.surumene.www.behavior.ManualTargetRegistry;
+import co.surumene.www.behavior.PendingFeedTracker;
+import co.surumene.www.behavior.WonderfulWolfBehaviorRuntime;
+import co.surumene.www.behavior.WonderfulWolfCombatListener;
+import co.surumene.www.behavior.WonderfulWolfCommandService;
+import co.surumene.www.behavior.WonderfulWolfGoalAdapter;
+import co.surumene.www.behavior.WonderfulWolfRelationshipListener;
+import co.surumene.www.behavior.WonderfulWolfRelationshipRuntime;
+import co.surumene.www.behavior.WonderfulWolfRelationshipService;
 import co.surumene.www.breeding.WonderfulWolfBreedingListener;
 import co.surumene.www.breeding.WonderfulWolfBreedingService;
 import co.surumene.www.config.WwwConfig;
@@ -33,7 +42,10 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
     private WonderfulWolfLoadedIndividuals loadedIndividuals;
     private BiologicalClock biologicalClock;
     private WonderfulWolfAbilityRuntime abilityRuntime;
+    private WonderfulWolfBehaviorRuntime behaviorRuntime;
+    private WonderfulWolfCommandService commandService;
     private BukkitTask abilityTask;
+    private BukkitTask behaviorTask;
 
     @Override
     public void onEnable() {
@@ -103,9 +115,50 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                         () -> ThreadLocalRandom.current().nextLong(),
                         getLogger());
 
+        ManualTargetRegistry manualTargets = new ManualTargetRegistry();
+        WonderfulWolfRelationshipService relationshipService =
+                new WonderfulWolfRelationshipService(loaded);
+        PendingFeedTracker pendingFeeds = new PendingFeedTracker();
+        WonderfulWolfBehaviorRuntime behavior =
+                new WonderfulWolfBehaviorRuntime(
+                        loaded,
+                        abilities,
+                        () -> lifecycle.currentConfig().runtime(),
+                        manualTargets,
+                        new WonderfulWolfGoalAdapter(Bukkit.getMobGoals()),
+                        Bukkit.getServer(),
+                        getLogger());
+        WonderfulWolfCommandService commands =
+                new WonderfulWolfCommandService(
+                        loaded,
+                        manualTargets,
+                        behavior::onCommandStateChanged);
+        WonderfulWolfRelationshipRuntime relationshipRuntime =
+                new WonderfulWolfRelationshipRuntime(
+                        loaded,
+                        relationshipService,
+                        () -> lifecycle.currentConfig().runtime().relationship(),
+                        () -> ThreadLocalRandom.current().nextDouble(),
+                        pendingFeeds,
+                        getLogger());
+
         Bukkit.getPluginManager().registerEvents(persistenceListener, this);
         Bukkit.getPluginManager().registerEvents(breedingListener, this);
         Bukkit.getPluginManager().registerEvents(naturalSpawnListener, this);
+        Bukkit.getPluginManager().registerEvents(
+                new WonderfulWolfRelationshipListener(
+                        loaded,
+                        relationshipService,
+                        pendingFeeds,
+                        () -> Bukkit.getCurrentTick(),
+                        getLogger()),
+                this);
+        Bukkit.getPluginManager().registerEvents(
+                new WonderfulWolfCombatListener(
+                        loaded,
+                        behavior,
+                        () -> ThreadLocalRandom.current().nextDouble()),
+                this);
         Bukkit.getPluginManager().registerEvents(
                 new BiologicalClockListener(clock, getLogger()),
                 this);
@@ -115,16 +168,43 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
 
         loadedIndividuals = loaded;
         abilityRuntime = abilities;
+        behaviorRuntime = behavior;
+        commandService = commands;
+
         abilities.tick();
+        behavior.tick(Bukkit.getCurrentTick());
+
         abilityTask = Bukkit.getScheduler().runTaskTimer(
                 this,
                 abilities::tick,
                 20L,
                 20L);
+        behaviorTask = Bukkit.getScheduler().runTaskTimer(
+                this,
+                () -> {
+                    long tick = Bukkit.getCurrentTick();
+                    relationshipRuntime.tick(tick);
+                    behavior.tick(tick);
+                },
+                5L,
+                5L);
     }
 
     @Override
     public void onDisable() {
+        BukkitTask behaviorScheduled = behaviorTask;
+        behaviorTask = null;
+        if (behaviorScheduled != null) {
+            behaviorScheduled.cancel();
+        }
+
+        WonderfulWolfBehaviorRuntime behavior = behaviorRuntime;
+        behaviorRuntime = null;
+        commandService = null;
+        if (behavior != null) {
+            behavior.clear();
+        }
+
         BukkitTask task = abilityTask;
         abilityTask = null;
         if (task != null) {
@@ -193,6 +273,10 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         if (abilities != null) {
             abilities.tick();
         }
+        WonderfulWolfBehaviorRuntime behavior = behaviorRuntime;
+        if (behavior != null) {
+            behavior.tick(Bukkit.getCurrentTick());
+        }
     }
 
     public WwwConfig currentConfig() {
@@ -221,6 +305,24 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
             throw new IllegalStateException("Wonderful Wolf ability runtime is not available");
         }
         return runtime;
+    }
+
+    public WonderfulWolfBehaviorRuntime behaviorRuntime() {
+        WonderfulWolfBehaviorRuntime runtime = behaviorRuntime;
+        if (runtime == null) {
+            throw new IllegalStateException(
+                    "Wonderful Wolf behavior runtime is not available");
+        }
+        return runtime;
+    }
+
+    public WonderfulWolfCommandService commandService() {
+        WonderfulWolfCommandService service = commandService;
+        if (service == null) {
+            throw new IllegalStateException(
+                    "Wonderful Wolf command service is not available");
+        }
+        return service;
     }
 
     public BiologicalClock biologicalClock() {
