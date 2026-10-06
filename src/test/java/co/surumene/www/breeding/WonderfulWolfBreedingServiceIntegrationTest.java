@@ -77,6 +77,23 @@ final class WonderfulWolfBreedingServiceIntegrationTest {
     }
 
     @Test
+    void batchBreedingProducesValidChildrenWithoutFallback() {
+        for (int i = 0; i < 128; i++) {
+            WonderfulWolfBreedingOutcome.Success success = assertInstanceOf(
+                    WonderfulWolfBreedingOutcome.Success.class,
+                    service.breed(
+                            new BreedingParent("Alpha", alpha),
+                            new BreedingParent("Beta", beta),
+                            Optional.empty(),
+                            202610070000L + i));
+
+            assertEquals(1, success.child().generation());
+            assertEquals(6, success.child().genome().chromosomePairs().size());
+            assertFalse(success.lineageId().isBlank());
+        }
+    }
+
+    @Test
     void incompatibleParentsFallBackWithoutSynthesizingAReplacementChild() {
         WonderfulWolfIndividual valid = alpha;
         DiploidGenome incompatibleGenome = new DiploidGenome(
