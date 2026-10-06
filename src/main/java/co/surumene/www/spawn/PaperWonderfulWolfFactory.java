@@ -4,6 +4,7 @@ import co.surumene.www.founder.FounderOrigin;
 import co.surumene.www.individual.WonderfulWolfIndividual;
 import co.surumene.www.persistence.RestoreResult;
 import co.surumene.www.persistence.WonderfulWolfLoadedIndividuals;
+import co.surumene.wgl.api.DiploidGenome;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.AnimalTamer;
@@ -121,6 +122,50 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
         }
 
         return new WonderfulWolfEntityCreationResult.Success(wolf, individual);
+    }
+
+    public WonderfulWolfEntityCreationResult spawnGenome(
+            Location location,
+            DiploidGenome genome) {
+        Objects.requireNonNull(location, "location");
+        Objects.requireNonNull(genome, "genome");
+        World world = Objects.requireNonNull(
+                location.getWorld(),
+                "location world");
+
+        Wolf wolf = world.spawn(
+                location,
+                Wolf.class,
+                CreatureSpawnEvent.SpawnReason.CUSTOM);
+        WonderfulWolfCreationResult created =
+                founderSource.createFromGenome(
+                        genome,
+                        Optional.empty(),
+                        Math.max(0L, biologicalTime.getAsLong()));
+        if (created instanceof WonderfulWolfCreationResult.Failure failure) {
+            wolf.remove();
+            return new WonderfulWolfEntityCreationResult.Failure(
+                    wolf,
+                    failure.reason(),
+                    failure.detail());
+        }
+
+        WonderfulWolfIndividual individual =
+                ((WonderfulWolfCreationResult.Success) created).individual();
+        try {
+            loaded.saveAndRegister(wolf, individual);
+            abilityRefresh.accept(wolf);
+        } catch (RuntimeException error) {
+            loaded.unregister(wolf);
+            wolf.remove();
+            return new WonderfulWolfEntityCreationResult.Failure(
+                    wolf,
+                    "PERSISTENCE_FAILED",
+                    safeMessage(error));
+        }
+        return new WonderfulWolfEntityCreationResult.Success(
+                wolf,
+                individual);
     }
 
     public WonderfulWolfEntityCreationResult spawnFounder(

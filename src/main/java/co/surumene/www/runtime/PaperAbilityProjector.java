@@ -65,12 +65,30 @@ public final class PaperAbilityProjector {
         return blocksPerSecond / MOVEMENT_ATTRIBUTE_BLOCKS_PER_SECOND;
     }
 
+    public static double blocksPerSecondForMovementAttribute(
+            double movementAttribute) {
+        if (!Double.isFinite(movementAttribute) || movementAttribute < 0.0) {
+            throw new IllegalArgumentException(
+                    "movementAttribute must be finite and >= 0");
+        }
+        return movementAttribute * MOVEMENT_ATTRIBUTE_BLOCKS_PER_SECOND;
+    }
+
     public static double jumpStrengthForHeight(double height) {
         if (!Double.isFinite(height) || height < 0.0) {
             throw new IllegalArgumentException(
                     "height must be finite and >= 0");
         }
         return 0.42 * Math.sqrt(height / 1.25);
+    }
+
+    public static double heightForJumpStrength(double jumpStrength) {
+        if (!Double.isFinite(jumpStrength) || jumpStrength < 0.0) {
+            throw new IllegalArgumentException(
+                    "jumpStrength must be finite and >= 0");
+        }
+        double ratio = jumpStrength / 0.42;
+        return 1.25 * ratio * ratio;
     }
 
     private void setAttribute(
