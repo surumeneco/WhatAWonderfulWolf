@@ -14,10 +14,10 @@ import org.bukkit.Server;
 import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.entity.Enemy;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
-import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Wolf;
 import org.bukkit.util.Vector;
@@ -536,21 +536,23 @@ public final class WonderfulWolfBehaviorRuntime {
             Wolf wolf,
             UUID commander,
             Set<UUID> commandWolves) {
-        if (entity instanceof Monster) {
-            return true;
-        }
-        if (!(entity instanceof Mob mob)) {
-            return false;
+        boolean targetingCommandChain = false;
+        if (entity instanceof Mob mob) {
+            LivingEntity target = mob.getTarget();
+            if (target != null) {
+                UUID targetId = target.getUniqueId();
+                targetingCommandChain =
+                        targetId.equals(wolf.getUniqueId())
+                                || (commander != null
+                                    && targetId.equals(commander))
+                                || commandWolves.contains(targetId);
+            }
         }
 
-        LivingEntity target = mob.getTarget();
-        if (target == null) {
-            return false;
-        }
-        UUID targetId = target.getUniqueId();
-        return targetId.equals(wolf.getUniqueId())
-                || (commander != null && targetId.equals(commander))
-                || commandWolves.contains(targetId);
+        return ActiveThreatPolicy.isActiveThreat(
+                entity.getType(),
+                entity instanceof Enemy,
+                targetingCommandChain);
     }
 
     private Set<UUID> sameCommandWolfIds(UUID commander) {
