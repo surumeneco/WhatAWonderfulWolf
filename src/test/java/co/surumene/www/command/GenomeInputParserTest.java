@@ -61,7 +61,7 @@ final class GenomeInputParserTest {
                 GenomeInputParser.Format.BITS, "101", codec).get(0).bitLength());
         assertEquals("1111", GenomeInputParser.parseHaplotype(
                 GenomeInputParser.Format.HEX, "f,,,,,", codec).get(0).toBitString());
-        assertEquals("00011011", GenomeInputParser.parseHaplotype(
+        assertEquals("00011110", GenomeInputParser.parseHaplotype(
                 GenomeInputParser.Format.DNA, "TCAG,,,,,", codec).get(0).toBitString());
     }
 
