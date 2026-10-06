@@ -142,6 +142,7 @@ public final class WonderfulWolfAdminInfo {
         boolean firstAbility = true;
         for (Ability ability : ABILITIES) {
             Component abilityLine = abilityLine(
+                    wolf,
                     ability,
                     individual,
                     effective);
@@ -207,6 +208,7 @@ public final class WonderfulWolfAdminInfo {
     }
 
     private Component abilityLine(
+            Wolf wolf,
             Ability ability,
             WonderfulWolfIndividual individual,
             Optional<EffectiveAbilities> effective) {
