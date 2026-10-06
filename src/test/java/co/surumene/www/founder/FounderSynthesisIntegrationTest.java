@@ -45,6 +45,26 @@ final class FounderSynthesisIntegrationTest {
     }
 
     @Test
+    void batchFounderGenerationRemainsCanonicalAcrossOrigins() {
+        WonderfulWolfFounderSynthesizer synthesizer =
+                new WonderfulWolfFounderSynthesizer(engine, profile);
+
+        for (int i = 0; i < 12; i++) {
+            FounderOrigin origin = i % 2 == 0
+                    ? FounderOrigin.NATURAL
+                    : FounderOrigin.WOLF_TRAP;
+            FounderGenomeSynthesis run =
+                    synthesizer.synthesize(origin, 2026100700L + i);
+            SynthesisResult.Success success = requireSuccess(run.result());
+
+            assertEquals(6, success.genome().chromosomePairs().size());
+            assertTrue(run.synthesisTarget().isSatisfied(
+                    success.decoded().decodedGenome(),
+                    EngineConfig.defaults().synthesizer().convergenceTolerance()));
+        }
+    }
+
+    @Test
     void sameSeedReproducesTheWholeFounderGenerationPipeline() {
         WonderfulWolfFounderSynthesizer synthesizer =
                 new WonderfulWolfFounderSynthesizer(engine, profile);
