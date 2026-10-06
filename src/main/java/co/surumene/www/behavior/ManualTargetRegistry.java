@@ -53,6 +53,11 @@ public final class ManualTargetRegistry {
         targets.remove(Objects.requireNonNull(wolfId, "wolfId"));
     }
 
+    public void retain(java.util.Set<UUID> loadedWolfIds) {
+        Objects.requireNonNull(loadedWolfIds, "loadedWolfIds");
+        targets.keySet().retainAll(loadedWolfIds);
+    }
+
     public void clearAll() {
         targets.clear();
     }
