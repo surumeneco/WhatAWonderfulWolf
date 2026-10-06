@@ -1,6 +1,7 @@
 package co.surumene.www.runtime;
 
 import co.surumene.www.ability.AbilityScale;
+import co.surumene.www.behavior.AffectionPolicy;
 import co.surumene.www.domain.Ability;
 import co.surumene.www.domain.Trait;
 import co.surumene.www.individual.ItemStackSnapshot;
@@ -53,7 +54,9 @@ final class WonderfulWolfScavengerRuntime {
 
         Map<Integer, ItemStackSnapshot> cargo =
                 new HashMap<>(individual.inventory());
+        WonderfulWolfIndividual updatedIndividual = individual;
         boolean cargoChanged = false;
+        boolean affectionChanged = false;
         for (Entity entity : wolf.getWorld().getNearbyEntities(
                 wolf.getLocation(),
                 COLLECTION_RADIUS,
@@ -72,6 +75,15 @@ final class WonderfulWolfScavengerRuntime {
 
             if (WonderfulWolfFoodRuntime.canUseForRecovery(wolf, stack)) {
                 WonderfulWolfFoodRuntime.consumeOne(wolf, dropped, stack);
+                UUID commander =
+                        updatedIndividual.commanderId().orElse(null);
+                if (commander != null) {
+                    updatedIndividual =
+                            AffectionPolicy.reward(
+                                    updatedIndividual,
+                                    commander);
+                    affectionChanged = true;
+                }
                 continue;
             }
 
@@ -100,15 +112,15 @@ final class WonderfulWolfScavengerRuntime {
             }
         }
 
-        if (!cargoChanged) {
+        if (!cargoChanged && !affectionChanged) {
             return;
         }
 
-        WonderfulWolfIndividual current =
-                loaded.find(wolf.getUniqueId()).orElse(individual);
         loaded.saveAndRegister(
                 wolf,
-                current.withStorage(current.weapon(), cargo));
+                updatedIndividual.withStorage(
+                        updatedIndividual.weapon(),
+                        cargo));
     }
 
     private boolean managementInventoryOpen(UUID wolfId) {
