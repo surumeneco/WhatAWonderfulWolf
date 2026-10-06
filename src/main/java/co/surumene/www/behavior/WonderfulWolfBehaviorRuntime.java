@@ -619,11 +619,13 @@ public final class WonderfulWolfBehaviorRuntime {
     private static boolean isDangerForRetreat(
             LivingEntity entity,
             Wolf wolf) {
-        if (entity instanceof Monster) {
-            return true;
-        }
-        return entity instanceof Mob mob
-                && wolf.equals(mob.getTarget());
+        boolean targetsWolf =
+                entity instanceof Mob mob
+                        && wolf.equals(mob.getTarget());
+        return ActiveThreatPolicy.isActiveThreat(
+                entity.getType(),
+                entity instanceof Enemy,
+                targetsWolf);
     }
 
     private void returnToReference(
@@ -632,9 +634,6 @@ public final class WonderfulWolfBehaviorRuntime {
             Location reference) {
         if (individual.mode() == Mode.WANDER) {
             return;
-        }
-        if (wolf.isSitting()) {
-            wolf.setSitting(false);
         }
         if (reference == null
                 || !sameWorld(wolf.getLocation(), reference)) {
