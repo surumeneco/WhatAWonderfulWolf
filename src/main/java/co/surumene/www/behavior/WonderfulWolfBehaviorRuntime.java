@@ -293,7 +293,6 @@ public final class WonderfulWolfBehaviorRuntime {
         if (next.active()) {
             if (!previous.active()) {
                 manualTargets.clear(id);
-                selfAttackers.remove(id);
                 commandCombat.remove(id);
                 pvpIntervention.remove(id);
             }
@@ -303,6 +302,10 @@ public final class WonderfulWolfBehaviorRuntime {
             }
             fleeOrReturn(wolf, individual, reference, radius);
             return;
+        }
+
+        if (previous.active()) {
+            selfAttackers.remove(id);
         }
 
         List<TargetCandidate> candidates = new ArrayList<>();
