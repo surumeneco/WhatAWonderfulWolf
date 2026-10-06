@@ -79,6 +79,36 @@ final class GenomeInputParserTest {
     }
 
     @Test
+    void omittedHaplotypeBProducesCompleteHomozygousGenome() {
+        var genome = GenomeAdminCodec.parseGenome(
+                GenomeInputParser.Format.BITS,
+                "101010101010101010101010101010101010101",
+                null,
+                GenomeInputParser.defaultSequenceCodecForTest());
+
+        assertEquals(6, genome.chromosomePairCount());
+        assertTrue(genome.chromosomePairs().stream()
+                .allMatch(pair -> pair.haplotypeA().equals(pair.haplotypeB())));
+    }
+
+    @Test
+    void rawBitsOutputCanRecreateTheSamePhysicalGenome() {
+        var original = GenomeAdminCodec.parseGenome(
+                GenomeInputParser.Format.BITS,
+                "1,01,101,0101,11111,000000",
+                "0,10,010,1010,00000,111111",
+                GenomeInputParser.defaultSequenceCodecForTest());
+        var raw = GenomeAdminCodec.rawBits(original);
+        var recreated = GenomeAdminCodec.parseGenome(
+                GenomeInputParser.Format.BITS,
+                raw.haplotypeA(),
+                raw.haplotypeB(),
+                GenomeInputParser.defaultSequenceCodecForTest());
+
+        assertEquals(original, recreated);
+    }
+
+    @Test
     void rejectsInvalidFormatAndMoreThanTwoHaplotypes() {
         assertThrows(IllegalArgumentException.class,
                 () -> GenomeInputParser.Format.parse("raw"));
