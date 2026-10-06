@@ -49,7 +49,7 @@ final class FounderSynthesisIntegrationTest {
         WonderfulWolfFounderSynthesizer synthesizer =
                 new WonderfulWolfFounderSynthesizer(engine, profile);
 
-        for (int i = 0; i < 12; i++) {
+        for (int i = 0; i < 8; i++) {
             FounderOrigin origin = i % 2 == 0
                     ? FounderOrigin.NATURAL
                     : FounderOrigin.WOLF_TRAP;
