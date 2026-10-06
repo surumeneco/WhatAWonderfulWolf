@@ -12,6 +12,7 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.weather.LightningStrikeEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
+import org.bukkit.event.world.TimeSkipEvent;
 
 import java.util.Objects;
 
@@ -43,6 +44,11 @@ public final class WolfTrapListener implements Listener {
         } else if (event.getEntity() instanceof Wolf wolf) {
             runtime.onWolfDeath(wolf);
         }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onTimeSkip(TimeSkipEvent event) {
+        runtime.markTimeSkip(event.getWorld());
     }
 
     @EventHandler(priority = EventPriority.MONITOR)

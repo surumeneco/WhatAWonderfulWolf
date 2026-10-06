@@ -44,6 +44,7 @@ public final class WolfTrapRuntime {
             new java.util.HashMap<>();
     private final Set<UUID> armedEvokers = new HashSet<>();
     private final Set<UUID> riderEvokers = new HashSet<>();
+    private final Set<UUID> skippedWorlds = new HashSet<>();
     private boolean creatingOwnLightning;
 
     public WolfTrapRuntime(
@@ -100,6 +101,10 @@ public final class WolfTrapRuntime {
         tickAdditionalSpawns();
         tickArmedEvokers();
         tickRiders();
+    }
+
+    public void markTimeSkip(World world) {
+        skippedWorlds.add(Objects.requireNonNull(world, "world").getUID());
     }
 
     public void onLightning(LightningStrikeEvent event) {
@@ -164,9 +169,12 @@ public final class WolfTrapRuntime {
     private void tickAdditionalSpawns() {
         for (World world : server.getWorlds()) {
             long current = world.getFullTime();
+            UUID worldId = world.getUID();
             Long previous =
-                    previousFullTimes.put(world.getUID(), current);
+                    previousFullTimes.put(worldId, current);
+            boolean skipped = skippedWorlds.remove(worldId);
             if (previous == null
+                    || skipped
                     || !WolfTrapPolicy.reachedAdditionalCheckTime(
                             previous,
                             current)
