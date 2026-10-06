@@ -4,9 +4,7 @@ import co.surumene.www.config.WwwConfig;
 import co.surumene.www.domain.Mode;
 import co.surumene.www.persistence.WonderfulWolfLoadedIndividuals;
 
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -21,7 +19,8 @@ public final class WonderfulWolfRelationshipRuntime {
     private final DoubleSupplier draw;
     private final PendingFeedTracker pendingFeeds;
     private final Logger logger;
-    private final Map<UUID, Long> lastPassiveCheck = new HashMap<>();
+    private final PassiveAffectionSchedule passiveSchedule =
+            new PassiveAffectionSchedule();
 
     public WonderfulWolfRelationshipRuntime(
             WonderfulWolfLoadedIndividuals loaded,
@@ -56,19 +55,19 @@ public final class WonderfulWolfRelationshipRuntime {
             if ((snapshot.individual().mode() != Mode.FOLLOW
                     && snapshot.individual().mode() != Mode.GUARD)
                     || snapshot.individual().commanderId().isEmpty()) {
-                lastPassiveCheck.remove(wolfId);
+                passiveSchedule.clear(wolfId);
                 continue;
             }
 
-            long previous = lastPassiveCheck.getOrDefault(
+            UUID commanderId =
+                    snapshot.individual().commanderId().orElseThrow();
+            if (!passiveSchedule.isDue(
                     wolfId,
-                    serverTick);
-            lastPassiveCheck.putIfAbsent(wolfId, serverTick);
-            if (serverTick - previous
-                    < settings.passiveIncreaseIntervalTicks()) {
+                    commanderId,
+                    serverTick,
+                    settings.passiveIncreaseIntervalTicks())) {
                 continue;
             }
-            lastPassiveCheck.put(wolfId, serverTick);
 
             if (draw.getAsDouble()
                     >= settings.passiveIncreaseProbability()) {
@@ -77,7 +76,7 @@ public final class WonderfulWolfRelationshipRuntime {
             try {
                 relationships.reward(
                         snapshot.entity(),
-                        snapshot.individual().commanderId().orElseThrow());
+                        commanderId);
             } catch (RuntimeException error) {
                 logger.warning(
                         "Failed to persist passive affection gain for Wonderful Wolf "
@@ -87,7 +86,7 @@ public final class WonderfulWolfRelationshipRuntime {
             }
         }
 
-        lastPassiveCheck.keySet().retainAll(seen);
+        passiveSchedule.retain(seen);
     }
 
     private static String safeMessage(RuntimeException error) {
