@@ -409,8 +409,7 @@ public final class WonderfulWolfBehaviorRuntime {
         }
 
         if (previous.active()) {
-            trapRiderTargets.remove(id);
-        selfAttackers.remove(id);
+            selfAttackers.remove(id);
         }
 
         List<TargetCandidate> candidates = new ArrayList<>();
@@ -827,6 +826,7 @@ public final class WonderfulWolfBehaviorRuntime {
 
     private void clearTransient(UUID id) {
         manualTargets.clear(id);
+        trapRiderTargets.remove(id);
         selfAttackers.remove(id);
         commandCombat.remove(id);
         pvpIntervention.remove(id);
