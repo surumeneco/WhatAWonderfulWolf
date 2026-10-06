@@ -163,6 +163,23 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                         weapons,
                         genomeLib.engine(),
                         lifecycle::currentWolfProfile);
+        co.surumene.www.command.WonderfulWolfAdminCommands adminCommands =
+                new co.surumene.www.command.WonderfulWolfAdminCommands(
+                        this,
+                        loaded,
+                        abilities,
+                        genomeLib.engine(),
+                        paperFactory,
+                        new co.surumene.www.command.WonderfulWolfAdminInfo(
+                                Bukkit.getServer(),
+                                genomeLib.engine(),
+                                lifecycle::currentWolfProfile));
+        getLifecycleManager().registerEventHandler(
+                io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents.COMMANDS,
+                event -> event.registrar().register(
+                        adminCommands.build(),
+                        "What a Wonderful Wolf administration",
+                        java.util.List.of("whatawonderfulwolf")));
 
         WonderfulWolfRelationshipRuntime relationshipRuntime =
                 new WonderfulWolfRelationshipRuntime(

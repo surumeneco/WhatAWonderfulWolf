@@ -7,3 +7,13 @@ description: Wonderful Wolf gameplay plugin for XPlayServer.
 website: https://github.com/surumeneco/WhatAWonderfulWolf
 depend:
   - WonderfulGenomeLib
+
+permissions:
+  www.command.info:
+    default: op
+  www.command.genome:
+    default: op
+  www.command.summon:
+    default: op
+  www.command.reload:
+    default: op
