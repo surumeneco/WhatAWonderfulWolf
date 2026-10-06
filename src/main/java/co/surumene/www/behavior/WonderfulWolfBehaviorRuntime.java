@@ -290,6 +290,21 @@ public final class WonderfulWolfBehaviorRuntime {
         double radius = individual.actionDistance()
                 .blocks(settings.actionDistance());
 
+        if (wolf.isSitting()) {
+            wolf.setSitting(false);
+        }
+
+        if (!next.active()
+                && individual.mode() != Mode.WANDER
+                && outsideReferenceRadius(wolf, reference, radius)) {
+            selectedTargets.remove(id);
+            if (wolf.getTarget() != null) {
+                wolf.setTarget(null);
+            }
+            returnToReference(wolf, individual, reference);
+            return;
+        }
+
         if (next.active()) {
             if (!previous.active()) {
                 manualTargets.clear(id);
@@ -690,6 +705,18 @@ public final class WonderfulWolfBehaviorRuntime {
         return Math.max(
                 0.0,
                 Math.min(1.0, wolf.getHealth() / maximum));
+    }
+
+    private static boolean outsideReferenceRadius(
+            Wolf wolf,
+            Location reference,
+            double radius) {
+        if (reference == null
+                || !sameWorld(wolf.getLocation(), reference)) {
+            return true;
+        }
+        return wolf.getLocation().distanceSquared(reference)
+                > radius * radius;
     }
 
     private static boolean sameWorld(
