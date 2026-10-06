@@ -333,8 +333,9 @@ public final class WonderfulWolfBehaviorRuntime {
                 radius,
                 TargetSource.PVP_INTERVENTION);
 
-        if (individual.mode() == Mode.GUARD
-                || individual.mode() == Mode.WAIT) {
+        if (candidates.isEmpty()
+                && (individual.mode() == Mode.GUARD
+                    || individual.mode() == Mode.WAIT)) {
             addActiveSearchCandidates(
                     candidates,
                     wolf,
