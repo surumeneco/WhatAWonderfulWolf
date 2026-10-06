@@ -102,7 +102,7 @@ public final class GenomeInputParser {
                 byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
                 yield BitSequence.ofPacked(bytes, bytes.length * 8);
             }
-            case BITS -> requireCodec(codec).decodeBits(value);
+            case BITS -> BitSequence.fromBits(value);
             case HEX -> requireCodec(codec).decodeHex(value);
             case DNA -> requireCodec(codec).decodeDna(value);
         };
