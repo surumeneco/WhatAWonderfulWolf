@@ -294,10 +294,11 @@ public final class WonderfulWolfInventoryService {
         int capacity = capacity(wolf);
         Map<Integer, ItemStackSnapshot> cargo = new HashMap<>(current.inventory());
         for (int i = 0; i < capacity; i++) {
-            cargo.remove(i);
+            int cargoIndex = i;
+            cargo.remove(cargoIndex);
             PaperItemStackCodec.snapshot(
-                    inventory.getItem(WonderfulWolfInventoryPolicy.MANAGEMENT_SIZE + i))
-                    .ifPresent(snapshot -> cargo.put(i, snapshot));
+                    inventory.getItem(WonderfulWolfInventoryPolicy.MANAGEMENT_SIZE + cargoIndex))
+                    .ifPresent(snapshot -> cargo.put(cargoIndex, snapshot));
         }
         loaded.saveAndRegister(
                 wolf,
