@@ -291,7 +291,12 @@ public final class WonderfulWolfBehaviorRuntime {
                 .blocks(settings.actionDistance());
 
         if (wolf.isSitting()) {
-            wolf.setSitting(false);
+            selectedTargets.remove(id);
+            if (wolf.getTarget() != null) {
+                wolf.setTarget(null);
+            }
+            wolf.getPathfinder().stopPathfinding();
+            return;
         }
 
         if (!next.active()
