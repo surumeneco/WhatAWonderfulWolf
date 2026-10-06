@@ -50,6 +50,8 @@ public final class WonderfulWolfRelationshipListener implements Listener {
     public void onRegainHealth(EntityRegainHealthEvent event) {
         if (!(event.getEntity() instanceof Wolf wolf)
                 || event.getAmount() <= 0.0
+                || event.getRegainReason()
+                    != EntityRegainHealthEvent.RegainReason.EATING
                 || loaded.find(wolf.getUniqueId()).isEmpty()) {
             return;
         }
