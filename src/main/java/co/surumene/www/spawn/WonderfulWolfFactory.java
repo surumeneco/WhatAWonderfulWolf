@@ -12,6 +12,7 @@ import co.surumene.www.genome.WonderfulWolfGenomeProfile;
 import co.surumene.www.individual.PedigreeSnapshot;
 import co.surumene.www.individual.WonderfulWolfIndividual;
 import co.surumene.wgl.api.DecodeResult;
+import co.surumene.wgl.api.DiploidGenome;
 import co.surumene.wgl.api.GenomeEngine;
 import co.surumene.wgl.api.SynthesisResult;
 
@@ -31,6 +32,48 @@ public final class WonderfulWolfFactory implements FounderIndividualSource {
         this.engine = Objects.requireNonNull(engine, "engine");
         this.profileSupplier =
                 Objects.requireNonNull(profileSupplier, "profileSupplier");
+    }
+
+    @Override
+    public WonderfulWolfCreationResult createFromGenome(
+            DiploidGenome genome,
+            Optional<UUID> ownerId,
+            long adultBiologicalTime) {
+        Objects.requireNonNull(genome, "genome");
+        ownerId = Objects.requireNonNull(ownerId, "ownerId");
+        if (adultBiologicalTime < 0L) {
+            throw new IllegalArgumentException(
+                    "adultBiologicalTime must be >= 0");
+        }
+
+        WonderfulWolfGenomeProfile profile =
+                Objects.requireNonNull(profileSupplier.get(), "current profile");
+        DecodeResult<?> decoded = engine.decode(profile, genome);
+        if (!(decoded.phenotype()
+                instanceof WonderfulWolfDecodedPhenotype phenotype)) {
+            return new WonderfulWolfCreationResult.Failure(
+                    "NON_WWW_PHENOTYPE",
+                    "Genome decode did not return a Wonderful Wolf phenotype");
+        }
+
+        PhenotypeSnapshot snapshot = phenotype.toSnapshot(
+                decoded.identity(),
+                PhenotypeOrigin.BREEDING);
+        return new WonderfulWolfCreationResult.Success(
+                new WonderfulWolfIndividual(
+                        genome,
+                        snapshot,
+                        ownerId,
+                        adultBiologicalTime,
+                        Mode.WANDER,
+                        Optional.empty(),
+                        ActionDistance.NORMAL,
+                        Optional.empty(),
+                        Map.of(),
+                        Optional.empty(),
+                        Map.of(),
+                        0,
+                        PedigreeSnapshot.founder()));
     }
 
     @Override
