@@ -24,6 +24,17 @@ final class BiologicalClockTest {
     }
 
     @Test
+    void nightSkipRemainsPartOfBiologicalTime() {
+        AtomicLong raw = new AtomicLong(100_000L);
+        MemoryStore store = new MemoryStore();
+        BiologicalClock clock = BiologicalClock.start("world", raw::get, store);
+
+        raw.addAndGet(6_000L);
+
+        assertEquals(106_000L, clock.currentTime());
+    }
+
+    @Test
     void persistedOffsetRestoresTheSameBiologicalTimelineAfterRestart() {
         AtomicLong raw = new AtomicLong(200_000L);
         MemoryStore store = new MemoryStore();
