@@ -140,6 +140,14 @@ public final class WonderfulWolfBehaviorRuntime {
                 || !target.isValid()) {
             return false;
         }
+        Location reference = referenceLocation(individual);
+        double radius = individual.actionDistance()
+                .blocks(Objects.requireNonNull(config.get(), "runtime config").actionDistance());
+        if (reference == null
+                || !sameWorld(reference, target.getLocation())
+                || reference.distanceSquared(target.getLocation()) > radius * radius) {
+            return false;
+        }
 
         return manualTargets.submit(
                 individual,
@@ -228,6 +236,11 @@ public final class WonderfulWolfBehaviorRuntime {
         UUID selected = selectedTargets.get(wolf.getUniqueId());
         return selected != null
                 && selected.equals(target.getUniqueId());
+    }
+
+    public Optional<LivingEntity> selectedTarget(UUID wolfId) {
+        UUID targetId = selectedTargets.get(Objects.requireNonNull(wolfId, "wolfId"));
+        return targetId == null ? Optional.empty() : Optional.ofNullable(livingEntity(targetId));
     }
 
     public boolean isRetreating(UUID wolfId) {

@@ -11,6 +11,7 @@ import co.surumene.www.behavior.WonderfulWolfRelationshipRuntime;
 import co.surumene.www.behavior.WonderfulWolfRelationshipService;
 import co.surumene.www.breeding.WonderfulWolfBreedingListener;
 import co.surumene.www.breeding.WonderfulWolfBreedingService;
+import co.surumene.www.combat.WonderfulWolfWeaponRuntime;
 import co.surumene.www.config.WwwConfig;
 import co.surumene.www.config.WwwConfigLoader;
 import co.surumene.www.lifecycle.WglProfileRegistryGateway;
@@ -26,6 +27,10 @@ import co.surumene.www.runtime.YamlBiologicalClockStateStore;
 import co.surumene.www.spawn.PaperWonderfulWolfFactory;
 import co.surumene.www.spawn.WonderfulWolfFactory;
 import co.surumene.www.spawn.WonderfulWolfNaturalSpawnListener;
+import co.surumene.www.ui.WanWandListener;
+import co.surumene.www.ui.WanWandService;
+import co.surumene.www.ui.WonderfulWolfInventoryListener;
+import co.surumene.www.ui.WonderfulWolfInventoryService;
 import co.surumene.wgl.plugin.WonderfulGenomeLibService;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
@@ -44,8 +49,12 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
     private WonderfulWolfAbilityRuntime abilityRuntime;
     private WonderfulWolfBehaviorRuntime behaviorRuntime;
     private WonderfulWolfCommandService commandService;
+    private WonderfulWolfWeaponRuntime weaponRuntime;
+    private WonderfulWolfInventoryService inventoryService;
+    private WanWandService wanWandService;
     private BukkitTask abilityTask;
     private BukkitTask behaviorTask;
+    private BukkitTask weaponTask;
 
     @Override
     public void onEnable() {
@@ -133,6 +142,22 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                         loaded,
                         manualTargets,
                         behavior::onCommandStateChanged);
+        WonderfulWolfWeaponRuntime weapons =
+                new WonderfulWolfWeaponRuntime(
+                        loaded,
+                        behavior,
+                        getLogger());
+        WanWandService wanWand = new WanWandService(this);
+        wanWand.registerRecipe();
+        WonderfulWolfInventoryService inventories =
+                new WonderfulWolfInventoryService(
+                        loaded,
+                        abilities,
+                        commands,
+                        weapons,
+                        genomeLib.engine(),
+                        lifecycle::currentWolfProfile);
+
         WonderfulWolfRelationshipRuntime relationshipRuntime =
                 new WonderfulWolfRelationshipRuntime(
                         loaded,
@@ -162,6 +187,18 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(
                 new BiologicalClockListener(clock, getLogger()),
                 this);
+        Bukkit.getPluginManager().registerEvents(
+                new WonderfulWolfInventoryListener(inventories),
+                this);
+        Bukkit.getPluginManager().registerEvents(
+                new WanWandListener(
+                        wanWand,
+                        loaded,
+                        inventories,
+                        behavior,
+                        () -> lifecycle.currentConfig().runtime(),
+                        () -> ThreadLocalRandom.current().nextDouble()),
+                this);
 
         Bukkit.getWorlds().forEach(world ->
                 persistenceListener.restoreAll(world.getEntitiesByClass(Wolf.class)));
@@ -170,9 +207,13 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         abilityRuntime = abilities;
         behaviorRuntime = behavior;
         commandService = commands;
+        weaponRuntime = weapons;
+        inventoryService = inventories;
+        wanWandService = wanWand;
 
         abilities.tick();
         behavior.tick(Bukkit.getCurrentTick());
+        weapons.tick(Bukkit.getCurrentTick());
 
         abilityTask = Bukkit.getScheduler().runTaskTimer(
                 this,
@@ -188,10 +229,39 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                 },
                 5L,
                 5L);
+        weaponTask = Bukkit.getScheduler().runTaskTimer(
+                this,
+                () -> weapons.tick(Bukkit.getCurrentTick()),
+                1L,
+                1L);
     }
 
     @Override
     public void onDisable() {
+        WonderfulWolfInventoryService inventories = inventoryService;
+        inventoryService = null;
+        if (inventories != null) {
+            inventories.closeAll();
+        }
+
+        WanWandService wanWand = wanWandService;
+        wanWandService = null;
+        if (wanWand != null) {
+            wanWand.unregisterRecipe();
+        }
+
+        BukkitTask weaponScheduled = weaponTask;
+        weaponTask = null;
+        if (weaponScheduled != null) {
+            weaponScheduled.cancel();
+        }
+
+        WonderfulWolfWeaponRuntime weapons = weaponRuntime;
+        weaponRuntime = null;
+        if (weapons != null) {
+            weapons.clear();
+        }
+
         BukkitTask behaviorScheduled = behaviorTask;
         behaviorTask = null;
         if (behaviorScheduled != null) {

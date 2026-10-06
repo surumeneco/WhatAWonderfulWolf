@@ -31,36 +31,16 @@ public record WonderfulWolfIndividual(
 
     public WonderfulWolfIndividual withAdultBiologicalTime(long value) {
         return new WonderfulWolfIndividual(
-                genome,
-                phenotypeSnapshot,
-                ownerId,
-                value,
-                mode,
-                commanderId,
-                actionDistance,
-                waitLocation,
-                affection,
-                weapon,
-                inventory,
-                generation,
-                pedigree);
+                genome, phenotypeSnapshot, ownerId, value, mode, commanderId,
+                actionDistance, waitLocation, affection, weapon, inventory,
+                generation, pedigree);
     }
 
     public WonderfulWolfIndividual withAffection(Map<UUID, Long> value) {
         return new WonderfulWolfIndividual(
-                genome,
-                phenotypeSnapshot,
-                ownerId,
-                adultBiologicalTime,
-                mode,
-                commanderId,
-                actionDistance,
-                waitLocation,
-                value,
-                weapon,
-                inventory,
-                generation,
-                pedigree);
+                genome, phenotypeSnapshot, ownerId, adultBiologicalTime, mode,
+                commanderId, actionDistance, waitLocation, value, weapon,
+                inventory, generation, pedigree);
     }
 
     public WonderfulWolfIndividual withCommandState(
@@ -69,19 +49,20 @@ public record WonderfulWolfIndividual(
             ActionDistance newActionDistance,
             Optional<WorldPosition> newWaitLocation) {
         return new WonderfulWolfIndividual(
-                genome,
-                phenotypeSnapshot,
-                ownerId,
-                adultBiologicalTime,
-                newMode,
-                newCommanderId,
-                newActionDistance,
-                newWaitLocation,
-                affection,
-                weapon,
-                inventory,
-                generation,
-                pedigree);
+                genome, phenotypeSnapshot, ownerId, adultBiologicalTime,
+                newMode, newCommanderId, newActionDistance, newWaitLocation,
+                affection, weapon, inventory, generation, pedigree);
+    }
+
+    public WonderfulWolfIndividual withStorage(
+            Optional<ItemStackSnapshot> newWeapon,
+            Map<Integer, ItemStackSnapshot> newInventory) {
+        return new WonderfulWolfIndividual(
+                genome, phenotypeSnapshot, ownerId, adultBiologicalTime, mode,
+                commanderId, actionDistance, waitLocation, affection,
+                Objects.requireNonNull(newWeapon, "newWeapon"),
+                Objects.requireNonNull(newInventory, "newInventory"),
+                generation, pedigree);
     }
 
     public WonderfulWolfIndividual {
