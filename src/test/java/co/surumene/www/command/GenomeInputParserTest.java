@@ -57,8 +57,12 @@ final class GenomeInputParserTest {
     @Test
     void hexAndDnaUseWglCodecAndBitsAllowsOddLength() {
         var codec = GenomeInputParser.defaultSequenceCodecForTest();
-        assertEquals(3, GenomeInputParser.parseHaplotype(
-                GenomeInputParser.Format.BITS, "101", codec).get(0).bitLength());
+        var oddBits = GenomeInputParser.parseHaplotype(
+                GenomeInputParser.Format.BITS, "101", codec);
+        assertEquals(6, oddBits.size());
+        assertEquals(3, oddBits.stream()
+                .mapToInt(BitSequence::bitLength)
+                .sum());
         assertEquals("1111", GenomeInputParser.parseHaplotype(
                 GenomeInputParser.Format.HEX, "f,,,,,", codec).get(0).toBitString());
         assertEquals("00011110", GenomeInputParser.parseHaplotype(
