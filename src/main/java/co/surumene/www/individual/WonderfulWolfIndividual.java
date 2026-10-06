@@ -46,6 +46,44 @@ public record WonderfulWolfIndividual(
                 pedigree);
     }
 
+    public WonderfulWolfIndividual withAffection(Map<UUID, Long> value) {
+        return new WonderfulWolfIndividual(
+                genome,
+                phenotypeSnapshot,
+                ownerId,
+                adultBiologicalTime,
+                mode,
+                commanderId,
+                actionDistance,
+                waitLocation,
+                value,
+                weapon,
+                inventory,
+                generation,
+                pedigree);
+    }
+
+    public WonderfulWolfIndividual withCommandState(
+            Mode newMode,
+            Optional<UUID> newCommanderId,
+            ActionDistance newActionDistance,
+            Optional<WorldPosition> newWaitLocation) {
+        return new WonderfulWolfIndividual(
+                genome,
+                phenotypeSnapshot,
+                ownerId,
+                adultBiologicalTime,
+                newMode,
+                newCommanderId,
+                newActionDistance,
+                newWaitLocation,
+                affection,
+                weapon,
+                inventory,
+                generation,
+                pedigree);
+    }
+
     public WonderfulWolfIndividual {
         Objects.requireNonNull(genome, "genome");
         Objects.requireNonNull(phenotypeSnapshot, "phenotypeSnapshot");
