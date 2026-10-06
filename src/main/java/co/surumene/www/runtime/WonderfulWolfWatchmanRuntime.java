@@ -1,5 +1,6 @@
 package co.surumene.www.runtime;
 
+import co.surumene.www.behavior.ActiveThreatPolicy;
 import co.surumene.www.behavior.WonderfulWolfBehaviorRuntime;
 import co.surumene.www.config.WwwConfig;
 import co.surumene.www.domain.Mode;
@@ -14,6 +15,7 @@ import org.bukkit.World;
 import org.bukkit.entity.Enemy;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Wolf;
 import org.bukkit.potion.PotionEffectType;
@@ -101,6 +103,9 @@ final class WonderfulWolfWatchmanRuntime {
         }
 
         Set<UUID> engaged = engagedTargets(wolfId, individual);
+        UUID commanderId = individual.commanderId().orElse(null);
+        Set<UUID> commandWolfIds =
+                sameCommandWolfIds(wolfId, commanderId);
         double radiusSquared = radius * radius;
         double nearest = Double.POSITIVE_INFINITY;
 
@@ -110,13 +115,17 @@ final class WonderfulWolfWatchmanRuntime {
                 radius,
                 radius)) {
             if (!(entity instanceof LivingEntity living)
-                    || !(living instanceof Enemy)
                     || living instanceof Player
                     || living.isDead()
                     || !living.isValid()
                     || engaged.contains(living.getUniqueId())
                     || reference.distanceSquared(living.getLocation())
-                        > radiusSquared) {
+                        > radiusSquared
+                    || !isDangerous(
+                            living,
+                            wolfId,
+                            commanderId,
+                            commandWolfIds)) {
                 continue;
             }
 
@@ -153,6 +162,46 @@ final class WonderfulWolfWatchmanRuntime {
                 1.0f,
                 1.1f);
         lastAlert.put(wolfId, serverTick);
+    }
+
+    private boolean isDangerous(
+            LivingEntity living,
+            UUID wolfId,
+            UUID commanderId,
+            Set<UUID> commandWolfIds) {
+        boolean targetingCommandChain = false;
+        if (living instanceof Mob mob
+                && mob.getTarget() != null) {
+            UUID targetId = mob.getTarget().getUniqueId();
+            targetingCommandChain =
+                    targetId.equals(wolfId)
+                            || (commanderId != null
+                                && targetId.equals(commanderId))
+                            || commandWolfIds.contains(targetId);
+        }
+        return ActiveThreatPolicy.isActiveThreat(
+                living.getType(),
+                living instanceof Enemy,
+                targetingCommandChain);
+    }
+
+    private Set<UUID> sameCommandWolfIds(
+            UUID currentWolfId,
+            UUID commanderId) {
+        Set<UUID> result = new HashSet<>();
+        result.add(currentWolfId);
+        if (commanderId == null) {
+            return result;
+        }
+        for (WonderfulWolfLoadedIndividuals.LoadedSnapshot snapshot :
+                loaded.snapshots()) {
+            if (snapshot.individual().commanderId()
+                    .filter(commanderId::equals)
+                    .isPresent()) {
+                result.add(snapshot.entity().getUniqueId());
+            }
+        }
+        return result;
     }
 
     private Set<UUID> engagedTargets(
