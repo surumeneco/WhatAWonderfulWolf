@@ -37,5 +37,7 @@ final class EffectPolicyTest {
         assertFalse(EffectPolicy.shouldApplyPotion(1, 80, 1, 40));
         assertTrue(EffectPolicy.shouldApplyPotion(1, 20, 1, 40));
         assertTrue(EffectPolicy.shouldApplyPotion(0, 200, 1, 40));
+        assertTrue(EffectPolicy.shouldApplyPotion(1, 80, 1, 99));
+        assertFalse(EffectPolicy.shouldApplyPotion(1, 100, 1, 99));
     }
 }
