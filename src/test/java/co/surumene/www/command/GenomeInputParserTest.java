@@ -73,6 +73,9 @@ final class GenomeInputParserTest {
         assertEquals(
                 List.of("plain"),
                 GenomeCommandArguments.parse("plain"));
+        assertEquals(
+                List.of("a\\,b"),
+                GenomeCommandArguments.parse("\"a\\,b\""));
     }
 
     @Test

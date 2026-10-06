@@ -21,7 +21,11 @@ public final class GenomeCommandArguments {
         for (int i = 0; i < raw.length(); i++) {
             char c = raw.charAt(i);
             if (escaped) {
-                current.append(c);
+                if (c == ',') {
+                    current.append('\\').append(',');
+                } else {
+                    current.append(c);
+                }
                 escaped = false;
                 tokenStarted = true;
                 continue;
