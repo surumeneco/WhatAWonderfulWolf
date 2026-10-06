@@ -23,6 +23,8 @@ import co.surumene.www.runtime.BiologicalClock;
 import co.surumene.www.runtime.BiologicalClockListener;
 import co.surumene.www.runtime.PaperAbilityProjector;
 import co.surumene.www.runtime.WonderfulWolfAbilityRuntime;
+import co.surumene.www.runtime.WonderfulWolfTraitListener;
+import co.surumene.www.runtime.WonderfulWolfTraitRuntime;
 import co.surumene.www.runtime.YamlBiologicalClockStateStore;
 import co.surumene.www.spawn.PaperWonderfulWolfFactory;
 import co.surumene.www.spawn.WonderfulWolfFactory;
