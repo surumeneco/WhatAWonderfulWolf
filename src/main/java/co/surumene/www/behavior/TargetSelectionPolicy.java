@@ -24,7 +24,7 @@ public final class TargetSelectionPolicy {
                 .filter(Objects::nonNull)
                 .filter(candidate -> allowed(mode, candidate))
                 .min(Comparator
-                        .comparingInt(
+                        .<TargetCandidate>comparingInt(
                                 candidate -> priority(candidate.source()))
                         .thenComparingDouble(
                                 candidate -> distance(mode, candidate))
