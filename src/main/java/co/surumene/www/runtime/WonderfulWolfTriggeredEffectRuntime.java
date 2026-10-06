@@ -39,7 +39,7 @@ final class WonderfulWolfTriggeredEffectRuntime {
                                 EffectPolicy.amplifier(
                                         Trait.INTIMIDATION,
                                         strength),
-                                0));
+                                EFFECT_TICKS - 1));
 
         ExpressedTraitLookup.strength(individual, Trait.HOLY_POISON)
                 .ifPresent(strength ->
@@ -101,7 +101,7 @@ final class WonderfulWolfTriggeredEffectRuntime {
                             Trait.HOLY_POISON),
                     EFFECT_TICKS,
                     amplifier,
-                    0);
+                    EFFECT_TICKS - 1);
             return;
         }
 
