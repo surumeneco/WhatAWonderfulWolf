@@ -46,6 +46,31 @@ final class WonderfulWolfLoadedIndividualsTest {
     }
 
     @Test
+    void batchEntityReplacementLoadUnloadLeavesNoStaleRuntimeEntries() {
+        Plugin plugin = plugin();
+        WonderfulWolfEntityStore store = new WonderfulWolfEntityStore(plugin, engine);
+        WonderfulWolfLoadedIndividuals loaded = new WonderfulWolfLoadedIndividuals(store);
+        WonderfulWolfIndividual source = individual();
+        List<Wolf> replacements = new ArrayList<>();
+
+        for (int i = 0; i < 512; i++) {
+            UUID id = new UUID(0L, i + 1L);
+            MemoryPdc pdc = new MemoryPdc();
+            Wolf original = wolf(id, pdc.proxy());
+            loaded.saveAndRegister(original, source);
+
+            Wolf replacement = wolf(id, pdc.proxy());
+            assertInstanceOf(RestoreResult.Success.class, loaded.register(replacement));
+            loaded.unregister(original);
+            replacements.add(replacement);
+        }
+
+        assertEquals(512, loaded.size());
+        replacements.forEach(loaded::unregister);
+        assertEquals(0, loaded.size());
+    }
+
+    @Test
     void corruptReplacementFailsClosedAndClearsStaleRuntimeState() {
         Plugin plugin = plugin();
         WonderfulWolfEntityStore store = new WonderfulWolfEntityStore(plugin, engine);
