@@ -33,6 +33,21 @@ final class ManualTargetRegistryTest {
     }
 
     @Test
+    void retainDropsManualTargetsForUnloadedWolves() {
+        ManualTargetRegistry registry = new ManualTargetRegistry();
+        UUID otherWolf = UUID.randomUUID();
+        var individual = BehaviorTestIndividuals.individual(0, 10);
+
+        registry.submit(individual, WOLF, A, TARGET_A, 0.0);
+        registry.submit(individual, otherWolf, A, TARGET_B, 0.0);
+
+        registry.retain(java.util.Set.of(WOLF));
+
+        assertTrue(registry.get(WOLF).isPresent());
+        assertTrue(registry.get(otherWolf).isEmpty());
+    }
+
+    @Test
     void aCompetingIssuerOnlyReplacesTheExistingInstructionIfItWins() {
         ManualTargetRegistry registry = new ManualTargetRegistry();
         var individual = BehaviorTestIndividuals.individual(0, 10);
