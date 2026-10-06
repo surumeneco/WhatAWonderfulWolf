@@ -144,8 +144,16 @@ public final class WolfTrapRuntime {
         }
 
         Entity vehicle = evoker.getVehicle();
+        UUID wolfId = states.riderWolfId(evoker).orElse(null);
         states.clearRider(evoker);
-        if (vehicle instanceof Wolf wolf) {
+        Wolf wolf = vehicle instanceof Wolf mounted
+                ? mounted
+                : wolfId == null
+                    ? null
+                    : server.getEntity(wolfId) instanceof Wolf paired
+                        ? paired
+                        : null;
+        if (wolf != null) {
             states.clearMountedWolf(wolf);
             behavior.clearTrapRiderTarget(wolf);
         }
@@ -155,13 +163,23 @@ public final class WolfTrapRuntime {
         if (wolf == null || !states.isMountedWolf(wolf)) {
             return;
         }
+        UUID riderId = states.mountedRiderId(wolf).orElse(null);
         states.clearMountedWolf(wolf);
+        boolean cleared = false;
         for (Entity passenger : List.copyOf(wolf.getPassengers())) {
             if (passenger instanceof Evoker evoker
                     && states.isRider(evoker)) {
                 states.clearRider(evoker);
                 riderEvokers.remove(evoker.getUniqueId());
+                cleared = true;
             }
+        }
+        if (!cleared
+                && riderId != null
+                && server.getEntity(riderId) instanceof Evoker evoker
+                && states.isRider(evoker)) {
+            states.clearRider(evoker);
+            riderEvokers.remove(evoker.getUniqueId());
         }
         behavior.clearTrapRiderTarget(wolf);
     }
@@ -251,14 +269,28 @@ public final class WolfTrapRuntime {
             }
 
             Entity vehicle = evoker.getVehicle();
+            UUID pairedWolfId =
+                    states.riderWolfId(evoker).orElse(null);
             if (!(vehicle instanceof Wolf wolf)
+                    || pairedWolfId == null
+                    || !pairedWolfId.equals(wolf.getUniqueId())
                     || !states.isMountedWolf(wolf)
+                    || states.mountedRiderId(wolf)
+                        .filter(id::equals)
+                        .isEmpty()
                     || loaded.find(wolf.getUniqueId()).isEmpty()) {
                 states.clearRider(evoker);
                 riderEvokers.remove(id);
-                if (vehicle instanceof Wolf wolfVehicle) {
-                    states.clearMountedWolf(wolfVehicle);
-                    behavior.clearTrapRiderTarget(wolfVehicle);
+                Wolf pairedWolf = vehicle instanceof Wolf mounted
+                        ? mounted
+                        : pairedWolfId != null
+                            && server.getEntity(pairedWolfId)
+                                instanceof Wolf stored
+                                ? stored
+                                : null;
+                if (pairedWolf != null) {
+                    states.clearMountedWolf(pairedWolf);
+                    behavior.clearTrapRiderTarget(pairedWolf);
                 }
                 continue;
             }
@@ -298,8 +330,8 @@ public final class WolfTrapRuntime {
         Wolf first = createdWolf(firstResult);
         Wolf second = createdWolf(secondResult);
         if (first == null || second == null) {
-            if (first != null) first.remove();
-            if (second != null) second.remove();
+            if (first != null) discardWolf(first);
+            if (second != null) discardWolf(second);
             logger.warning(
                     "Could not create both Wonderful Wolf trap founders");
             return;
@@ -311,10 +343,10 @@ public final class WolfTrapRuntime {
                 CreatureSpawnEvent.SpawnReason.CUSTOM);
 
         armedEvokers.remove(initial.getUniqueId());
-        states.markRider(initial);
-        states.markRider(secondRider);
-        states.markMountedWolf(first);
-        states.markMountedWolf(second);
+        states.markRider(initial, first.getUniqueId());
+        states.markRider(secondRider, second.getUniqueId());
+        states.markMountedWolf(first, initial.getUniqueId());
+        states.markMountedWolf(second, secondRider.getUniqueId());
         first.addPassenger(initial);
         second.addPassenger(secondRider);
         riderEvokers.add(initial.getUniqueId());
@@ -381,14 +413,37 @@ public final class WolfTrapRuntime {
         if (!states.isMountedWolf(wolf)) {
             return;
         }
-        boolean hasRider = wolf.getPassengers().stream()
+        UUID riderId = states.mountedRiderId(wolf).orElse(null);
+        Evoker rider = wolf.getPassengers().stream()
                 .filter(Evoker.class::isInstance)
                 .map(Evoker.class::cast)
-                .anyMatch(states::isRider);
-        if (!hasRider) {
-            states.clearMountedWolf(wolf);
-            behavior.clearTrapRiderTarget(wolf);
+                .filter(states::isRider)
+                .filter(candidate ->
+                        riderId != null
+                                && candidate.getUniqueId().equals(riderId)
+                                && states.riderWolfId(candidate)
+                                    .filter(wolf.getUniqueId()::equals)
+                                    .isPresent())
+                .findFirst()
+                .orElse(null);
+        if (rider != null) {
+            riderEvokers.add(rider.getUniqueId());
+            return;
         }
+
+        states.clearMountedWolf(wolf);
+        behavior.clearTrapRiderTarget(wolf);
+        if (riderId != null
+                && server.getEntity(riderId) instanceof Evoker orphan
+                && states.isRider(orphan)) {
+            states.clearRider(orphan);
+            riderEvokers.remove(riderId);
+        }
+    }
+
+    private void discardWolf(Wolf wolf) {
+        loaded.unregister(wolf);
+        wolf.remove();
     }
 
     private double draw() {
