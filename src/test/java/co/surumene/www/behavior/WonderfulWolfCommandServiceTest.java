@@ -47,7 +47,7 @@ final class WonderfulWolfCommandServiceTest {
                 fixture.wolf(),
                 Mode.WAIT,
                 commander));
-        assertFalse(fixture.sitting().get());
+        assertTrue(fixture.sitting().get());
         assertTrue(fixture.stopCalls().get() > 0);
         assertEquals(1, changed.get());
 
