@@ -125,6 +125,10 @@ public final class WolfTrapRuntime {
         spawnArmed(event.getLightning().getLocation(), 0L);
     }
 
+    public boolean isMountedTrapWolf(Wolf wolf) {
+        return wolf != null && states.isMountedWolf(wolf);
+    }
+
     public void activateByAttack(Evoker evoker) {
         if (evoker != null && states.isArmed(evoker)) {
             activate(evoker);

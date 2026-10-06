@@ -10,6 +10,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.EntityTameEvent;
 import org.bukkit.event.weather.LightningStrikeEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.event.world.TimeSkipEvent;
@@ -35,6 +36,14 @@ public final class WolfTrapListener implements Listener {
             return;
         }
         runtime.activateByAttack(evoker);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onTame(EntityTameEvent event) {
+        if (event.getEntity() instanceof Wolf wolf
+                && runtime.isMountedTrapWolf(wolf)) {
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
