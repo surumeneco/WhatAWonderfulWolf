@@ -7,8 +7,10 @@ import co.surumene.www.domain.Mode;
 import co.surumene.www.individual.WorldPosition;
 import co.surumene.www.individual.WonderfulWolfIndividual;
 import co.surumene.www.persistence.WonderfulWolfLoadedIndividuals;
+import co.surumene.www.runtime.EffectPolicy;
 import co.surumene.www.runtime.NonAttributeAbilityAdapter;
 import co.surumene.www.runtime.WonderfulWolfAbilityRuntime;
+import co.surumene.www.runtime.WonderfulWolfTraitRuntime;
 import org.bukkit.Location;
 import org.bukkit.Server;
 import org.bukkit.World;
@@ -46,6 +48,7 @@ public final class WonderfulWolfBehaviorRuntime {
     private final WonderfulWolfGoalAdapter goals;
     private final Server server;
     private final Logger logger;
+    private WonderfulWolfTraitRuntime traitRuntime;
 
     private final Map<UUID, UUID> selfAttackers = new HashMap<>();
     private final Map<UUID, UUID> commandCombat = new HashMap<>();
@@ -108,6 +111,7 @@ public final class WonderfulWolfBehaviorRuntime {
 
         retain(seen);
         goals.retain(seen);
+        traits().tick(serverTick);
     }
 
     public void onCommandStateChanged(Wolf wolf) {
@@ -243,6 +247,28 @@ public final class WonderfulWolfBehaviorRuntime {
         return targetId == null ? Optional.empty() : Optional.ofNullable(livingEntity(targetId));
     }
 
+    public boolean traitDamageImmune(
+            Wolf wolf,
+            EffectPolicy.DamageKind kind) {
+        return traits().isImmune(
+                Objects.requireNonNull(wolf, "wolf"),
+                Objects.requireNonNull(kind, "kind"));
+    }
+
+    public void recordTraitHit(
+            Wolf wolf,
+            LivingEntity target,
+            long serverTick) {
+        traits().onHit(
+                Objects.requireNonNull(wolf, "wolf"),
+                Objects.requireNonNull(target, "target"),
+                serverTick);
+    }
+
+    public void recordTraitKill(Wolf wolf) {
+        traits().onKill(Objects.requireNonNull(wolf, "wolf"));
+    }
+
     public boolean isRetreating(UUID wolfId) {
         return retreat.getOrDefault(
                 Objects.requireNonNull(wolfId, "wolfId"),
@@ -257,6 +283,26 @@ public final class WonderfulWolfBehaviorRuntime {
         selectedTargets.clear();
         manualTargets.clearAll();
         goals.clear();
+        WonderfulWolfTraitRuntime traits = traitRuntime;
+        traitRuntime = null;
+        if (traits != null) {
+            traits.clear();
+        }
+    }
+
+    private WonderfulWolfTraitRuntime traits() {
+        WonderfulWolfTraitRuntime current = traitRuntime;
+        if (current == null) {
+            current = new WonderfulWolfTraitRuntime(
+                    loaded,
+                    abilities,
+                    this,
+                    config,
+                    server,
+                    logger);
+            traitRuntime = current;
+        }
+        return current;
     }
 
     private void tickWolfNow(Wolf wolf) {
