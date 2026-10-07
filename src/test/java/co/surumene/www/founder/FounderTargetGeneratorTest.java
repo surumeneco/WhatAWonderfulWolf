@@ -46,6 +46,31 @@ final class FounderTargetGeneratorTest {
     }
 
     @Test
+    void founderPersonalityFactorsUseTruncatedNormalPointFivePointOne() {
+        GenomeRandom random = new TestRandom(2026100701L);
+        double sum = 0.0;
+        double sumSquares = 0.0;
+        int count = 0;
+        for (int sample = 0; sample < 10_000; sample++) {
+            FounderTarget target = generator.generate(FounderOrigin.NATURAL, random);
+            for (PersonalityFactor factor : PersonalityFactor.values()) {
+                double value = target.personalityFactors().get(factor);
+                sum += value;
+                sumSquares += value * value;
+                count++;
+            }
+        }
+        double mean = sum / count;
+        double variance = sumSquares / count - mean * mean;
+        double standardDeviation = Math.sqrt(variance);
+
+        assertTrue(mean > 0.495 && mean < 0.505, () -> "mean=" + mean);
+        assertTrue(
+                standardDeviation > 0.095 && standardDeviation < 0.105,
+                () -> "sd=" + standardDeviation);
+    }
+
+    @Test
     void sameRandomSeedProducesSameFounderTarget() {
         assertEquals(
                 generator.generate(FounderOrigin.WOLF_TRAP, new TestRandom(123456789L)),
