@@ -54,12 +54,14 @@ public final class WonderfulWolfOffspringService {
                     compatibilityB.reason());
         }
 
-        BreedingContext context = new BreedingContext(
-                profile.backbone(),
-                1.0,
-                WonderfulWolfBreedingPolicy.deNovoForbiddenAddresses(),
-                null,
-                false);
+        BreedingContext context =
+                new WonderfulWolfBreedingContextFactory(
+                        engine,
+                        profile)
+                        .create(
+                                parentA,
+                                parentB,
+                                random);
 
         BreedingResult result =
                 engine.breed(
