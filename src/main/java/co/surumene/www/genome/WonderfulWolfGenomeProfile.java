@@ -170,7 +170,11 @@ public final class WonderfulWolfGenomeProfile implements GenomeProfile<Wonderful
         return switch (address.type()) {
             case 0x00 -> boundedPlan(target, synth.genesPerTarget().ability(), synth, random);
             case 0x01 -> centeredPlan(target, synth.genesPerTarget().development(), random);
-            case 0x03 -> centeredPlan(target, synth.genesPerTarget().personality(), random);
+            case 0x03 -> personalityPlan(
+                    target,
+                    synth.genesPerTarget().personality(),
+                    synth,
+                    random);
             case 0x04 -> boundedPlan(target, synth.genesPerTarget().trait(), synth, random);
             case 0x06 -> centeredPlan(target, synth.genesPerTarget().relationship(), random);
             case 0x07 -> boundedPlan(
@@ -203,6 +207,54 @@ public final class WonderfulWolfGenomeProfile implements GenomeProfile<Wonderful
             return new SynthesisAddressPlan(delta, 0.0, totalGenes, totalGenes, 0, 0);
         }
         return new SynthesisAddressPlan(0.0, -delta, 0, 0, totalGenes, totalGenes);
+    }
+
+    private static SynthesisAddressPlan personalityPlan(
+            double target,
+            WwwConfig.Range perHaplotypeRange,
+            WwwConfig.Synthesizer synth,
+            GenomeRandom random) {
+        if (!Double.isFinite(target) || target < 0.0 || target > 1.0) {
+            throw new IllegalArgumentException("target must be finite and in [0,1]");
+        }
+
+        int totalGenes = 2 * triangularInt(
+                perHaplotypeRange.min(),
+                perHaplotypeRange.center(),
+                perHaplotypeRange.max(),
+                random);
+        double delta = 2.0 * target - 1.0;
+        double draw = synth.personalityCancellationMin()
+                + (synth.personalityCancellationMax()
+                    - synth.personalityCancellationMin()) * random.nextDouble();
+        double cancellation = Math.min(draw, Math.max(0.0, 1.0 - Math.abs(delta)));
+        double positive = Math.max(0.0, delta) + cancellation;
+        double negative = Math.max(0.0, -delta) + cancellation;
+
+        if (positive == 0.0) {
+            return new SynthesisAddressPlan(
+                    0.0, negative,
+                    0, 0,
+                    totalGenes, totalGenes);
+        }
+        if (negative == 0.0) {
+            return new SynthesisAddressPlan(
+                    positive, 0.0,
+                    totalGenes, totalGenes,
+                    0, 0);
+        }
+
+        int positiveGenes = (int) StrictMath.round(
+                totalGenes * positive / (positive + negative));
+        positiveGenes = Math.max(1, Math.min(totalGenes - 1, positiveGenes));
+        int negativeGenes = totalGenes - positiveGenes;
+        return new SynthesisAddressPlan(
+                positive,
+                negative,
+                positiveGenes,
+                positiveGenes,
+                negativeGenes,
+                negativeGenes);
     }
 
     private static SynthesisAddressPlan boundedPlan(
@@ -383,25 +435,22 @@ public final class WonderfulWolfGenomeProfile implements GenomeProfile<Wonderful
     }
 
     private Personality decodePersonality(EnumMap<PersonalityFactor, Double> scores) {
-        WwwConfig.PersonalityDecoder decoder = config.genomeProfile().decoder().personality();
-        double neutralFactorDistance = decoder.neutralFactorSigma() * decoder.sigma();
-        double neutralSpread = decoder.neutralSpreadSigma() * decoder.sigma();
+        WwwConfig.PersonalityDecoder decoder =
+                config.genomeProfile().decoder().personality();
 
         double min = Double.POSITIVE_INFINITY;
         double max = Double.NEGATIVE_INFINITY;
-        boolean allNearMean = true;
         for (double score : scores.values()) {
             min = Math.min(min, score);
             max = Math.max(max, score);
-            if (Math.abs(score - decoder.mean()) > neutralFactorDistance + EPS) {
-                allNearMean = false;
-            }
         }
-        if (allNearMean && max - min <= neutralSpread + EPS) {
+        if (max < decoder.seriousMaxScore()
+                || max - min <= decoder.seriousSpread() + EPS) {
             return Personality.SERIOUS;
         }
 
-        List<PersonalityFactor> ranked = new ArrayList<>(List.of(PersonalityFactor.values()));
+        List<PersonalityFactor> ranked =
+                new ArrayList<>(List.of(PersonalityFactor.values()));
         ranked.sort(Comparator
                 .comparingDouble((PersonalityFactor factor) -> scores.get(factor))
                 .reversed()
@@ -409,8 +458,8 @@ public final class WonderfulWolfGenomeProfile implements GenomeProfile<Wonderful
 
         PersonalityFactor first = ranked.get(0);
         PersonalityFactor second = ranked.get(1);
-        double dominantGap = decoder.dominantGapSigma() * decoder.sigma();
-        if (scores.get(first) - scores.get(second) >= dominantGap - EPS) {
+        if (scores.get(first) - scores.get(second)
+                >= decoder.dominantGap() - EPS) {
             second = first;
         }
         return personalityForPair(first, second);
