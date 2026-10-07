@@ -1,11 +1,13 @@
 package co.surumene.www.command;
 
 import co.surumene.www.WhatAWonderfulWolfPlugin;
+import co.surumene.www.breeding.WonderfulWolfOffspringService;
 import co.surumene.www.persistence.RestoreResult;
 import co.surumene.www.persistence.WonderfulWolfLoadedIndividuals;
 import co.surumene.www.runtime.WonderfulWolfAbilityRuntime;
 import co.surumene.www.spawn.PaperWonderfulWolfFactory;
 import co.surumene.www.spawn.WonderfulWolfEntityCreationResult;
+import co.surumene.wgl.api.BreedingParentSource;
 import co.surumene.wgl.api.DiploidGenome;
 import co.surumene.wgl.api.GenomeEngine;
 import com.mojang.brigadier.Command;
@@ -36,6 +38,7 @@ public final class WonderfulWolfAdminCommands {
     private final WonderfulWolfAbilityRuntime abilities;
     private final GenomeEngine engine;
     private final PaperWonderfulWolfFactory factory;
+    private final WonderfulWolfOffspringService offspringService;
     private final WonderfulWolfAdminInfo info;
 
     public WonderfulWolfAdminCommands(
@@ -44,12 +47,15 @@ public final class WonderfulWolfAdminCommands {
             WonderfulWolfAbilityRuntime abilities,
             GenomeEngine engine,
             PaperWonderfulWolfFactory factory,
+            WonderfulWolfOffspringService offspringService,
             WonderfulWolfAdminInfo info) {
         this.plugin = Objects.requireNonNull(plugin, "plugin");
         this.loaded = Objects.requireNonNull(loaded, "loaded");
         this.abilities = Objects.requireNonNull(abilities, "abilities");
         this.engine = Objects.requireNonNull(engine, "engine");
         this.factory = Objects.requireNonNull(factory, "factory");
+        this.offspringService =
+                Objects.requireNonNull(offspringService, "offspringService");
         this.info = Objects.requireNonNull(info, "info");
     }
 
@@ -106,7 +112,18 @@ public final class WonderfulWolfAdminCommands {
                                 .then(Commands.argument(
                                                 "haplotypes",
                                                 StringArgumentType.greedyString())
-                                        .executes(this::summonGenome))));
+                                        .executes(this::summonGenome))))
+                .then(Commands.literal("offspring")
+                        .then(Commands.literal("parent")
+                                .then(Commands.argument(
+                                                "sourceA",
+                                                StringArgumentType.word())
+                                        .then(Commands.literal("parent")
+                                                .then(Commands.argument(
+                                                                "sourceB",
+                                                                StringArgumentType.word())
+                                                        .executes(
+                                                                this::summonOffspring))))));
     }
 
     private int infoNearest(
@@ -166,6 +183,13 @@ public final class WonderfulWolfAdminCommands {
                                 + individual.genome().genomeFormatVersion(),
                         NamedTextColor.GRAY));
                 sender.sendMessage(Component.text(
+                        "ParentSource(Base64 WGLP): "
+                                + OffspringParentSourceCodec.encode(
+                                        new BreedingParentSource.DiploidParent(
+                                                individual.genome()),
+                                        engine),
+                        NamedTextColor.GRAY));
+                sender.sendMessage(Component.text(
                         "Lengths A/B: " + raw.chromosomeLengths(),
                         NamedTextColor.GRAY));
                 sender.sendMessage(Component.text(
@@ -221,6 +245,66 @@ public final class WonderfulWolfAdminCommands {
                         .wolf();
             sender.sendMessage(Component.text(
                     "Wonderful Wolfを任意Genomeから生成しました: "
+                            + wolf.getUniqueId(),
+                    NamedTextColor.GREEN));
+            return Command.SINGLE_SUCCESS;
+        } catch (Exception error) {
+            error(sender, safeMessage(error));
+            return 0;
+        }
+    }
+
+    private int summonOffspring(
+            CommandContext<CommandSourceStack> context) {
+        CommandSender sender = context.getSource().getSender();
+        try {
+            BreedingParentSource sourceA =
+                    OffspringParentSourceCodec.decode(
+                            StringArgumentType.getString(
+                                    context,
+                                    "sourceA"),
+                            engine);
+            BreedingParentSource sourceB =
+                    OffspringParentSourceCodec.decode(
+                            StringArgumentType.getString(
+                                    context,
+                                    "sourceB"),
+                            engine);
+
+            WonderfulWolfOffspringService.Result bred =
+                    offspringService.breed(
+                            sourceA,
+                            sourceB,
+                            java.util.concurrent.ThreadLocalRandom.current()
+                                    .nextLong());
+            if (bred instanceof WonderfulWolfOffspringService.Result.Failure failure) {
+                error(
+                        sender,
+                        failure.reason()
+                                + (failure.detail().isBlank()
+                                    ? ""
+                                    : ": " + failure.detail()));
+                return 0;
+            }
+
+            WonderfulWolfEntityCreationResult created =
+                    factory.spawnGenome(
+                            context.getSource().getLocation(),
+                            ((WonderfulWolfOffspringService.Result.Success) bred)
+                                    .genome());
+            if (created instanceof WonderfulWolfEntityCreationResult.Failure failure) {
+                error(
+                        sender,
+                        failure.reason() + ": " + failure.detail());
+                return 0;
+            }
+
+            Wolf wolf = created instanceof WonderfulWolfEntityCreationResult.Success success
+                    ? success.wolf()
+                    : ((WonderfulWolfEntityCreationResult.AlreadyWonderful) created)
+                        .wolf();
+            sender.sendMessage(Component.text(
+                    "Wonderful Wolfを親Genomeから生成しました: "
                             + wolf.getUniqueId(),
                     NamedTextColor.GREEN));
             return Command.SINGLE_SUCCESS;
