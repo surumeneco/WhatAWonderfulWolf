@@ -17,6 +17,11 @@ founder-target:
       # 採用範囲0.5～1.5は仕様固定で、範囲外候補はclampせず再抽選します。
       mean: 0.42
       standard-deviation: 0.22
+  personality:
+    # 6つの性格因子Targetに使う正規分布です。0.0～1.0外はclampせず再抽選します。
+    # 通常自然スポーンFounderとウルフトラップFounderで共通です。
+    mean: 0.5
+    standard-deviation: 0.10
   development:
     # 5つの発達・老化因子Targetに使う正規分布です。Scoreの意味範囲は0.0～1.0です。
     mean: 0.5
@@ -31,12 +36,10 @@ genome-profile:
   # reload成功後に新しいimmutable Profileへ置き換わり、既存Phenotype Snapshotは変更しません。
   decoder:
     personality:
-      # 性格6因子の分類基準です。mean/sigmaはScore基準、*-sigmaはsigma倍率です。
-      mean: 0.50
-      sigma: 0.16666666666666666
-      dominant-gap-sigma: 0.75
-      neutral-factor-sigma: 0.50
-      neutral-spread-sigma: 0.75
+      # まじめ判定を先に行い、その後に突出/上位2因子分類を行います。
+      serious-max-score: 0.500
+      serious-spread: 0.115
+      dominant-gap: 0.085
     trait:
       # expression-threshold以上を通常特性候補とし、1位と2位の差がstrong-gap以上ならSTRONG判定します。
       expression-threshold: 0.50
@@ -98,6 +101,9 @@ genome-profile:
     cancellation-max: 0.35
     # 高Target時に数学的成立性を確保するため残すheadroomです。
     high-target-headroom: 0.02
+    # 性格FounderのP-Q Targetへ隠して持たせる両符号相殺量Cの抽選範囲です。
+    personality-cancellation-min: 0.30
+    personality-cancellation-max: 0.50
     genes-per-target:
       # 各作用先へ生成するdirect gene数のmin / center / maxです。
       ability-min: 8
