@@ -41,13 +41,45 @@ final class WonderfulWolfPersonalityDecoderTest {
     }
 
     @Test
-    void exactTiesUseLowerTargetIdsFirst() {
+    void allFactorsBelowSeriousMaximumAreSerious() {
+        var decoded = new DecodedGenome(Map.of(
+                new GenomeAddress(0x03, 0x00), centered(0.49),
+                new GenomeAddress(0x03, 0x01), centered(0.20)), List.of());
+
+        assertEquals(Personality.SERIOUS, profile.mapPhenotype(decoded).personality());
+    }
+
+    @Test
+    void equallyStrongFactorsAreSeriousWhenSpreadIsSmall() {
+        var decoded = new DecodedGenome(Map.of(
+                new GenomeAddress(0x03, 0x00), centered(0.75),
+                new GenomeAddress(0x03, 0x01), centered(0.75),
+                new GenomeAddress(0x03, 0x02), centered(0.75),
+                new GenomeAddress(0x03, 0x03), centered(0.75),
+                new GenomeAddress(0x03, 0x04), centered(0.75),
+                new GenomeAddress(0x03, 0x05), centered(0.75)), List.of());
+
+        assertEquals(Personality.SERIOUS, profile.mapPhenotype(decoded).personality());
+    }
+
+    @Test
+    void exactTopTieUsesLowerTargetIdsWhenVectorIsNotSerious() {
         var decoded = new DecodedGenome(Map.of(
                 new GenomeAddress(0x03, 0x00), centered(0.70),
                 new GenomeAddress(0x03, 0x01), centered(0.70),
-                new GenomeAddress(0x03, 0x02), centered(0.70)), List.of());
+                new GenomeAddress(0x03, 0x02), centered(0.40)), List.of());
 
         assertEquals(Personality.JOLLY, profile.mapPhenotype(decoded).personality());
+    }
+
+    @Test
+    void dominantGapUsesAbsolutePointZeroEightFiveThreshold() {
+        var decoded = new DecodedGenome(Map.of(
+                new GenomeAddress(0x03, 0x00), centered(0.700),
+                new GenomeAddress(0x03, 0x01), centered(0.615),
+                new GenomeAddress(0x03, 0x02), centered(0.40)), List.of());
+
+        assertEquals(Personality.HASTY, profile.mapPhenotype(decoded).personality());
     }
 
     private static AddressAggregate centered(double score) {
