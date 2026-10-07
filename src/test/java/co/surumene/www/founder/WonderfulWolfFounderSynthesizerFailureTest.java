@@ -51,13 +51,39 @@ final class WonderfulWolfFounderSynthesizerFailureTest {
                 DiploidGenome a, DiploidGenome b, CompatibilityPolicy policy) {
             throw new UnsupportedOperationException();
         }
+        @Override public CompatibilityReport assessCompatibility(
+                BreedingParentSource a, BreedingParentSource b, CompatibilityPolicy policy) {
+            throw new UnsupportedOperationException();
+        }
+        @Override public BackboneCompatibilityReport assessBackboneCompatibility(
+                BackboneDefinition backbone, DiploidGenome genome) {
+            throw new UnsupportedOperationException();
+        }
+        @Override public BackboneCompatibilityReport assessBackboneCompatibility(
+                BackboneDefinition backbone, HaploidGenome genome) {
+            throw new UnsupportedOperationException();
+        }
         @Override public BreedingResult breed(
                 GenomeProfile<?> profile, DiploidGenome a, DiploidGenome b,
                 BreedingContext context, GenomeRandom random) {
             throw new UnsupportedOperationException();
         }
+        @Override public BreedingResult breed(
+                GenomeProfile<?> profile, BreedingParentSource a, BreedingParentSource b,
+                BreedingContext context, GenomeRandom random) {
+            throw new UnsupportedOperationException();
+        }
         @Override public byte[] encode(DiploidGenome genome) { throw new UnsupportedOperationException(); }
         @Override public DiploidGenome decodeBinary(byte[] bytes) { throw new UnsupportedOperationException(); }
+        @Override public byte[] encodeParentSource(BreedingParentSource source) {
+            throw new UnsupportedOperationException();
+        }
+        @Override public BreedingParentSource decodeParentSource(byte[] bytes) {
+            throw new UnsupportedOperationException();
+        }
+        @Override public BreedingParentSourceCodec parentSourceCodec() {
+            throw new UnsupportedOperationException();
+        }
         @Override public MarkerResult marker(BackboneDefinition backbone, DiploidGenome genome) {
             throw new UnsupportedOperationException();
         }
