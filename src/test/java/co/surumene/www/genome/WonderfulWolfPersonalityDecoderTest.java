@@ -44,7 +44,11 @@ final class WonderfulWolfPersonalityDecoderTest {
     void allFactorsBelowSeriousMaximumAreSerious() {
         var decoded = new DecodedGenome(Map.of(
                 new GenomeAddress(0x03, 0x00), centered(0.49),
-                new GenomeAddress(0x03, 0x01), centered(0.20)), List.of());
+                new GenomeAddress(0x03, 0x01), centered(0.40),
+                new GenomeAddress(0x03, 0x02), centered(0.35),
+                new GenomeAddress(0x03, 0x03), centered(0.30),
+                new GenomeAddress(0x03, 0x04), centered(0.25),
+                new GenomeAddress(0x03, 0x05), centered(0.20)), List.of());
 
         assertEquals(Personality.SERIOUS, profile.mapPhenotype(decoded).personality());
     }
