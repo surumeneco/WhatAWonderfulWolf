@@ -124,6 +124,51 @@ final class WonderfulWolfBreedingServiceIntegrationTest {
     }
 
     @Test
+    void mutuallyCompatibleParentsStillFallBackWhenTheyDoNotMatchWolfBackbone() {
+        List<ChromosomePair> pairs = new ArrayList<>();
+        for (var chromosome : profile.backbone().chromosomes()) {
+            String bits = chromosome.templateBits().toBitString();
+            StringBuilder inverted = new StringBuilder(bits.length());
+            for (int i = 0; i < bits.length(); i++) {
+                inverted.append(bits.charAt(i) == '0' ? '1' : '0');
+            }
+            BitSequence sequence = BitSequence.fromBits(inverted.toString());
+            pairs.add(new ChromosomePair(sequence, sequence));
+        }
+        DiploidGenome offBackbone = new DiploidGenome(1, pairs);
+        WonderfulWolfIndividual template = alpha;
+        WonderfulWolfIndividual a = new WonderfulWolfIndividual(
+                offBackbone,
+                template.phenotypeSnapshot(),
+                Optional.empty(),
+                0,
+                Mode.WANDER,
+                Optional.empty(),
+                ActionDistance.NORMAL,
+                Optional.empty(),
+                Map.of(),
+                Optional.empty(),
+                Map.of(),
+                0,
+                PedigreeSnapshot.founder());
+        WonderfulWolfIndividual b = copy(
+                a, a.phenotypeSnapshot(), 0, PedigreeSnapshot.founder());
+
+        assertTrue(engine.assessCompatibility(
+                offBackbone, offBackbone, null).compatible());
+        assertFalse(engine.assessBackboneCompatibility(
+                profile.backbone(), offBackbone).compatible());
+
+        assertInstanceOf(
+                WonderfulWolfBreedingOutcome.Fallback.class,
+                service.breed(
+                        new BreedingParent("A", a),
+                        new BreedingParent("B", b),
+                        Optional.empty(),
+                        2026100702L));
+    }
+
+    @Test
     void childGenomeComesFromParentGenomesNotEditedParentAbilitySnapshots() {
         WonderfulWolfIndividual a = alpha;
         WonderfulWolfIndividual b = beta;
