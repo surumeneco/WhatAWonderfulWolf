@@ -46,8 +46,15 @@ public final class WonderfulWolfFounderTargetGenerator {
         }
 
         EnumMap<PersonalityFactor, Double> personality = new EnumMap<>(PersonalityFactor.class);
+        WwwConfig.Distribution personalityDistribution =
+                config.founderTarget().personality();
         for (PersonalityFactor factor : PersonalityFactor.values()) {
-            personality.put(factor, random.nextDouble());
+            personality.put(factor, truncatedNormal(
+                    personalityDistribution.mean(),
+                    personalityDistribution.standardDeviation(),
+                    0.0,
+                    1.0,
+                    random));
         }
 
         EnumMap<DevelopmentFactor, Double> development = new EnumMap<>(DevelopmentFactor.class);
