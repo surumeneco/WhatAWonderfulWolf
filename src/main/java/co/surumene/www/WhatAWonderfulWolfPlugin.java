@@ -11,6 +11,7 @@ import co.surumene.www.behavior.WonderfulWolfRelationshipRuntime;
 import co.surumene.www.behavior.WonderfulWolfRelationshipService;
 import co.surumene.www.breeding.WonderfulWolfBreedingListener;
 import co.surumene.www.breeding.WonderfulWolfBreedingService;
+import co.surumene.www.breeding.WonderfulWolfOffspringService;
 import co.surumene.www.combat.WonderfulWolfWeaponRuntime;
 import co.surumene.www.config.WwwConfig;
 import co.surumene.www.config.WwwConfigLoader;
@@ -163,6 +164,10 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                         weapons,
                         genomeLib.engine(),
                         lifecycle::currentWolfProfile);
+        WonderfulWolfOffspringService offspringService =
+                new WonderfulWolfOffspringService(
+                        genomeLib.engine(),
+                        lifecycle::currentWolfProfile);
         co.surumene.www.command.WonderfulWolfAdminCommands adminCommands =
                 new co.surumene.www.command.WonderfulWolfAdminCommands(
                         this,
@@ -170,6 +175,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                         abilities,
                         genomeLib.engine(),
                         paperFactory,
+                        offspringService,
                         new co.surumene.www.command.WonderfulWolfAdminInfo(
                                 Bukkit.getServer(),
                                 genomeLib.engine(),
