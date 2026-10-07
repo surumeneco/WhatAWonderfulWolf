@@ -35,9 +35,13 @@ final class WonderfulWolfBreedingContextIntegrationTest {
         directFounder = founder(
                 FounderOrigin.NATURAL,
                 0.45,
-                List.of(new ExpressedTrait(
-                        Trait.DIRECT_INHERITANCE,
-                        TraitStrength.WEAK)),
+                List.of(
+                        new ExpressedTrait(
+                                Trait.DIRECT_INHERITANCE,
+                                TraitStrength.WEAK),
+                        new ExpressedTrait(
+                                Trait.WILD,
+                                TraitStrength.STRONG)),
                 2026100611L);
         plainFounder = founder(
                 FounderOrigin.NATURAL,
@@ -66,6 +70,27 @@ final class WonderfulWolfBreedingContextIntegrationTest {
                         && c.crossoverWeightMultiplier() == 0.25));
         assertTrue(context.parentAPolicy().inheritanceConstraints().stream().noneMatch(
                 InheritanceConstraint::hardProtection));
+        assertTrue(context.parentBPolicy().inheritanceConstraints().isEmpty());
+    }
+
+    @Test
+    void typedParentSourcesRebuildModifiersOnlyForDiploidParents() {
+        BreedingParentSource diploid =
+                new BreedingParentSource.DiploidParent(
+                        directFounder.genome());
+        BreedingParentSource gamete =
+                new BreedingParentSource.Gamete(
+                        haplotypeA(plainFounder.genome()));
+
+        BreedingContext context =
+                factory.create(
+                        diploid,
+                        gamete,
+                        engine.standardRandom(2026100707L));
+
+        assertEquals(4.0, context.mutationRateMultiplier());
+        assertTrue(context.parentAPolicy().inheritanceConstraints().stream()
+                .anyMatch(c -> !c.hardProtection()));
         assertTrue(context.parentBPolicy().inheritanceConstraints().isEmpty());
     }
 
@@ -184,6 +209,15 @@ final class WonderfulWolfBreedingContextIntegrationTest {
                 Map.of(),
                 0,
                 PedigreeSnapshot.founder());
+    }
+
+    private static HaploidGenome haplotypeA(
+            DiploidGenome genome) {
+        return new HaploidGenome(
+                genome.genomeFormatVersion(),
+                genome.chromosomePairs().stream()
+                        .map(ChromosomePair::haplotypeA)
+                        .toList());
     }
 
     private static WonderfulWolfIndividual copyWithSnapshot(
