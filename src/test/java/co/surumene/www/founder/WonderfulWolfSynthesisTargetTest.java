@@ -77,11 +77,13 @@ final class WonderfulWolfSynthesisTargetTest {
 
         SynthesisAddressPlan personality = profile.synthesisPlan(
                 new GenomeAddress(0x03, 0x00), 0.25, context, random);
-        assertEquals(0.0, personality.positiveSaturation(), 1.0e-12);
-        assertEquals(0.50, personality.negativeSaturation(), 1.0e-12);
+        assertEquals(0.40, personality.positiveSaturation(), 1.0e-12);
+        assertEquals(0.90, personality.negativeSaturation(), 1.0e-12);
         assertEquals(personality.minNegativeGenes(), personality.maxNegativeGenes());
-        assertTrue(personality.minNegativeGenes() >= 8);
-        assertTrue(personality.maxNegativeGenes() <= 16);
+        assertTrue(personality.minPositiveGenes() > 0);
+        assertTrue(personality.minNegativeGenes() > 0);
+        assertTrue(personality.minPositiveGenes() + personality.minNegativeGenes() >= 8);
+        assertTrue(personality.maxPositiveGenes() + personality.maxNegativeGenes() <= 16);
 
         SynthesisAddressPlan extraordinary = profile.synthesisPlan(
                 new GenomeAddress(0x07, 0x00), 0.40, context, random);
