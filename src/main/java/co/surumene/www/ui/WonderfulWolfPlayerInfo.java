@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.Set;
 
 public final class WonderfulWolfPlayerInfo {
     private static final List<Ability> DISPLAY_ORDER = List.of(
@@ -181,19 +180,8 @@ public final class WonderfulWolfPlayerInfo {
     }
 
     private static Component personalityDetail(Personality personality) {
-        Set<Ability> positive = PersonalityAbilityModifier.positive(personality);
-        Set<Ability> negative = PersonalityAbilityModifier.negative(personality);
-        String plus = names(positive);
-        String minus = names(negative);
-        String suffix;
-        if (positive.isEmpty() && negative.isEmpty()) {
-            suffix = " (補正なし)";
-        } else {
-            suffix = " (" + (plus.isEmpty() ? "なし" : plus + "↑")
-                    + " / " + (minus.isEmpty() ? "なし" : minus + "↓") + ")";
-        }
         return Component.text(
-                "性格: " + personality.displayName() + suffix,
+                "性格: " + personality.displayName(),
                 NamedTextColor.AQUA);
     }
 
@@ -231,11 +219,6 @@ public final class WonderfulWolfPlayerInfo {
             return ability.displayName() + "↓";
         }
         return ability.displayName();
-    }
-
-    private static String names(Set<Ability> abilities) {
-        return abilities.stream().map(Ability::displayName)
-                .sorted().reduce((a, b) -> a + "・" + b).orElse("");
     }
 
     private static Component rankComponent(AbilityRank rank) {

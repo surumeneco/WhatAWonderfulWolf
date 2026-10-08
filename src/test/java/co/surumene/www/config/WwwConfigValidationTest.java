@@ -27,6 +27,9 @@ final class WwwConfigValidationTest {
         assertInvalid(config -> config.set("runtime.age.base-aging-duration-game-days", 0.0));
         assertInvalid(config -> config.set("runtime.age.sensitivity.health", -0.01));
         assertInvalid(config -> config.set("founder-target.natural.abilities.standard-deviation", 0.0));
+        assertInvalid(config -> config.set("founder-target.personality.standard-deviation", 0.0));
+        assertInvalid(config -> config.set("genome-profile.decoder.personality.serious-spread", 1.01));
+        assertInvalid(config -> config.set("genome-profile.decoder.personality.dominant-gap", -0.01));
         assertInvalid(config -> config.set("genome-profile.decoder.trait.expression-threshold", 1.01));
         assertInvalid(config -> config.set("genome-profile.decoder.injury.onset-max-game-days", 0.0));
         assertInvalid(config -> config.set("genome-profile.decoder.injury.severity-rank-min", 6.01));
@@ -41,6 +44,7 @@ final class WwwConfigValidationTest {
         assertInvalid(config -> config.set("genome-profile.synthesizer.regulation-genes-max", 65));
         assertInvalid(config -> config.set("genome-profile.synthesizer.recognizable-region-max-ratio", 0.66));
         assertInvalid(config -> config.set("genome-profile.synthesizer.cancellation-min", 0.36));
+        assertInvalid(config -> config.set("genome-profile.synthesizer.personality-cancellation-min", 0.51));
         assertInvalid(config -> config.set("genome-profile.synthesizer.relay.attachment-min-ratio", 0.09));
         assertInvalid(config -> config.set("genome-profile.breeding-policy.direct-inheritance.weak-prefer-probability", -0.01));
     }

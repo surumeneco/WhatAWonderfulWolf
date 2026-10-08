@@ -1,26 +1,39 @@
 package co.surumene.www.breeding;
 
 import co.surumene.www.config.WwwConfig;
-import co.surumene.www.domain.Ability;
-import co.surumene.www.domain.Trait;
-import co.surumene.www.domain.TraitStrength;
+import co.surumene.www.domain.*;
+import co.surumene.www.genome.PhenotypeOrigin;
 import co.surumene.www.genome.WonderfulWolfGenomeProfile;
-import co.surumene.www.individual.WonderfulWolfIndividual;
+import co.surumene.www.individual.*;
 import co.surumene.wgl.api.*;
 
 import java.util.*;
 import java.util.function.ToDoubleFunction;
 
 public final class WonderfulWolfBreedingContextFactory {
+    private final GenomeEngine engine;
     private final WonderfulWolfGenomeProfile profile;
     private final WonderfulWolfInheritanceAnalyzer analyzer;
 
     public WonderfulWolfBreedingContextFactory(
             GenomeEngine engine,
             WonderfulWolfGenomeProfile profile) {
-        Objects.requireNonNull(engine, "engine");
+        this.engine = Objects.requireNonNull(engine, "engine");
         this.profile = Objects.requireNonNull(profile, "profile");
         this.analyzer = new WonderfulWolfInheritanceAnalyzer(engine, profile);
+    }
+
+    public BreedingContext create(
+            BreedingParentSource parentA,
+            BreedingParentSource parentB,
+            GenomeRandom random) {
+        Objects.requireNonNull(parentA, "parentA");
+        Objects.requireNonNull(parentB, "parentB");
+        Objects.requireNonNull(random, "random");
+        return create(
+                contextIndividual(parentA),
+                contextIndividual(parentB),
+                random);
     }
 
     public BreedingContext create(
@@ -78,6 +91,62 @@ public final class WonderfulWolfBreedingContextFactory {
                 false,
                 new ParentMeiosisPolicy(finalA),
                 new ParentMeiosisPolicy(finalB));
+    }
+
+    private WonderfulWolfIndividual contextIndividual(
+            BreedingParentSource source) {
+        if (source instanceof BreedingParentSource.DiploidParent diploid) {
+            return decodedIndividual(
+                    diploid.genome(),
+                    true);
+        }
+
+        HaploidGenome haploid =
+                ((BreedingParentSource.Gamete) source).genome();
+        List<ChromosomePair> pairs = haploid.chromosomes().stream()
+                .map(bits -> new ChromosomePair(bits, bits))
+                .toList();
+        return decodedIndividual(
+                new DiploidGenome(
+                        haploid.genomeFormatVersion(),
+                        pairs),
+                false);
+    }
+
+    private WonderfulWolfIndividual decodedIndividual(
+            DiploidGenome genome,
+            boolean applyParentModifiers) {
+        var decoded = engine.decode(profile, genome);
+        PhenotypeSnapshot snapshot = decoded.phenotype().toSnapshot(
+                decoded.identity(),
+                PhenotypeOrigin.BREEDING);
+        if (!applyParentModifiers) {
+            snapshot = new PhenotypeSnapshot(
+                    snapshot.decoderIdentity(),
+                    snapshot.abilities(),
+                    snapshot.relationshipPerformance(),
+                    snapshot.personalityFactors(),
+                    snapshot.personality(),
+                    List.of(),
+                    snapshot.developmentFactors(),
+                    snapshot.injuries(),
+                    0.0,
+                    false);
+        }
+        return new WonderfulWolfIndividual(
+                genome,
+                snapshot,
+                Optional.empty(),
+                0L,
+                Mode.WANDER,
+                Optional.empty(),
+                ActionDistance.NORMAL,
+                Optional.empty(),
+                Map.of(),
+                Optional.empty(),
+                Map.of(),
+                0,
+                PedigreeSnapshot.founder());
     }
 
     private static boolean hasHardCandidate(

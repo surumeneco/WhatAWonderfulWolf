@@ -13,6 +13,7 @@ public final class WwwConfigValidator {
 
         validateDistribution(config.founderTarget().natural().abilities(), "founder-target.natural.abilities");
         validateDistribution(config.founderTarget().wolfTrap().abilities(), "founder-target.wolf-trap.abilities");
+        validateDistribution(config.founderTarget().personality(), "founder-target.personality");
         validateDistribution(config.founderTarget().development(), "founder-target.development");
         validateDistribution(config.founderTarget().relationship(), "founder-target.relationship");
 
@@ -30,11 +31,9 @@ public final class WwwConfigValidator {
 
     private static void validateDecoder(WwwConfig.Decoder decoder) {
         WwwConfig.PersonalityDecoder personality = decoder.personality();
-        unit(personality.mean(), "genome-profile.decoder.personality.mean");
-        positive(personality.sigma(), "genome-profile.decoder.personality.sigma");
-        nonNegative(personality.dominantGapSigma(), "genome-profile.decoder.personality.dominant-gap-sigma");
-        nonNegative(personality.neutralFactorSigma(), "genome-profile.decoder.personality.neutral-factor-sigma");
-        nonNegative(personality.neutralSpreadSigma(), "genome-profile.decoder.personality.neutral-spread-sigma");
+        unit(personality.seriousMaxScore(), "genome-profile.decoder.personality.serious-max-score");
+        unit(personality.seriousSpread(), "genome-profile.decoder.personality.serious-spread");
+        unit(personality.dominantGap(), "genome-profile.decoder.personality.dominant-gap");
 
         WwwConfig.TraitDecoder trait = decoder.trait();
         unit(trait.expressionThreshold(), "genome-profile.decoder.trait.expression-threshold");
@@ -96,6 +95,15 @@ public final class WwwConfigValidator {
                 "genome-profile.synthesizer.cancellation-min",
                 "genome-profile.synthesizer.cancellation-max");
         unit(synth.highTargetHeadroom(), "genome-profile.synthesizer.high-target-headroom");
+        unit(synth.personalityCancellationMin(),
+                "genome-profile.synthesizer.personality-cancellation-min");
+        unit(synth.personalityCancellationMax(),
+                "genome-profile.synthesizer.personality-cancellation-max");
+        ordered(
+                synth.personalityCancellationMin(),
+                synth.personalityCancellationMax(),
+                "genome-profile.synthesizer.personality-cancellation-min",
+                "genome-profile.synthesizer.personality-cancellation-max");
 
         validateRange(synth.genesPerTarget().ability(), "genome-profile.synthesizer.genes-per-target.ability");
         validateRange(synth.genesPerTarget().personality(), "genome-profile.synthesizer.genes-per-target.personality");

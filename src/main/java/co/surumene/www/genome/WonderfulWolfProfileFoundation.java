@@ -69,11 +69,9 @@ public final class WonderfulWolfProfileFoundation {
 
             WwwConfig.Decoder decoder = profile.decoder();
             out.doubles(
-                    decoder.personality().mean(),
-                    decoder.personality().sigma(),
-                    decoder.personality().dominantGapSigma(),
-                    decoder.personality().neutralFactorSigma(),
-                    decoder.personality().neutralSpreadSigma(),
+                    decoder.personality().seriousMaxScore(),
+                    decoder.personality().seriousSpread(),
+                    decoder.personality().dominantGap(),
                     decoder.trait().expressionThreshold(),
                     decoder.trait().strongGap(),
                     decoder.injury().expressionThreshold(),
@@ -118,6 +116,8 @@ public final class WonderfulWolfProfileFoundation {
                     synth.cancellationMin(),
                     synth.cancellationMax(),
                     synth.highTargetHeadroom(),
+                    synth.personalityCancellationMin(),
+                    synth.personalityCancellationMax(),
                     synth.chromosomeLengthStandardDeviationRatio(),
                     synth.chromosomeLengthMinRatio(),
                     synth.chromosomeLengthMaxRatio(),

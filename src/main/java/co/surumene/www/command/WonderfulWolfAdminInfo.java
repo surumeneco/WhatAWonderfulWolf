@@ -310,25 +310,8 @@ public final class WonderfulWolfAdminInfo {
                 .append(name);
     }
 
-    private String personalityText(Personality personality) {
-        Set<Ability> positive = PersonalityAbilityModifier.positive(personality);
-        Set<Ability> negative = PersonalityAbilityModifier.negative(personality);
-        if (positive.isEmpty() && negative.isEmpty()) {
-            return personality.displayName() + " (補正なし)";
-        }
-        return personality.displayName()
-                + " (" + abilityNames(positive, "↑")
-                + " / " + abilityNames(negative, "↓") + ")";
-    }
-
-    private static String abilityNames(Set<Ability> abilities, String suffix) {
-        if (abilities.isEmpty()) return "なし";
-        return abilities.stream()
-                .map(Ability::displayName)
-                .sorted()
-                .reduce((a, b) -> a + "・" + b)
-                .orElse("なし")
-                + suffix;
+    private static String personalityText(Personality personality) {
+        return personality.displayName();
     }
 
     private static String traitText(List<ExpressedTrait> traits) {

@@ -70,6 +70,76 @@ final class WonderfulWolfBreedingContextIntegrationTest {
     }
 
     @Test
+    void typedParentSourcesRebuildModifiersOnlyForDiploidParents() {
+        BreedingParentSource diploid =
+                new BreedingParentSource.DiploidParent(
+                        directFounder.genome());
+        BreedingParentSource gamete =
+                new BreedingParentSource.Gamete(
+                        haplotypeA(plainFounder.genome()));
+
+        BreedingContext context =
+                factory.create(
+                        diploid,
+                        gamete,
+                        engine.standardRandom(2026100707L));
+
+        assertEquals(1.0, context.mutationRateMultiplier());
+        assertTrue(context.parentAPolicy().inheritanceConstraints().stream()
+                .anyMatch(c -> !c.hardProtection()));
+        assertTrue(context.parentBPolicy().inheritanceConstraints().isEmpty());
+    }
+
+    @Test
+    void typedParentGameteDoesNotReapplyDirectInheritance() {
+        BreedingContext context = factory.create(
+                new BreedingParentSource.Gamete(
+                        haplotypeA(directFounder.genome())),
+                new BreedingParentSource.Gamete(
+                        haplotypeA(plainFounder.genome())),
+                engine.standardRandom(2026100709L));
+
+        assertEquals(1.0, context.mutationRateMultiplier());
+        assertTrue(context.parentAPolicy().inheritanceConstraints().isEmpty());
+        assertTrue(context.parentBPolicy().inheritanceConstraints().isEmpty());
+    }
+
+    @Test
+    void typedParentDiploidRebuildsWildMutationButGameteDoesNot() {
+        WonderfulWolfIndividual wild = founder(
+                FounderOrigin.NATURAL,
+                0.45,
+                List.of(new ExpressedTrait(Trait.WILD, TraitStrength.STRONG)),
+                2026100710L);
+
+        BreedingParentSource diploid =
+                new BreedingParentSource.DiploidParent(wild.genome());
+        BreedingParentSource gamete =
+                new BreedingParentSource.Gamete(
+                        haplotypeA(wild.genome()));
+        BreedingParentSource plainGamete =
+                new BreedingParentSource.Gamete(
+                        haplotypeA(plainFounder.genome()));
+
+        BreedingContext diploidContext = factory.create(
+                diploid,
+                plainGamete,
+                engine.standardRandom(2026100711L));
+        BreedingContext gameteContext = factory.create(
+                gamete,
+                plainGamete,
+                engine.standardRandom(2026100712L));
+
+        assertEquals(Optional.of(TraitStrength.STRONG),
+                WonderfulWolfBreedingPolicy.expressedTrait(
+                        wild.phenotypeSnapshot(), Trait.WILD));
+        assertEquals(4.0, diploidContext.mutationRateMultiplier());
+        assertEquals(1.0, gameteContext.mutationRateMultiplier());
+        assertTrue(gameteContext.parentAPolicy().inheritanceConstraints().isEmpty());
+        assertTrue(gameteContext.parentBPolicy().inheritanceConstraints().isEmpty());
+    }
+
+    @Test
     void extraordinaryAbilityWithoutExpressedDivineLineageDoesNotCreateHardProtection() {
         WonderfulWolfIndividual extraordinary =
                 withDivineState(extraordinaryFounder, false);
@@ -184,6 +254,15 @@ final class WonderfulWolfBreedingContextIntegrationTest {
                 Map.of(),
                 0,
                 PedigreeSnapshot.founder());
+    }
+
+    private static HaploidGenome haplotypeA(
+            DiploidGenome genome) {
+        return new HaploidGenome(
+                genome.genomeFormatVersion(),
+                genome.chromosomePairs().stream()
+                        .map(ChromosomePair::haplotypeA)
+                        .toList());
     }
 
     private static WonderfulWolfIndividual copyWithSnapshot(

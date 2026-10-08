@@ -54,34 +54,36 @@ public final class WonderfulWolfBreedingService {
         WonderfulWolfGenomeProfile profile =
                 Objects.requireNonNull(profileSupplier.get(), "current profile");
 
-        CompatibilityReport compatibility = engine.assessCompatibility(
-                parentA.individual().genome(),
-                parentB.individual().genome(),
-                null);
-        if (!compatibility.compatible()) {
+        BackboneCompatibilityReport backboneA =
+                engine.assessBackboneCompatibility(
+                        profile.backbone(),
+                        parentA.individual().genome());
+        if (!backboneA.compatible()) {
             return new WonderfulWolfBreedingOutcome.Fallback(
-                    "incompatible WWW parent genomes: " + compatibility.reason());
+                    "WWW_BACKBONE_INCOMPATIBLE_A: " + backboneA.reason());
+        }
+        BackboneCompatibilityReport backboneB =
+                engine.assessBackboneCompatibility(
+                        profile.backbone(),
+                        parentB.individual().genome());
+        if (!backboneB.compatible()) {
+            return new WonderfulWolfBreedingOutcome.Fallback(
+                    "WWW_BACKBONE_INCOMPATIBLE_B: " + backboneB.reason());
         }
 
         WonderfulWolfBreedingContextFactory contextFactory =
                 new WonderfulWolfBreedingContextFactory(engine, profile);
-        BreedingContext generatedContext = contextFactory.create(
+        BreedingContext context = contextFactory.create(
                 parentA.individual(),
                 parentB.individual(),
                 random);
-        BreedingContext context = new BreedingContext(
-                generatedContext.backbone(),
-                generatedContext.mutationRateMultiplier(),
-                generatedContext.deNovoForbiddenAddresses(),
-                (ignoredA, ignoredB) -> compatibility,
-                generatedContext.allowSafetyOverride(),
-                generatedContext.parentAPolicy(),
-                generatedContext.parentBPolicy());
 
         BreedingResult result = engine.breed(
                 profile,
-                parentA.individual().genome(),
-                parentB.individual().genome(),
+                new BreedingParentSource.DiploidParent(
+                        parentA.individual().genome()),
+                new BreedingParentSource.DiploidParent(
+                        parentB.individual().genome()),
                 context,
                 random);
         if (result instanceof BreedingResult.NoViableOffspring failure) {

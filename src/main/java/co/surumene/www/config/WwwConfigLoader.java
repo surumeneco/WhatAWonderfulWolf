@@ -31,17 +31,16 @@ public final class WwwConfigLoader {
         WwwConfig.FounderTarget founderTarget = new WwwConfig.FounderTarget(
                 new WwwConfig.FounderKind(distribution(founder, "natural.abilities")),
                 new WwwConfig.FounderKind(distribution(founder, "wolf-trap.abilities")),
+                distribution(founder, "personality"),
                 distribution(founder, "development"),
                 distribution(founder, "relationship"));
 
         ConfigurationSection decoder = section(genome, "decoder");
         WwwConfig.Decoder decoderConfig = new WwwConfig.Decoder(
                 new WwwConfig.PersonalityDecoder(
-                        number(decoder, "personality.mean"),
-                        number(decoder, "personality.sigma"),
-                        number(decoder, "personality.dominant-gap-sigma"),
-                        number(decoder, "personality.neutral-factor-sigma"),
-                        number(decoder, "personality.neutral-spread-sigma")),
+                        number(decoder, "personality.serious-max-score"),
+                        number(decoder, "personality.serious-spread"),
+                        number(decoder, "personality.dominant-gap")),
                 new WwwConfig.TraitDecoder(
                         number(decoder, "trait.expression-threshold"),
                         number(decoder, "trait.strong-gap")),
@@ -86,6 +85,8 @@ public final class WwwConfigLoader {
                 number(synth, "cancellation-min"),
                 number(synth, "cancellation-max"),
                 number(synth, "high-target-headroom"),
+                number(synth, "personality-cancellation-min"),
+                number(synth, "personality-cancellation-max"),
                 new WwwConfig.GenesPerTarget(
                         range(synth, "genes-per-target", "ability"),
                         range(synth, "genes-per-target", "personality"),

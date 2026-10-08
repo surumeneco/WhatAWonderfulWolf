@@ -11,6 +11,7 @@ public record WwwConfig(
     public record FounderTarget(
             FounderKind natural,
             FounderKind wolfTrap,
+            Distribution personality,
             Distribution development,
             Distribution relationship) {}
 
@@ -26,11 +27,9 @@ public record WwwConfig(
             DivineDecoder divine) {}
 
     public record PersonalityDecoder(
-            double mean,
-            double sigma,
-            double dominantGapSigma,
-            double neutralFactorSigma,
-            double neutralSpreadSigma) {}
+            double seriousMaxScore,
+            double seriousSpread,
+            double dominantGap) {}
 
     public record TraitDecoder(double expressionThreshold, double strongGap) {}
 
@@ -49,6 +48,8 @@ public record WwwConfig(
             double cancellationMin,
             double cancellationMax,
             double highTargetHeadroom,
+            double personalityCancellationMin,
+            double personalityCancellationMax,
             GenesPerTarget genesPerTarget,
             double chromosomeLengthStandardDeviationRatio,
             double chromosomeLengthMinRatio,
