@@ -38,6 +38,17 @@ public final class WwwConfigValidator {
         WwwConfig.TraitDecoder trait = decoder.trait();
         unit(trait.expressionThreshold(), "genome-profile.decoder.trait.expression-threshold");
         unit(trait.strongGap(), "genome-profile.decoder.trait.strong-gap");
+        double threshold = trait.expressionThreshold();
+        double strongGap = trait.strongGap();
+        double margin = Math.max(0.01, strongGap * 0.25);
+        // Keep both inactive scores below the threshold and the strong Founder
+        // score above its runner-up by the configured gap without saturation.
+        if (!(threshold > 0.0 && strongGap > 0.0
+                && threshold + strongGap + 2.0 * margin <= 1.0)) {
+            throw invalid("genome-profile.decoder.trait",
+                    "must satisfy threshold > 0, strong-gap > 0, and "
+                            + "threshold + strong-gap + 2 * max(0.01, strong-gap * 0.25) <= 1");
+        }
 
         WwwConfig.InjuryDecoder injury = decoder.injury();
         unit(injury.expressionThreshold(), "genome-profile.decoder.injury.expression-threshold");

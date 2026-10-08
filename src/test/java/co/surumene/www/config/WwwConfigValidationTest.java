@@ -49,6 +49,22 @@ final class WwwConfigValidationTest {
         assertInvalid(config -> config.set("genome-profile.breeding-policy.direct-inheritance.weak-prefer-probability", -0.01));
     }
 
+    @Test
+    void rejectsTraitDecoderCombinationsThatCannotReproduceStrongFounders() {
+        assertInvalid(config -> config.set("genome-profile.decoder.trait.expression-threshold", 0.90));
+        assertInvalid(config -> config.set("genome-profile.decoder.trait.strong-gap", 0.50));
+        assertInvalid(config -> config.set("genome-profile.decoder.trait.expression-threshold", 0.0));
+        assertInvalid(config -> config.set("genome-profile.decoder.trait.strong-gap", 0.0));
+    }
+
+    @Test
+    void allowsTraitDecoderValuesWithSufficientStrongFounderHeadroom() {
+        YamlConfiguration config = defaults();
+        config.set("genome-profile.decoder.trait.expression-threshold", 0.70);
+        config.set("genome-profile.decoder.trait.strong-gap", 0.20);
+        assertDoesNotThrow(() -> WwwConfigLoader.load(config));
+    }
+
     private static void assertInvalid(Consumer<YamlConfiguration> mutation) {
         YamlConfiguration configuration = defaults();
         mutation.accept(configuration);
