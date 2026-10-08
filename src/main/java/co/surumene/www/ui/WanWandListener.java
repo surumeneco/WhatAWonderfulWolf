@@ -98,10 +98,7 @@ public final class WanWandListener implements Listener {
         }
 
         for (WonderfulWolfLoadedIndividuals.LoadedSnapshot snapshot : loaded.snapshots()) {
-            if (snapshot.individual().mode() == Mode.WANDER
-                    || snapshot.individual().commanderId()
-                        .filter(player.getUniqueId()::equals)
-                        .isEmpty()) {
+            if (!canReceiveManualInstruction(snapshot.individual().mode())) {
                 continue;
             }
             behavior.submitManualTarget(
@@ -110,5 +107,9 @@ public final class WanWandListener implements Listener {
                     target,
                     draw.getAsDouble());
         }
+    }
+
+    static boolean canReceiveManualInstruction(Mode mode) {
+        return Objects.requireNonNull(mode, "mode") != Mode.WANDER;
     }
 }
