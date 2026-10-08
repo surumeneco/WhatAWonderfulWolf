@@ -113,6 +113,31 @@ final class WonderfulWolfSynthesisTargetTest {
         assertTrue(other < config.genomeProfile().decoder().trait().expressionThreshold());
     }
 
+    @Test
+    void strongOnlyFounderTraitHasDecodableRunnerUp() {
+        FounderTarget founder = target(
+                FounderOrigin.NATURAL,
+                0.40,
+                List.of(new ExpressedTrait(Trait.WILD, TraitStrength.STRONG)));
+        WonderfulWolfSynthesisTarget target =
+                WonderfulWolfSynthesisTarget.from(founder, config, new FixedRandom(0.5));
+
+        double threshold = config.genomeProfile().decoder().trait().expressionThreshold();
+        double gap = config.genomeProfile().decoder().trait().strongGap();
+        List<Double> scores = java.util.Arrays.stream(Trait.values())
+                .map(trait -> target.continuousTargets()
+                        .get(new GenomeAddress(0x04, trait.targetId())))
+                .sorted(java.util.Comparator.reverseOrder())
+                .toList();
+
+        assertTrue(scores.get(1) >= threshold);
+        assertTrue(scores.get(0) - scores.get(1) >= gap);
+        assertTrue(scores.get(2) < threshold);
+        assertEquals(scores.get(0),
+                target.continuousTargets().get(new GenomeAddress(0x04, Trait.WILD.targetId())),
+                1.0e-12);
+    }
+
     private static FounderTarget target(FounderOrigin origin, double ability) {
         return target(origin, ability, List.of());
     }
