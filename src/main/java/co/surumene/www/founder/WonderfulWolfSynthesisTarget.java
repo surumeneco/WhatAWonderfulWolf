@@ -17,6 +17,7 @@ import co.surumene.wgl.api.SynthesisTarget;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -76,7 +77,7 @@ public final class WonderfulWolfSynthesisTarget implements SynthesisTarget {
                     founder.personalityFactors().get(factor));
         }
 
-        addTraitTargets(founder, validated, continuous);
+        addTraitTargets(founder, validated, random, continuous);
 
         continuous.put(new GenomeAddress(0x06, 0x00), founder.relationship().initialAffinityScore());
         continuous.put(new GenomeAddress(0x06, 0x01), founder.relationship().affinityChangeScore());
@@ -133,6 +134,7 @@ public final class WonderfulWolfSynthesisTarget implements SynthesisTarget {
     private static void addTraitTargets(
             FounderTarget founder,
             WwwConfig config,
+            GenomeRandom random,
             Map<GenomeAddress, Double> continuous) {
         double threshold = config.genomeProfile().decoder().trait().expressionThreshold();
         double gap = config.genomeProfile().decoder().trait().strongGap();
@@ -144,10 +146,17 @@ public final class WonderfulWolfSynthesisTarget implements SynthesisTarget {
         for (ExpressedTrait trait : founder.traits()) {
             expressed.put(trait.trait(), trait.strength());
         }
+        Trait runnerUp = null;
+        if (expressed.size() == 1 && expressed.containsValue(TraitStrength.STRONG)) {
+            List<Trait> candidates = java.util.Arrays.stream(Trait.values())
+                    .filter(trait -> !expressed.containsKey(trait))
+                    .toList();
+            runnerUp = candidates.get(random.nextInt(candidates.size()));
+        }
         for (Trait trait : Trait.values()) {
             TraitStrength strength = expressed.get(trait);
             double value = strength == null
-                    ? inactive
+                    ? (trait == runnerUp ? weak : inactive)
                     : strength == TraitStrength.STRONG ? strong : weak;
             continuous.put(new GenomeAddress(0x04, trait.targetId()), value);
         }
