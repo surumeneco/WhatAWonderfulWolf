@@ -130,6 +130,9 @@ final class WonderfulWolfBreedingContextIntegrationTest {
                 plainGamete,
                 engine.standardRandom(2026100712L));
 
+        assertEquals(Optional.of(TraitStrength.STRONG),
+                WonderfulWolfBreedingPolicy.expressedTrait(
+                        wild.phenotypeSnapshot(), Trait.WILD));
         assertEquals(4.0, diploidContext.mutationRateMultiplier());
         assertEquals(1.0, gameteContext.mutationRateMultiplier());
         assertTrue(gameteContext.parentAPolicy().inheritanceConstraints().isEmpty());
