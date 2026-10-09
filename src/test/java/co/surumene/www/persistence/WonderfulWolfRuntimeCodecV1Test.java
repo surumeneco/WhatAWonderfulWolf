@@ -1,6 +1,7 @@
 package co.surumene.www.persistence;
 
 import co.surumene.www.domain.*;
+import co.surumene.www.command.WonderfulWolfCommandMutation;
 import co.surumene.www.individual.*;
 import co.surumene.wgl.api.*;
 import org.junit.jupiter.api.Test;
@@ -41,6 +42,26 @@ final class WonderfulWolfRuntimeCodecV1Test {
         assertEquals(source, restored);
         assertEquals(base.phenotypeSnapshot(), restored.phenotypeSnapshot());
         assertEquals(200.0, restored.adminAbilityOverrides().get(Ability.HEALTH));
+    }
+
+    @Test
+    void adminModificationChangesOnlyRuntimeOverlayAndSurvivesOtherStateChanges() {
+        WonderfulWolfIndividual parent = individual(false);
+        WonderfulWolfIndividual modified = WonderfulWolfCommandMutation.withAbility(
+                parent, Ability.HEALTH, "set", 200.0);
+        modified = WonderfulWolfCommandMutation.withAbility(
+                modified, Ability.HEALTH, "add", -15.0);
+        assertEquals(185.0, modified.adminAbilityOverrides().get(Ability.HEALTH));
+        assertSame(parent.genome(), modified.genome());
+        assertSame(parent.phenotypeSnapshot(), modified.phenotypeSnapshot());
+        assertEquals(parent.phenotypeSnapshot().abilities(),
+                modified.phenotypeSnapshot().abilities());
+        WonderfulWolfIndividual persisted = modified.withAdultBiologicalTime(123L)
+                .withStorage(modified.weapon(), modified.inventory());
+        assertEquals(185.0, persisted.adminAbilityOverrides().get(Ability.HEALTH));
+        WonderfulWolfIndividual decoded = codec.decode(codec.encode(persisted),
+                parent.genome(), parent.phenotypeSnapshot());
+        assertEquals(persisted, decoded);
     }
 
     @Test
