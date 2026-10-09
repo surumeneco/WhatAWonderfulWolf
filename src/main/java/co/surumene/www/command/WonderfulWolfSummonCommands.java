@@ -123,6 +123,9 @@ final class WonderfulWolfSummonCommands {
         if (options.containsKey("baby") && Boolean.parseBoolean(
                 String.valueOf(options.get("baby")))) {
             wolf.setBaby();
+            // The biological adulthood clock must start when the pup grows up,
+            // not at the moment this admin command creates it.
+            individual = individual.withAdultBiologicalTime(0L);
         }
         loaded.saveAndRegister(wolf, individual);
         if (options.get("behavior") instanceof Map<?, ?> behavior
