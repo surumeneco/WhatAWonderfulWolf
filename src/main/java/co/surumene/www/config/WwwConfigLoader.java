@@ -24,6 +24,14 @@ public final class WwwConfigLoader {
     }
 
     public static WwwConfig load(ConfigurationSection root) {
+        Object maxInfo = root.get("commands.info-max-results", 10);
+        if (!(maxInfo instanceof Number number)
+                || number.intValue() < 1
+                || number.doubleValue() != number.intValue()) {
+            throw new IllegalArgumentException(
+                    "commands.info-max-results must be a positive integer");
+        }
+
         ConfigurationSection founder = section(root, "founder-target");
         ConfigurationSection genome = section(root, "genome-profile");
         ConfigurationSection runtime = section(root, "runtime");

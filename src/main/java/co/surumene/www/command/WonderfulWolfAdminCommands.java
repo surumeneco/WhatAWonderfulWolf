@@ -2,6 +2,7 @@ package co.surumene.www.command;
 
 import co.surumene.www.WhatAWonderfulWolfPlugin;
 import co.surumene.www.breeding.WonderfulWolfOffspringService;
+import co.surumene.www.behavior.WonderfulWolfCommandService;
 import co.surumene.www.persistence.RestoreResult;
 import co.surumene.www.persistence.WonderfulWolfLoadedIndividuals;
 import co.surumene.www.runtime.WonderfulWolfAbilityRuntime;
@@ -19,16 +20,20 @@ import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.command.brigadier.argument.ArgumentTypes;
 import io.papermc.paper.command.brigadier.argument.resolvers.selector.EntitySelectorArgumentResolver;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Location;
+import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Wolf;
+import org.bukkit.entity.Player;
 
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 public final class WonderfulWolfAdminCommands {
     private static final int MAX_TARGETS = 10;
@@ -40,6 +45,9 @@ public final class WonderfulWolfAdminCommands {
     private final PaperWonderfulWolfFactory factory;
     private final WonderfulWolfOffspringService offspringService;
     private final WonderfulWolfAdminInfo info;
+    private final WonderfulWolfConfigCommands configCommands;
+    private final WonderfulWolfModifyCommands modifyCommands;
+    private final WonderfulWolfSummonCommands summonCommands;
 
     public WonderfulWolfAdminCommands(
             WhatAWonderfulWolfPlugin plugin,
@@ -48,7 +56,8 @@ public final class WonderfulWolfAdminCommands {
             GenomeEngine engine,
             PaperWonderfulWolfFactory factory,
             WonderfulWolfOffspringService offspringService,
-            WonderfulWolfAdminInfo info) {
+            WonderfulWolfAdminInfo info,
+            WonderfulWolfCommandService commandService) {
         this.plugin = Objects.requireNonNull(plugin, "plugin");
         this.loaded = Objects.requireNonNull(loaded, "loaded");
         this.abilities = Objects.requireNonNull(abilities, "abilities");
@@ -57,6 +66,9 @@ public final class WonderfulWolfAdminCommands {
         this.offspringService =
                 Objects.requireNonNull(offspringService, "offspringService");
         this.info = Objects.requireNonNull(info, "info");
+        this.configCommands = new WonderfulWolfConfigCommands(plugin);
+        this.modifyCommands = new WonderfulWolfModifyCommands(loaded, abilities, commandService);
+        this.summonCommands = new WonderfulWolfSummonCommands(factory, loaded, abilities, commandService);
     }
 
     public com.mojang.brigadier.tree.LiteralCommandNode<CommandSourceStack> build() {
@@ -65,6 +77,8 @@ public final class WonderfulWolfAdminCommands {
         root.then(infoNode());
         root.then(genomeNode());
         root.then(summonNode());
+        root.then(modifyCommands.build());
+        root.then(configCommands.build());
         root.then(Commands.literal("reload")
                 .requires(source -> source.getSender()
                         .hasPermission("www.command.reload"))
@@ -98,6 +112,7 @@ public final class WonderfulWolfAdminCommands {
         return Commands.literal("summon")
                 .requires(source -> source.getSender()
                         .hasPermission("www.command.summon"))
+                .executes(context -> summonCommands.execute(context, ""))
                 .then(Commands.literal("genome")
                         .then(Commands.argument(
                                         "format",
@@ -123,7 +138,10 @@ public final class WonderfulWolfAdminCommands {
                                                                 "sourceB",
                                                                 StringArgumentType.word())
                                                         .executes(
-                                                                this::summonOffspring))))));
+                                                                this::summonOffspring))))))
+                .then(Commands.argument("arguments", StringArgumentType.greedyString())
+                        .executes(context -> summonCommands.execute(context,
+                                StringArgumentType.getString(context, "arguments"))));
     }
 
     private int infoNearest(
@@ -182,22 +200,16 @@ public final class WonderfulWolfAdminCommands {
                         "Format Version: "
                                 + individual.genome().genomeFormatVersion(),
                         NamedTextColor.GRAY));
-                sender.sendMessage(Component.text(
-                        "ParentSource(Base64 WGLP): "
-                                + OffspringParentSourceCodec.encode(
-                                        new BreedingParentSource.DiploidParent(
-                                                individual.genome()),
-                                        engine),
-                        NamedTextColor.GRAY));
+                sendCopyable(sender, "Entity source", "wolf_" + wolf.getUniqueId());
+                sendCopyable(sender, "Parent source (WGLP)",
+                        OffspringParentSourceCodec.encodeToken(
+                                new BreedingParentSource.DiploidParent(individual.genome()),
+                                engine));
                 sender.sendMessage(Component.text(
                         "Lengths A/B: " + raw.chromosomeLengths(),
                         NamedTextColor.GRAY));
-                sender.sendMessage(Component.text(
-                        "A(bits): " + raw.haplotypeA(),
-                        NamedTextColor.WHITE));
-                sender.sendMessage(Component.text(
-                        "B(bits): " + raw.haplotypeB(),
-                        NamedTextColor.WHITE));
+                sendCopyable(sender, "A(bits)", raw.haplotypeA());
+                sendCopyable(sender, "B(bits)", raw.haplotypeB());
             }
             return targets.size();
         } catch (Exception error) {
@@ -259,17 +271,9 @@ public final class WonderfulWolfAdminCommands {
         CommandSender sender = context.getSource().getSender();
         try {
             BreedingParentSource sourceA =
-                    OffspringParentSourceCodec.decode(
-                            StringArgumentType.getString(
-                                    context,
-                                    "sourceA"),
-                            engine);
+                    resolveParentSource(StringArgumentType.getString(context, "sourceA"));
             BreedingParentSource sourceB =
-                    OffspringParentSourceCodec.decode(
-                            StringArgumentType.getString(
-                                    context,
-                                    "sourceB"),
-                            engine);
+                    resolveParentSource(StringArgumentType.getString(context, "sourceB"));
 
             WonderfulWolfOffspringService.Result bred =
                     offspringService.breed(
@@ -311,6 +315,32 @@ public final class WonderfulWolfAdminCommands {
         } catch (Exception error) {
             error(sender, safeMessage(error));
             return 0;
+        }
+    }
+
+    private BreedingParentSource resolveParentSource(String token) {
+        if (token.startsWith("wolf_")) {
+            UUID id = UUID.fromString(token.substring("wolf_".length()));
+            Entity entity = Bukkit.getEntity(id);
+            if (!(entity instanceof Wolf wolf) || !ensureWonderful(wolf)) {
+                throw new IllegalArgumentException("Wonderful Wolf not found: " + id);
+            }
+            return new BreedingParentSource.DiploidParent(
+                    loaded.find(id).orElseThrow().genome());
+        }
+        if (token.startsWith("wglp_")) {
+            return OffspringParentSourceCodec.decodeToken(token, engine);
+        }
+        return OffspringParentSourceCodec.decode(token, engine);
+    }
+
+    private static void sendCopyable(CommandSender sender, String label, String value) {
+        if (sender instanceof Player) {
+            sender.sendMessage(Component.text(
+                    label + " — クリックしてコピー (" + value.length() + "文字)",
+                    NamedTextColor.AQUA).clickEvent(ClickEvent.copyToClipboard(value)));
+        } else {
+            sender.sendMessage(label + ": " + value);
         }
     }
 
@@ -360,11 +390,13 @@ public final class WonderfulWolfAdminCommands {
             error(sender, "対象にWonderful Wolfが含まれていません。");
             return false;
         }
-        if (targets.size() > MAX_TARGETS) {
+        int maximum = plugin.getConfig().getInt(
+                "commands.info-max-results", MAX_TARGETS);
+        if (targets.size() > maximum) {
             error(
                     sender,
                     "対象が多すぎます。最大"
-                            + MAX_TARGETS
+                            + maximum
                             + "個体です。");
             return false;
         }
