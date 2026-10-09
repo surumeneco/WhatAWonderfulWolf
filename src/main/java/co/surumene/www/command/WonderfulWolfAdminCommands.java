@@ -2,6 +2,7 @@ package co.surumene.www.command;
 
 import co.surumene.www.WhatAWonderfulWolfPlugin;
 import co.surumene.www.breeding.WonderfulWolfOffspringService;
+import co.surumene.www.behavior.WonderfulWolfCommandService;
 import co.surumene.www.persistence.RestoreResult;
 import co.surumene.www.persistence.WonderfulWolfLoadedIndividuals;
 import co.surumene.www.runtime.WonderfulWolfAbilityRuntime;
@@ -19,16 +20,20 @@ import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.command.brigadier.argument.ArgumentTypes;
 import io.papermc.paper.command.brigadier.argument.resolvers.selector.EntitySelectorArgumentResolver;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Location;
+import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Wolf;
+import org.bukkit.entity.Player;
 
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 public final class WonderfulWolfAdminCommands {
     private static final int MAX_TARGETS = 10;
@@ -40,6 +45,9 @@ public final class WonderfulWolfAdminCommands {
     private final PaperWonderfulWolfFactory factory;
     private final WonderfulWolfOffspringService offspringService;
     private final WonderfulWolfAdminInfo info;
+    private final WonderfulWolfConfigCommands configCommands;
+    private final WonderfulWolfModifyCommands modifyCommands;
+    private final WonderfulWolfSummonCommands summonCommands;
 
     public WonderfulWolfAdminCommands(
             WhatAWonderfulWolfPlugin plugin,
@@ -48,7 +56,8 @@ public final class WonderfulWolfAdminCommands {
             GenomeEngine engine,
             PaperWonderfulWolfFactory factory,
             WonderfulWolfOffspringService offspringService,
-            WonderfulWolfAdminInfo info) {
+            WonderfulWolfAdminInfo info,
+            WonderfulWolfCommandService commandService) {
         this.plugin = Objects.requireNonNull(plugin, "plugin");
         this.loaded = Objects.requireNonNull(loaded, "loaded");
         this.abilities = Objects.requireNonNull(abilities, "abilities");
@@ -57,6 +66,9 @@ public final class WonderfulWolfAdminCommands {
         this.offspringService =
                 Objects.requireNonNull(offspringService, "offspringService");
         this.info = Objects.requireNonNull(info, "info");
+        this.configCommands = new WonderfulWolfConfigCommands(plugin);
+        this.modifyCommands = new WonderfulWolfModifyCommands(loaded, abilities, commandService);
+        this.summonCommands = new WonderfulWolfSummonCommands(factory, loaded, abilities, commandService);
     }
 
     public com.mojang.brigadier.tree.LiteralCommandNode<CommandSourceStack> build() {
@@ -65,6 +77,8 @@ public final class WonderfulWolfAdminCommands {
         root.then(infoNode());
         root.then(genomeNode());
         root.then(summonNode());
+        root.then(modifyCommands.build());
+        root.then(configCommands.build());
         root.then(Commands.literal("reload")
                 .requires(source -> source.getSender()
                         .hasPermission("www.command.reload"))
@@ -98,6 +112,7 @@ public final class WonderfulWolfAdminCommands {
         return Commands.literal("summon")
                 .requires(source -> source.getSender()
                         .hasPermission("www.command.summon"))
+                .executes(context -> summonCommands.execute(context, ""))
                 .then(Commands.literal("genome")
                         .then(Commands.argument(
                                         "format",
@@ -123,7 +138,10 @@ public final class WonderfulWolfAdminCommands {
                                                                 "sourceB",
                                                                 StringArgumentType.word())
                                                         .executes(
-                                                                this::summonOffspring))))));
+                                                                this::summonOffspring))))))
+                .then(Commands.argument("arguments", StringArgumentType.greedyString())
+                        .executes(context -> summonCommands.execute(context,
+                                StringArgumentType.getString(context, "arguments"))));
     }
 
     private int infoNearest(
