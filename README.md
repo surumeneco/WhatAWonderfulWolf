@@ -60,9 +60,13 @@ its Owner and command state are stored together.
 `step-height`, `attack-damage`, `attack-speed`, `defense`,
 `patience`, `inventory`, and `mode` (`set` only).
 Values are canonical units (not normalized Genome scores).
-The current PDC phenotype storage constrains normal ability scores to
-normalized `0..1.5`; command modifications respect this bound.
-Changes to the phenotype are **not written back into the inherited Genome**.
+Genome-derived Phenotype Snapshot scores remain bounded to normalized `0..1.5`.
+Administrator changes are stored separately as canonical ability overrides
+in runtime/PDC state, without changing inherited Genome or the original
+Phenotype Snapshot. Valid debug values outside both the normal and natural
+Founder ranges are permitted, subject to finite/positive inputs and
+Minecraft/Paper attribute applicability. Rankings saturate at the existing
+lowest/highest grade. The fixed 45-slot inventory UI cannot be enlarged.
 
 `genome get` provides click-to-copy A/B chromosome bitstrings and
 two offspring parent tokens: `wolf_<UUID>` for a loaded individual or
