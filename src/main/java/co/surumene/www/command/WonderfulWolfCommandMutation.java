@@ -2,12 +2,10 @@ package co.surumene.www.command;
 
 import co.surumene.www.ability.AbilityScale;
 import co.surumene.www.domain.Ability;
-import co.surumene.www.domain.PhenotypeSnapshot;
 import co.surumene.www.individual.WonderfulWolfIndividual;
 
 import java.util.EnumMap;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -36,30 +34,32 @@ public final class WonderfulWolfCommandMutation {
         };
     }
 
+    /** Returns an unbounded normalized projection for display/ranking only. */
     public static double toNormalized(Ability ability, double canonical) {
+        Objects.requireNonNull(ability, "ability");
+        double value = validateCanonical(ability, canonical);
+        double low = AbilityScale.toCanonical(ability, 0.0);
+        double span = AbilityScale.toCanonical(ability, 1.0) - low;
+        return (value - low) / span;
+    }
+
+    /** Validate input without imposing the natural Founder/Genome score ceiling. */
+    public static double validateCanonical(Ability ability, double canonical) {
         Objects.requireNonNull(ability, "ability");
         if (!Double.isFinite(canonical)) {
             throw new IllegalArgumentException("value must be finite");
         }
         double value = switch (ability) {
-            case HEALTH -> (Math.round(canonical) - 20.0) / 40.0;
-            case SIZE -> (canonical - 1.5) / 1.5;
-            case MOVEMENT_SPEED -> (canonical - 3.0) / 21.0;
-            case JUMP -> (canonical - 1.0) / 4.0;
-            case STEP_HEIGHT -> canonical - 0.5;
-            case ATTACK_DAMAGE -> (canonical - 1.0) / 9.0;
-            case ATTACK_SPEED -> (canonical - 0.2) / 1.8;
-            case DEFENSE -> canonical / 30.0;
-            case PATIENCE -> canonical;
-            case INVENTORY -> Math.round(canonical) / 30.0;
+            case HEALTH, INVENTORY -> Math.round(canonical);
+            default -> canonical;
         };
-        if (value < -1e-10 || value > 1.5 + 1e-10) {
-            throw new IllegalArgumentException(
-                    ability + " must be in the canonical range "
-                            + AbilityScale.toCanonical(ability, 0.0) + ".."
-                            + AbilityScale.toCanonical(ability, 1.5));
+        if ((ability == Ability.HEALTH || ability == Ability.SIZE) && value <= 0.0) {
+            throw new IllegalArgumentException(ability + " must be > 0");
         }
-        return Math.max(0.0, Math.min(1.5, value));
+        if (value < 0.0) {
+            throw new IllegalArgumentException(ability + " must be >= 0");
+        }
+        return value;
     }
 
     public static WonderfulWolfIndividual withOwner(
@@ -79,47 +79,29 @@ public final class WonderfulWolfCommandMutation {
                 original.weapon(),
                 original.inventory(),
                 original.generation(),
-                original.pedigree());
+                original.pedigree(),
+                original.adminAbilityOverrides());
     }
 
     public static WonderfulWolfIndividual withAbility(
-            WonderfulWolfIndividual original, Ability ability, String operation, double operand) {
+            WonderfulWolfIndividual original, Ability ability, String operation,
+            double operand) {
         Objects.requireNonNull(original, "original");
+        Objects.requireNonNull(ability, "ability");
         if (!operation.equals("set") && !operation.equals("add")) {
             throw new IllegalArgumentException("operation must be set or add");
         }
-        double current = AbilityScale.toCanonical(
-                ability, original.phenotypeSnapshot().abilities().get(ability));
+        if (!Double.isFinite(operand)) {
+            throw new IllegalArgumentException("operand must be finite");
+        }
+        double current = original.adminAbilityOverrides().getOrDefault(ability,
+                AbilityScale.toCanonical(ability,
+                        original.phenotypeSnapshot().abilities().get(ability)));
         double result = operation.equals("add") ? current + operand : operand;
-        double normalized = toNormalized(ability, result);
-        PhenotypeSnapshot old = original.phenotypeSnapshot();
-        EnumMap<Ability, Double> scores = new EnumMap<>(Ability.class);
-        scores.putAll(old.abilities());
-        scores.put(ability, normalized);
-        PhenotypeSnapshot updated = new PhenotypeSnapshot(
-                old.decoderIdentity(),
-                scores,
-                old.relationshipPerformance(),
-                old.personalityFactors(),
-                old.personality(),
-                old.expressedTraits(),
-                old.developmentFactors(),
-                old.injuries(),
-                old.divineLineageTotalScore(),
-                old.divineLineageExpressed());
-        return new WonderfulWolfIndividual(
-                original.genome(),
-                updated,
-                original.ownerId(),
-                original.adultBiologicalTime(),
-                original.mode(),
-                original.commanderId(),
-                original.actionDistance(),
-                original.waitLocation(),
-                original.affection(),
-                original.weapon(),
-                original.inventory(),
-                original.generation(),
-                original.pedigree());
+        double validated = validateCanonical(ability, result);
+        EnumMap<Ability, Double> overrides = new EnumMap<>(Ability.class);
+        overrides.putAll(original.adminAbilityOverrides());
+        overrides.put(ability, validated);
+        return original.withAdminAbilityOverrides(overrides);
     }
 }
