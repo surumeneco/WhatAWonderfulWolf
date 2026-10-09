@@ -105,7 +105,8 @@ public final class WonderfulWolfAbilityRuntime {
                     EffectiveAbilityPipeline.evaluate(
                             individual.phenotypeSnapshot(),
                             ageGameDays,
-                            runtime);
+                            runtime,
+                            individual.adminAbilityOverrides());
             projector.project(wolf, abilities);
             current.put(id, abilities);
         } catch (RuntimeException error) {
