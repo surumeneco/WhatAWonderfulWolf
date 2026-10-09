@@ -3,6 +3,10 @@
 # reload後も既存Phenotype Snapshotは再解読されません。各設定の適用時点は項目ごとのcommentを参照してください。
 config-version: 1
 
+commands:
+  # /www info により一度に表示する最大個体数です。
+  info-max-results: 10
+
 founder-target:
   natural:
     abilities:
