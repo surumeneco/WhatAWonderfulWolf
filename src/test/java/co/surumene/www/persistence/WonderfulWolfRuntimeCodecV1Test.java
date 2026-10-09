@@ -32,6 +32,31 @@ final class WonderfulWolfRuntimeCodecV1Test {
     }
 
     @Test
+    void roundTripsOutOfRangeAdminOverridesWithoutChangingGenomeOrPhenotype() {
+        WonderfulWolfIndividual base = individual(false);
+        WonderfulWolfIndividual source = base.withAdminAbilityOverrides(Map.of(
+                Ability.HEALTH, 200.0, Ability.SIZE, 0.75, Ability.ATTACK_DAMAGE, 60.0));
+        WonderfulWolfIndividual restored = codec.decode(codec.encode(source),
+                source.genome(), source.phenotypeSnapshot());
+        assertEquals(source, restored);
+        assertEquals(base.phenotypeSnapshot(), restored.phenotypeSnapshot());
+        assertEquals(200.0, restored.adminAbilityOverrides().get(Ability.HEALTH));
+    }
+
+    @Test
+    void decodesLegacyV1StateWithoutAdminOverrides() {
+        WonderfulWolfIndividual original = individual(false);
+        byte[] bytes = codec.encode(original);
+        // V1 had no trailing override count.
+        byte[] legacy = Arrays.copyOf(bytes, bytes.length - 1);
+        legacy[4] = 1;
+        WonderfulWolfIndividual restored = codec.decode(legacy,
+                original.genome(), original.phenotypeSnapshot());
+        assertTrue(restored.adminAbilityOverrides().isEmpty());
+        assertEquals(original, restored);
+    }
+
+    @Test
     void producesCanonicalBytesRegardlessOfMapInsertionOrder() {
         WonderfulWolfIndividual first = individual(false);
         WonderfulWolfIndividual reversed = individual(true);
@@ -42,7 +67,7 @@ final class WonderfulWolfRuntimeCodecV1Test {
     @Test
     void rejectsUnsupportedContainerVersionAndTrailingBytes() {
         byte[] encoded = codec.encode(individual(false));
-        encoded[4] = 2;
+        encoded[4] = 3;
         assertThrows(PersistenceCodecException.class, () ->
                 codec.decode(encoded, genome(), phenotype()));
 
