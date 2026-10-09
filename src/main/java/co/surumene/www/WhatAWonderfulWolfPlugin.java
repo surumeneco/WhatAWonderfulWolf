@@ -179,7 +179,8 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                         new co.surumene.www.command.WonderfulWolfAdminInfo(
                                 Bukkit.getServer(),
                                 genomeLib.engine(),
-                                lifecycle::currentWolfProfile));
+                                lifecycle::currentWolfProfile),
+                        commands);
         getLifecycleManager().registerEventHandler(
                 io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents.COMMANDS,
                 event -> event.registrar().register(
