@@ -18,6 +18,8 @@ final class WwwConfigValidationTest {
 
     @Test
     void rejectsInvalidConfigurationInsteadOfPublishingPartialState() {
+        assertInvalid(config -> config.set("commands.info-max-results", 0));
+        assertInvalid(config -> config.set("commands.info-max-results", 2.5));
         assertInvalid(config -> config.set("runtime.spawn.natural-conversion-probability", 1.01));
         assertInvalid(config -> config.set("runtime.relationship.passive-increase-probability", Double.NaN));
         assertInvalid(config -> config.set("runtime.action-distance.normal-blocks", 4.0));
