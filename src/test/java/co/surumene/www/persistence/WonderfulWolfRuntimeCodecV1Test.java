@@ -41,7 +41,7 @@ final class WonderfulWolfRuntimeCodecV1Test {
                 source.genome(), source.phenotypeSnapshot());
         assertEquals(source, restored);
         assertEquals(base.phenotypeSnapshot(), restored.phenotypeSnapshot());
-        assertEquals(200.0, restored.adminAbilityOverrides().get(Ability.HEALTH));
+        assertEquals(200.0, restored.adminAbilityOverrides().get(Ability.HEALTH), 0.0);
     }
 
     @Test
@@ -51,14 +51,14 @@ final class WonderfulWolfRuntimeCodecV1Test {
                 parent, Ability.HEALTH, "set", 200.0);
         modified = WonderfulWolfCommandMutation.withAbility(
                 modified, Ability.HEALTH, "add", -15.0);
-        assertEquals(185.0, modified.adminAbilityOverrides().get(Ability.HEALTH));
+        assertEquals(185.0, modified.adminAbilityOverrides().get(Ability.HEALTH), 0.0);
         assertSame(parent.genome(), modified.genome());
         assertSame(parent.phenotypeSnapshot(), modified.phenotypeSnapshot());
         assertEquals(parent.phenotypeSnapshot().abilities(),
                 modified.phenotypeSnapshot().abilities());
         WonderfulWolfIndividual persisted = modified.withAdultBiologicalTime(123L)
                 .withStorage(modified.weapon(), modified.inventory());
-        assertEquals(185.0, persisted.adminAbilityOverrides().get(Ability.HEALTH));
+        assertEquals(185.0, persisted.adminAbilityOverrides().get(Ability.HEALTH), 0.0);
         WonderfulWolfIndividual decoded = codec.decode(codec.encode(persisted),
                 parent.genome(), parent.phenotypeSnapshot());
         assertEquals(persisted, decoded);
