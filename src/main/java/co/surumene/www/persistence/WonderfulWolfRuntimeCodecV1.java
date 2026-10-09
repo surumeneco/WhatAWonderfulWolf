@@ -1,5 +1,6 @@
 package co.surumene.www.persistence;
 
+import co.surumene.www.domain.Ability;
 import co.surumene.www.domain.ActionDistance;
 import co.surumene.www.domain.Mode;
 import co.surumene.www.domain.PhenotypeSnapshot;
@@ -12,7 +13,7 @@ import java.util.*;
 
 public final class WonderfulWolfRuntimeCodecV1 {
     private static final int MAGIC = 0x57575254; // WWRT
-    public static final int CONTAINER_VERSION = 1;
+    public static final int CONTAINER_VERSION = 2;
 
     public byte[] encode(WonderfulWolfIndividual individual) {
         Objects.requireNonNull(individual, "individual");
@@ -33,6 +34,7 @@ public final class WonderfulWolfRuntimeCodecV1 {
             writeInventory(out, individual.inventory());
             out.writeInt(individual.generation());
             writePedigree(out, individual.pedigree());
+            writeAbilityOverrides(out, individual.adminAbilityOverrides());
 
             out.flush();
             return buffer.toByteArray();
@@ -55,7 +57,7 @@ public final class WonderfulWolfRuntimeCodecV1 {
                 throw new PersistenceCodecException("invalid runtime state magic");
             }
             int version = in.readUnsignedByte();
-            if (version != CONTAINER_VERSION) {
+            if (version != 1 && version != CONTAINER_VERSION) {
                 throw new PersistenceCodecException("unsupported runtime state container version: " + version);
             }
 
@@ -70,6 +72,8 @@ public final class WonderfulWolfRuntimeCodecV1 {
             Map<Integer, ItemStackSnapshot> inventory = readInventory(in);
             int generation = in.readInt();
             PedigreeSnapshot pedigree = readPedigree(in);
+            Map<Ability, Double> overrides = version >= 2
+                    ? readAbilityOverrides(in) : Map.of();
 
             if (in.available() != 0) {
                 throw new PersistenceCodecException("trailing bytes are not allowed in runtime state");
@@ -88,7 +92,8 @@ public final class WonderfulWolfRuntimeCodecV1 {
                     weapon,
                     inventory,
                     generation,
-                    pedigree);
+                    pedigree,
+                    overrides);
         } catch (PersistenceCodecException e) {
             throw e;
         } catch (EOFException e) {
@@ -98,6 +103,33 @@ public final class WonderfulWolfRuntimeCodecV1 {
         } catch (IllegalArgumentException e) {
             throw new PersistenceCodecException("malformed runtime state: " + e.getMessage(), e);
         }
+    }
+
+    private static void writeAbilityOverrides(
+            DataOutputStream out, Map<Ability, Double> overrides) throws IOException {
+        out.writeByte(overrides.size());
+        for (Ability ability : Ability.values()) {
+            if (!overrides.containsKey(ability)) continue;
+            writeString(out, ability.name());
+            out.writeDouble(overrides.get(ability));
+        }
+    }
+
+    private static Map<Ability, Double> readAbilityOverrides(DataInputStream in)
+            throws IOException {
+        int count = in.readUnsignedByte();
+        if (count > Ability.values().length) {
+            throw new PersistenceCodecException("too many ability overrides");
+        }
+        EnumMap<Ability, Double> values = new EnumMap<>(Ability.class);
+        for (int i = 0; i < count; i++) {
+            Ability ability = readEnum(in, Ability.class);
+            double value = in.readDouble();
+            if (values.putIfAbsent(ability, value) != null) {
+                throw new PersistenceCodecException("duplicate ability override " + ability);
+            }
+        }
+        return values;
     }
 
     private static void writeOptionalUuid(DataOutputStream out, Optional<UUID> value) throws IOException {
