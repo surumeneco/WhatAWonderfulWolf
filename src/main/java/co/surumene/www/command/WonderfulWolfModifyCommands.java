@@ -123,9 +123,33 @@ final class WonderfulWolfModifyCommands {
                             loaded.find(wolf.getUniqueId()).orElseThrow(),
                             ability, operation, operand));
                 }
-                for (Map.Entry<Wolf, WonderfulWolfIndividual> entry : updated.entrySet()) {
-                    loaded.saveAndRegister(entry.getKey(), entry.getValue());
-                    abilities.refresh(entry.getKey());
+                java.util.LinkedHashMap<Wolf, WonderfulWolfIndividual> previous =
+                        new java.util.LinkedHashMap<>();
+                for (Wolf wolf : updated.keySet()) {
+                    previous.put(wolf, loaded.find(wolf.getUniqueId()).orElseThrow());
+                }
+                try {
+                    for (Map.Entry<Wolf, WonderfulWolfIndividual> entry : updated.entrySet()) {
+                        loaded.saveAndRegister(entry.getKey(), entry.getValue());
+                        abilities.refresh(entry.getKey());
+                        if (entry.getKey().isAdult() && abilities.find(
+                                entry.getKey().getUniqueId()).isEmpty()) {
+                            throw new IllegalArgumentException(
+                                    "Paper cannot apply requested ability: " + ability);
+                        }
+                    }
+                } catch (RuntimeException failure) {
+                    // Restore all prior persistent snapshots, including on earlier
+                    // targets of a multi-entity selector.
+                    for (Map.Entry<Wolf, WonderfulWolfIndividual> entry : previous.entrySet()) {
+                        try {
+                            loaded.saveAndRegister(entry.getKey(), entry.getValue());
+                            abilities.refresh(entry.getKey());
+                        } catch (RuntimeException rollbackError) {
+                            failure.addSuppressed(rollbackError);
+                        }
+                    }
+                    throw failure;
                 }
             }
             sender.sendMessage(Component.text(

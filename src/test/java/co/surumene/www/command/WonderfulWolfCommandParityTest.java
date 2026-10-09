@@ -27,8 +27,16 @@ final class WonderfulWolfCommandParityTest {
 
     @Test
     void rejectsInvalidAdministrativeValues() {
+        assertTrue(WonderfulWolfCommandMutation.toNormalized(Ability.HEALTH, 200.0) > 1.5);
+        assertTrue(WonderfulWolfCommandMutation.toNormalized(Ability.SIZE, 0.75) < 0.0);
+        assertEquals(200.0,
+                WonderfulWolfCommandMutation.validateCanonical(Ability.HEALTH, 200.0));
+        assertEquals(8.0,
+                WonderfulWolfCommandMutation.validateCanonical(Ability.INVENTORY, 8.49));
         assertThrows(IllegalArgumentException.class,
-                () -> WonderfulWolfCommandMutation.toNormalized(Ability.HEALTH, 200.0));
+                () -> WonderfulWolfCommandMutation.validateCanonical(Ability.HEALTH, 0.0));
+        assertThrows(IllegalArgumentException.class,
+                () -> WonderfulWolfCommandMutation.validateCanonical(Ability.DEFENSE, -1.0));
         assertThrows(IllegalArgumentException.class,
                 () -> WonderfulWolfCommandMutation.toNormalized(Ability.SIZE, Double.NaN));
     }

@@ -117,6 +117,8 @@ public final class PaperAbilityProjector {
                             + wolf.getUniqueId()
                             + ": "
                             + error.getMessage());
+            // Report invalid Paper attribute values to the caller.
+            throw error;
         }
     }
 }

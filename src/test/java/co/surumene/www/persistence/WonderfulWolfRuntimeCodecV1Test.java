@@ -1,6 +1,7 @@
 package co.surumene.www.persistence;
 
 import co.surumene.www.domain.*;
+import co.surumene.www.command.WonderfulWolfCommandMutation;
 import co.surumene.www.individual.*;
 import co.surumene.wgl.api.*;
 import org.junit.jupiter.api.Test;
@@ -32,6 +33,51 @@ final class WonderfulWolfRuntimeCodecV1Test {
     }
 
     @Test
+    void roundTripsOutOfRangeAdminOverridesWithoutChangingGenomeOrPhenotype() {
+        WonderfulWolfIndividual base = individual(false);
+        WonderfulWolfIndividual source = base.withAdminAbilityOverrides(Map.of(
+                Ability.HEALTH, 200.0, Ability.SIZE, 0.75, Ability.ATTACK_DAMAGE, 60.0));
+        WonderfulWolfIndividual restored = codec.decode(codec.encode(source),
+                source.genome(), source.phenotypeSnapshot());
+        assertEquals(source, restored);
+        assertEquals(base.phenotypeSnapshot(), restored.phenotypeSnapshot());
+        assertEquals(200.0, restored.adminAbilityOverrides().get(Ability.HEALTH), 0.0);
+    }
+
+    @Test
+    void adminModificationChangesOnlyRuntimeOverlayAndSurvivesOtherStateChanges() {
+        WonderfulWolfIndividual parent = individual(false);
+        WonderfulWolfIndividual modified = WonderfulWolfCommandMutation.withAbility(
+                parent, Ability.HEALTH, "set", 200.0);
+        modified = WonderfulWolfCommandMutation.withAbility(
+                modified, Ability.HEALTH, "add", -15.0);
+        assertEquals(185.0, modified.adminAbilityOverrides().get(Ability.HEALTH), 0.0);
+        assertSame(parent.genome(), modified.genome());
+        assertSame(parent.phenotypeSnapshot(), modified.phenotypeSnapshot());
+        assertEquals(parent.phenotypeSnapshot().abilities(),
+                modified.phenotypeSnapshot().abilities());
+        WonderfulWolfIndividual persisted = modified.withAdultBiologicalTime(123L)
+                .withStorage(modified.weapon(), modified.inventory());
+        assertEquals(185.0, persisted.adminAbilityOverrides().get(Ability.HEALTH), 0.0);
+        WonderfulWolfIndividual decoded = codec.decode(codec.encode(persisted),
+                parent.genome(), parent.phenotypeSnapshot());
+        assertEquals(persisted, decoded);
+    }
+
+    @Test
+    void decodesLegacyV1StateWithoutAdminOverrides() {
+        WonderfulWolfIndividual original = individual(false);
+        byte[] bytes = codec.encode(original);
+        // V1 had no trailing override count.
+        byte[] legacy = Arrays.copyOf(bytes, bytes.length - 1);
+        legacy[4] = 1;
+        WonderfulWolfIndividual restored = codec.decode(legacy,
+                original.genome(), original.phenotypeSnapshot());
+        assertTrue(restored.adminAbilityOverrides().isEmpty());
+        assertEquals(original, restored);
+    }
+
+    @Test
     void producesCanonicalBytesRegardlessOfMapInsertionOrder() {
         WonderfulWolfIndividual first = individual(false);
         WonderfulWolfIndividual reversed = individual(true);
@@ -42,7 +88,7 @@ final class WonderfulWolfRuntimeCodecV1Test {
     @Test
     void rejectsUnsupportedContainerVersionAndTrailingBytes() {
         byte[] encoded = codec.encode(individual(false));
-        encoded[4] = 2;
+        encoded[4] = 3;
         assertThrows(PersistenceCodecException.class, () ->
                 codec.decode(encoded, genome(), phenotype()));
 

@@ -102,6 +102,41 @@ final class EffectiveAbilityPipelineTest {
                 1.0e-12);
     }
 
+    @Test
+    void adminOverridesUseCanonicalValuesWithoutMutatingGenomePhenotype() {
+        PhenotypeSnapshot source = snapshot(Personality.SERIOUS, List.of(), List.of(), 0.5);
+        Map<Ability, Double> overrides = Map.of(
+                Ability.HEALTH, 200.0,
+                Ability.SIZE, 0.75,
+                Ability.MOVEMENT_SPEED, 90.0,
+                Ability.INVENTORY, 70.0);
+        EffectiveAbilities effective = EffectiveAbilityPipeline.evaluate(
+                source, 672.0, runtime, overrides);
+        assertEquals(200.0, effective.get(Ability.HEALTH).baseCanonical(), 1e-9);
+        assertEquals(200.0, effective.get(Ability.HEALTH).effectiveCanonical(), 1e-9);
+        assertEquals(0.75, effective.get(Ability.SIZE).effectiveCanonical(), 1e-9);
+        assertEquals(90.0, effective.get(Ability.MOVEMENT_SPEED).effectiveCanonical(), 1e-9);
+        assertEquals(AbilityRank.IMPOSSIBLE, effective.get(Ability.HEALTH).rank());
+        assertEquals(AbilityRank.MISERABLE, effective.get(Ability.SIZE).rank());
+        // The Minecraft inventory representation has a fixed maximum of 45 slots.
+        assertEquals(45.0, effective.get(Ability.INVENTORY).effectiveCanonical(), 1e-9);
+        assertEquals(0.5, source.abilities().get(Ability.HEALTH), 1e-9);
+    }
+
+    @Test
+    void lowAdminHealthIsNotRaisedToNaturalBaselineByAgeCalculation() {
+        PhenotypeSnapshot source = snapshot(Personality.SERIOUS, List.of(), List.of(), 0.5);
+        EffectiveAbility atPeak = EffectiveAbilityPipeline.evaluate(
+                source, 672.0, runtime, Map.of(Ability.HEALTH, 5.0))
+                .get(Ability.HEALTH);
+        assertEquals(5.0, atPeak.baseCanonical(), 1e-9);
+        assertEquals(5.0, atPeak.effectiveCanonical(), 1e-9);
+        EffectiveAbility aged = EffectiveAbilityPipeline.evaluate(
+                source, 9000.0, runtime, Map.of(Ability.HEALTH, 5.0))
+                .get(Ability.HEALTH);
+        assertEquals(1.0, aged.effectiveCanonical(), 1e-9);
+    }
+
     private static PhenotypeSnapshot snapshot(
             Personality personality,
             List<ExpressedTrait> traits,

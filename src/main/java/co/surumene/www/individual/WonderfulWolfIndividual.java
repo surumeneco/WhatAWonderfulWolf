@@ -1,11 +1,13 @@
 package co.surumene.www.individual;
 
+import co.surumene.www.domain.Ability;
 import co.surumene.www.domain.ActionDistance;
 import co.surumene.www.domain.Mode;
 import co.surumene.www.domain.PhenotypeSnapshot;
 import co.surumene.wgl.api.DiploidGenome;
 
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -25,7 +27,29 @@ public record WonderfulWolfIndividual(
         Optional<ItemStackSnapshot> weapon,
         Map<Integer, ItemStackSnapshot> inventory,
         int generation,
-        PedigreeSnapshot pedigree) {
+        PedigreeSnapshot pedigree,
+        Map<Ability, Double> adminAbilityOverrides) {
+
+    /** Source-compatible constructor for individuals without administrative overrides. */
+    public WonderfulWolfIndividual(
+            DiploidGenome genome, PhenotypeSnapshot phenotypeSnapshot,
+            Optional<UUID> ownerId, long adultBiologicalTime, Mode mode,
+            Optional<UUID> commanderId, ActionDistance actionDistance,
+            Optional<WorldPosition> waitLocation, Map<UUID, Long> affection,
+            Optional<ItemStackSnapshot> weapon, Map<Integer, ItemStackSnapshot> inventory,
+            int generation, PedigreeSnapshot pedigree) {
+        this(genome, phenotypeSnapshot, ownerId, adultBiologicalTime, mode,
+                commanderId, actionDistance, waitLocation, affection, weapon,
+                inventory, generation, pedigree, Map.of());
+    }
+
+    public WonderfulWolfIndividual withAdminAbilityOverrides(
+            Map<Ability, Double> overrides) {
+        return new WonderfulWolfIndividual(
+                genome, phenotypeSnapshot, ownerId, adultBiologicalTime, mode,
+                commanderId, actionDistance, waitLocation, affection, weapon,
+                inventory, generation, pedigree, overrides);
+    }
 
     public static final long MAX_ABSOLUTE_AFFECTION = 1_000_000_000_000_000L;
 
@@ -33,14 +57,14 @@ public record WonderfulWolfIndividual(
         return new WonderfulWolfIndividual(
                 genome, phenotypeSnapshot, ownerId, value, mode, commanderId,
                 actionDistance, waitLocation, affection, weapon, inventory,
-                generation, pedigree);
+                generation, pedigree, adminAbilityOverrides);
     }
 
     public WonderfulWolfIndividual withAffection(Map<UUID, Long> value) {
         return new WonderfulWolfIndividual(
                 genome, phenotypeSnapshot, ownerId, adultBiologicalTime, mode,
                 commanderId, actionDistance, waitLocation, value, weapon,
-                inventory, generation, pedigree);
+                inventory, generation, pedigree, adminAbilityOverrides);
     }
 
     public WonderfulWolfIndividual withCommandState(
@@ -51,7 +75,7 @@ public record WonderfulWolfIndividual(
         return new WonderfulWolfIndividual(
                 genome, phenotypeSnapshot, ownerId, adultBiologicalTime,
                 newMode, newCommanderId, newActionDistance, newWaitLocation,
-                affection, weapon, inventory, generation, pedigree);
+                affection, weapon, inventory, generation, pedigree, adminAbilityOverrides);
     }
 
     public WonderfulWolfIndividual withStorage(
@@ -62,7 +86,7 @@ public record WonderfulWolfIndividual(
                 commanderId, actionDistance, waitLocation, affection,
                 Objects.requireNonNull(newWeapon, "newWeapon"),
                 Objects.requireNonNull(newInventory, "newInventory"),
-                generation, pedigree);
+                generation, pedigree, adminAbilityOverrides);
     }
 
     public WonderfulWolfIndividual {
@@ -111,5 +135,19 @@ public record WonderfulWolfIndividual(
             inventoryCopy.put(slot, Objects.requireNonNull(entry.getValue(), "inventory item"));
         }
         inventory = Collections.unmodifiableMap(inventoryCopy);
+        EnumMap<Ability, Double> overridesCopy = new EnumMap<>(Ability.class);
+        for (Map.Entry<Ability, Double> entry : Objects.requireNonNull(
+                adminAbilityOverrides, "adminAbilityOverrides").entrySet()) {
+            Ability ability = Objects.requireNonNull(entry.getKey(), "ability override key");
+            Double value = Objects.requireNonNull(entry.getValue(), "ability override value");
+            if (!Double.isFinite(value) || value < 0.0) {
+                throw new IllegalArgumentException("ability override must be finite and >= 0");
+            }
+            if ((ability == Ability.HEALTH || ability == Ability.SIZE) && value <= 0.0) {
+                throw new IllegalArgumentException("health and size overrides must be > 0");
+            }
+            overridesCopy.put(ability, value);
+        }
+        adminAbilityOverrides = Collections.unmodifiableMap(overridesCopy);
     }
 }
