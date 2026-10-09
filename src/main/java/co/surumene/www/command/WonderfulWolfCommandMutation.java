@@ -62,6 +62,26 @@ public final class WonderfulWolfCommandMutation {
         return Math.max(0.0, Math.min(1.5, value));
     }
 
+    public static WonderfulWolfIndividual withOwner(
+            WonderfulWolfIndividual original, java.util.UUID ownerId) {
+        Objects.requireNonNull(original, "original");
+        Objects.requireNonNull(ownerId, "ownerId");
+        return new WonderfulWolfIndividual(
+                original.genome(),
+                original.phenotypeSnapshot(),
+                Optional.of(ownerId),
+                original.adultBiologicalTime(),
+                original.mode(),
+                original.commanderId(),
+                original.actionDistance(),
+                original.waitLocation(),
+                original.affection(),
+                original.weapon(),
+                original.inventory(),
+                original.generation(),
+                original.pedigree());
+    }
+
     public static WonderfulWolfIndividual withAbility(
             WonderfulWolfIndividual original, Ability ability, String operation, double operand) {
         Objects.requireNonNull(original, "original");
