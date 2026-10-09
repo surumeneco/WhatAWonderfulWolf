@@ -200,22 +200,16 @@ public final class WonderfulWolfAdminCommands {
                         "Format Version: "
                                 + individual.genome().genomeFormatVersion(),
                         NamedTextColor.GRAY));
-                sender.sendMessage(Component.text(
-                        "ParentSource(Base64 WGLP): "
-                                + OffspringParentSourceCodec.encode(
-                                        new BreedingParentSource.DiploidParent(
-                                                individual.genome()),
-                                        engine),
-                        NamedTextColor.GRAY));
+                sendCopyable(sender, "Entity source", "wolf_" + wolf.getUniqueId());
+                sendCopyable(sender, "Parent source (WGLP)",
+                        OffspringParentSourceCodec.encodeToken(
+                                new BreedingParentSource.DiploidParent(individual.genome()),
+                                engine));
                 sender.sendMessage(Component.text(
                         "Lengths A/B: " + raw.chromosomeLengths(),
                         NamedTextColor.GRAY));
-                sender.sendMessage(Component.text(
-                        "A(bits): " + raw.haplotypeA(),
-                        NamedTextColor.WHITE));
-                sender.sendMessage(Component.text(
-                        "B(bits): " + raw.haplotypeB(),
-                        NamedTextColor.WHITE));
+                sendCopyable(sender, "A(bits)", raw.haplotypeA());
+                sendCopyable(sender, "B(bits)", raw.haplotypeB());
             }
             return targets.size();
         } catch (Exception error) {
@@ -277,17 +271,9 @@ public final class WonderfulWolfAdminCommands {
         CommandSender sender = context.getSource().getSender();
         try {
             BreedingParentSource sourceA =
-                    OffspringParentSourceCodec.decode(
-                            StringArgumentType.getString(
-                                    context,
-                                    "sourceA"),
-                            engine);
+                    resolveParentSource(StringArgumentType.getString(context, "sourceA"));
             BreedingParentSource sourceB =
-                    OffspringParentSourceCodec.decode(
-                            StringArgumentType.getString(
-                                    context,
-                                    "sourceB"),
-                            engine);
+                    resolveParentSource(StringArgumentType.getString(context, "sourceB"));
 
             WonderfulWolfOffspringService.Result bred =
                     offspringService.breed(
@@ -329,6 +315,32 @@ public final class WonderfulWolfAdminCommands {
         } catch (Exception error) {
             error(sender, safeMessage(error));
             return 0;
+        }
+    }
+
+    private BreedingParentSource resolveParentSource(String token) {
+        if (token.startsWith("wolf_")) {
+            UUID id = UUID.fromString(token.substring("wolf_".length()));
+            Entity entity = Bukkit.getEntity(id);
+            if (!(entity instanceof Wolf wolf) || !ensureWonderful(wolf)) {
+                throw new IllegalArgumentException("Wonderful Wolf not found: " + id);
+            }
+            return new BreedingParentSource.DiploidParent(
+                    loaded.find(id).orElseThrow().genome());
+        }
+        if (token.startsWith("wglp_")) {
+            return OffspringParentSourceCodec.decodeToken(token, engine);
+        }
+        return OffspringParentSourceCodec.decode(token, engine);
+    }
+
+    private static void sendCopyable(CommandSender sender, String label, String value) {
+        if (sender instanceof Player) {
+            sender.sendMessage(Component.text(
+                    label + " — クリックしてコピー (" + value.length() + "文字)",
+                    NamedTextColor.AQUA).clickEvent(ClickEvent.copyToClipboard(value)));
+        } else {
+            sender.sendMessage(label + ": " + value);
         }
     }
 
