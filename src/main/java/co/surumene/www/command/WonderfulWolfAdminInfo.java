@@ -212,12 +212,19 @@ public final class WonderfulWolfAdminInfo {
             Ability ability,
             WonderfulWolfIndividual individual,
             Optional<EffectiveAbilities> effective) {
-        double normalized = individual.phenotypeSnapshot()
-                .abilities()
-                .get(ability);
+        double genomeNormalized = individual.phenotypeSnapshot()
+                .abilities().get(ability);
+        double normalized = individual.adminAbilityOverrides().containsKey(ability)
+                ? Math.max(0.0, (individual.adminAbilityOverrides().get(ability)
+                        - AbilityScale.toCanonical(ability, 0.0))
+                        / (AbilityScale.toCanonical(ability, 1.0)
+                                - AbilityScale.toCanonical(ability, 0.0)))
+                : genomeNormalized;
         double base = effective
                 .map(v -> v.get(ability).baseCanonical())
-                .orElseGet(() -> AbilityScale.toCanonical(ability, normalized));
+                .orElseGet(() -> individual.adminAbilityOverrides()
+                        .getOrDefault(ability,
+                                AbilityScale.toCanonical(ability, genomeNormalized)));
         double current = effective
                 .map(v -> observedCanonical(
                         wolf,
