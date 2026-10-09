@@ -30,6 +30,18 @@ final class OffspringParentSourceCodecTest {
     }
 
     @Test
+    void roundTripsWwcCompatibleParentToken() {
+        DiploidGenome genome = new DiploidGenome(1, List.of(
+                new ChromosomePair(BitSequence.fromBits("101"), BitSequence.fromBits("010"))));
+        BreedingParentSource source = new BreedingParentSource.DiploidParent(genome);
+        String token = OffspringParentSourceCodec.encodeToken(source, engine);
+        assertTrue(token.startsWith("wglp_"));
+        assertEquals(source, OffspringParentSourceCodec.decodeToken(token, engine));
+        assertThrows(IllegalArgumentException.class,
+                () -> OffspringParentSourceCodec.decodeToken("wglp_***", engine));
+    }
+
+    @Test
     void rejectsInvalidBase64OrInvalidWglp() {
         assertThrows(
                 IllegalArgumentException.class,
