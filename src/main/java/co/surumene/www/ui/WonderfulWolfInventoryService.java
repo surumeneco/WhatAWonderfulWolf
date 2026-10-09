@@ -311,10 +311,12 @@ public final class WonderfulWolfInventoryService {
                 .orElseGet(() -> loaded.find(wolf.getUniqueId())
                         .map(individual -> AbilityScale.finalizeEffective(
                                 Ability.INVENTORY,
-                                AbilityScale.toCanonical(
+                                individual.adminAbilityOverrides().getOrDefault(
                                         Ability.INVENTORY,
-                                        individual.phenotypeSnapshot()
-                                                .abilities().get(Ability.INVENTORY))))
+                                        AbilityScale.toCanonical(
+                                                Ability.INVENTORY,
+                                                individual.phenotypeSnapshot()
+                                                        .abilities().get(Ability.INVENTORY)))))
                         .orElse(0.0));
         return Math.max(0, Math.min(
                 WonderfulWolfInventoryPolicy.MAX_CARGO_SLOTS,
