@@ -146,6 +146,9 @@ final class WonderfulWolfSummonCommands {
             }
         }
         abilities.refresh(wolf);
+        if (wolf.isAdult() && abilities.find(wolf.getUniqueId()).isEmpty()) {
+            throw new IllegalArgumentException("Paper cannot apply summoned ability values");
+        }
     }
 
     private static void validateOptions(Map<String, Object> root, CommandSender sender) {
