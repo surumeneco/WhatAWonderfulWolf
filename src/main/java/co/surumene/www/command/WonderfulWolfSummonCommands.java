@@ -137,6 +137,8 @@ final class WonderfulWolfSummonCommands {
                 if (!wolf.isTamed()) {
                     wolf.setOwner(player);
                 }
+                loaded.saveAndRegister(wolf, WonderfulWolfCommandMutation.withOwner(
+                        loaded.find(wolf.getUniqueId()).orElseThrow(), player.getUniqueId()));
                 commands.changeMode(wolf, mode, player.getUniqueId());
             }
         }
