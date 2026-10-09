@@ -10,8 +10,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Explicit admin edits affect the stored phenotype snapshot, not the inherited
- * genome. Ordinary breeding continues to use the underlying genome.
+ * Explicit admin edits are independent canonical runtime overrides and leave
+ * both the inherited genome and Genome-derived phenotype snapshot unchanged.
  */
 public final class WonderfulWolfCommandMutation {
     private WonderfulWolfCommandMutation() {}
@@ -58,6 +58,10 @@ public final class WonderfulWolfCommandMutation {
         }
         if (value < 0.0) {
             throw new IllegalArgumentException(ability + " must be >= 0");
+        }
+        // Paper's scale attribute cannot represent values smaller than 1/16.
+        if (ability == Ability.SIZE && value < 0.0625) {
+            throw new IllegalArgumentException("size must be >= 0.0625");
         }
         return value;
     }
