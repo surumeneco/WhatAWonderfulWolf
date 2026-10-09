@@ -390,11 +390,13 @@ public final class WonderfulWolfAdminCommands {
             error(sender, "対象にWonderful Wolfが含まれていません。");
             return false;
         }
-        if (targets.size() > MAX_TARGETS) {
+        int maximum = plugin.getConfig().getInt(
+                "commands.info-max-results", MAX_TARGETS);
+        if (targets.size() > maximum) {
             error(
                     sender,
                     "対象が多すぎます。最大"
-                            + MAX_TARGETS
+                            + maximum
                             + "個体です。");
             return false;
         }
