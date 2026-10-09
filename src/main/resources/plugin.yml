@@ -15,5 +15,17 @@ permissions:
     default: op
   www.command.summon:
     default: op
+  www.command.modify:
+    default: op
+  www.command.config:
+    default: op
+  www.command.config.get:
+    default: op
+  www.command.config.list:
+    default: op
+  www.command.config.set:
+    default: op
+  www.command.config.reset:
+    default: op
   www.command.reload:
     default: op
