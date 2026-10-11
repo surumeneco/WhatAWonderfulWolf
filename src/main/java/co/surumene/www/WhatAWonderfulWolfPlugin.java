@@ -211,7 +211,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(breedingListener, this);
         Bukkit.getPluginManager().registerEvents(naturalSpawnListener, this);
         Bukkit.getPluginManager().registerEvents(
-                new co.surumene.www.behavior.WonderfulWolfTameListener(loaded), this);
+                new co.surumene.www.behavior.WonderfulWolfTameListener(this, loaded), this);
         Bukkit.getPluginManager().registerEvents(
                 new WonderfulWolfRelationshipListener(
                         loaded,
