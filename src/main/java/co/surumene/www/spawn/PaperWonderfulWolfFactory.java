@@ -14,7 +14,6 @@ import org.bukkit.event.entity.CreatureSpawnEvent;
 import java.util.Objects;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Consumer;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -73,13 +72,22 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
         Optional<UUID> owner = wolf.isTamed()
                 ? Optional.ofNullable(wolf.getOwner()).map(AnimalTamer::getUniqueId)
                 : Optional.empty();
-        long adultTime = wolf.isAdult() ? Math.max(0L, biologicalTime.getAsLong()) : 0L;
+        boolean adult = wolf.isAdult();
+        long adultTime = adult ? Math.max(0L, biologicalTime.getAsLong()) : 0L;
         WonderfulWolfFactory frozen = factory.snapshot();
         pendingNatural.put(id, wolf);
         boolean accepted = async.submit(
                 () -> frozen.createFounder(FounderOrigin.NATURAL, owner, adultTime, seed),
                 result -> {
                     if (pendingNatural.remove(id) != wolf || !wolf.isValid() || wolf.isDead()) return;
+                    Optional<UUID> currentOwner = wolf.isTamed()
+                            ? Optional.ofNullable(wolf.getOwner()).map(AnimalTamer::getUniqueId)
+                            : Optional.empty();
+                    if (!owner.equals(currentOwner) || adult != wolf.isAdult()) {
+                        // Taming/growth during synthesis must not commit stale identity data.
+                        requestNaturalAsync(wolf, seed);
+                        return;
+                    }
                     RestoreResult state = loaded.register(wolf);
                     if (!(state instanceof RestoreResult.NotWonderful)) return;
                     if (result instanceof WonderfulWolfCreationResult.Success success) {
