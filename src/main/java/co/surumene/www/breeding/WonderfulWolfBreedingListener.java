@@ -1,6 +1,7 @@
 package co.surumene.www.breeding;
 
 import co.surumene.www.individual.WonderfulWolfIndividual;
+import co.surumene.www.spawn.AsyncWolfFounderCoordinator;
 import co.surumene.www.persistence.RestoreResult;
 import co.surumene.www.persistence.WonderfulWolfLoadedIndividuals;
 import net.kyori.adventure.text.Component;
@@ -23,6 +24,7 @@ public final class WonderfulWolfBreedingListener implements Listener {
     private final WonderfulWolfBreedingService breeding;
     private final LongSupplier seedSupplier;
     private final Logger logger;
+    private AsyncWolfFounderCoordinator async;
 
     public WonderfulWolfBreedingListener(
             WonderfulWolfLoadedIndividuals loaded,
@@ -33,6 +35,10 @@ public final class WonderfulWolfBreedingListener implements Listener {
         this.breeding = Objects.requireNonNull(breeding, "breeding");
         this.seedSupplier = Objects.requireNonNull(seedSupplier, "seedSupplier");
         this.logger = Objects.requireNonNull(logger, "logger");
+    }
+
+    public void useAsyncCoordinator(AsyncWolfFounderCoordinator coordinator) {
+        this.async = Objects.requireNonNull(coordinator);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -52,31 +58,46 @@ public final class WonderfulWolfBreedingListener implements Listener {
         Optional<UUID> childOwner = Optional.ofNullable(child.getOwner())
                 .map(AnimalTamer::getUniqueId);
 
-        WonderfulWolfBreedingOutcome outcome;
-        try {
-            outcome = breeding.breed(
-                    new BreedingParent(displayName(mother), motherState.orElseThrow()),
-                    new BreedingParent(displayName(father), fatherState.orElseThrow()),
-                    childOwner,
-                    seedSupplier.getAsLong());
-        } catch (RuntimeException error) {
-            logger.warning(
-                    "WWW breeding failed unexpectedly for child "
-                            + child.getUniqueId()
-                            + ": "
-                            + safeMessage(error));
+        // WGL homology and breeding can take seconds on large genomes.
+        // The vanilla child is retained and converted only on successful computation;
+        // NoViableOffspring continues to mean an unchanged vanilla child.
+        BreedingParent a = new BreedingParent(displayName(mother), motherState.orElseThrow());
+        BreedingParent b = new BreedingParent(displayName(father), fatherState.orElseThrow());
+        long seed = seedSupplier.getAsLong();
+        if (async != null) {
+            WonderfulWolfBreedingService frozen = breeding.snapshot();
+            UUID childId = child.getUniqueId();
+            boolean accepted = async.submit(
+                    () -> frozen.breed(a, b, childOwner, seed),
+                    outcome -> commit(child, childId, outcome),
+                    error -> logger.warning("WWW breeding computation failed for "
+                            + childId + ": " + safeMessage(error)));
+            if (!accepted) logger.warning("WWW breeding worker queue full for " + childId
+                    + "; leaving vanilla child unchanged");
             return;
         }
+        try {
+            commit(child, child.getUniqueId(), breeding.breed(a, b, childOwner, seed));
+        } catch (RuntimeException error) {
+            logger.warning("WWW breeding failed unexpectedly for child "
+                    + child.getUniqueId() + ": " + safeMessage(error));
+        }
+    }
 
+    private void commit(Wolf child, UUID originalId, WonderfulWolfBreedingOutcome outcome) {
+        if (!originalId.equals(child.getUniqueId())
+                || !child.isValid() || child.isDead()) return;
+        if (loaded.find(originalId).isPresent()) return;
         if (outcome instanceof WonderfulWolfBreedingOutcome.Success success) {
             try {
+                // An external plugin might have replaced this child's PDC meanwhile.
+                RestoreResult state = loaded.register(child);
+                if (!(state instanceof RestoreResult.NotWonderful)) return;
                 loaded.saveAndRegister(child, success.child());
             } catch (RuntimeException error) {
-                logger.warning(
-                        "Failed to persist WWW breeding child "
-                                + child.getUniqueId()
-                                + "; leaving vanilla child unchanged: "
-                                + safeMessage(error));
+                logger.warning("Failed to persist WWW breeding child "
+                        + originalId + "; leaving vanilla child unchanged: "
+                        + safeMessage(error));
             }
         }
     }
