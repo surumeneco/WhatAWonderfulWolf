@@ -47,7 +47,7 @@ final class WonderfulWolfCommandServiceTest {
                 fixture.wolf(),
                 Mode.WAIT,
                 commander));
-        assertTrue(fixture.sitting().get());
+        assertFalse(fixture.sitting().get(), "commanded defense must not remain in the vanilla sit state");
         assertTrue(fixture.stopCalls().get() > 0);
         assertEquals(1, changed.get());
 
@@ -113,4 +113,25 @@ final class WonderfulWolfCommandServiceTest {
         assertEquals(Mode.WANDER, current.mode());
         assertEquals(ActionDistance.VERY_WIDE, current.actionDistance());
     }
+    @Test
+    void switchingToFollowOrGuardReleasesVanillaSittingState() {
+        UUID worldId = UUID.randomUUID();
+        UUID wolfId = UUID.randomUUID();
+        UUID commander = UUID.randomUUID();
+        World world = BehaviorPaperTestSupport.world(worldId);
+        var fixture = BehaviorPaperTestSupport.wolf(
+                wolfId, world, new BehaviorPaperTestSupport.MemoryPdc(),
+                new Location(world, 0, 64, 0), true);
+        WonderfulWolfLoadedIndividuals loaded = BehaviorPaperTestSupport.loaded();
+        loaded.saveAndRegister(fixture.wolf(), BehaviorTestIndividuals.individual(0, 10));
+        WonderfulWolfCommandService service = new WonderfulWolfCommandService(
+                loaded, new ManualTargetRegistry(), ignored -> {});
+
+        assertTrue(service.changeMode(fixture.wolf(), Mode.FOLLOW, commander));
+        assertFalse(fixture.sitting().get(), "FOLLOW must release sit to allow movement and combat");
+        fixture.sitting().set(true);
+        assertTrue(service.changeMode(fixture.wolf(), Mode.GUARD, commander));
+        assertFalse(fixture.sitting().get(), "GUARD must release sit to allow threat response");
+    }
+
 }
