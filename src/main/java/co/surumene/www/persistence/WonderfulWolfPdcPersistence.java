@@ -43,6 +43,11 @@ public final class WonderfulWolfPdcPersistence {
         this.payloadFiles = payloadFiles;
     }
 
+    public boolean needsExternalMigration(PersistentValueStore store) {
+        return payloadFiles != null && isWonderful(store)
+                && Integer.valueOf(SCHEMA_VERSION).equals(store.getInteger(SCHEMA_VERSION_KEY));
+    }
+
     public boolean isWonderful(PersistentValueStore store) {
         Objects.requireNonNull(store, "store");
         return MARKER_VALUE.equals(store.getString(TYPE_KEY));
