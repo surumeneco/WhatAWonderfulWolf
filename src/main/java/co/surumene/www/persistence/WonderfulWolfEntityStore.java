@@ -13,12 +13,15 @@ public final class WonderfulWolfEntityStore {
     private final WonderfulWolfPdcPersistence persistence;
 
     public WonderfulWolfEntityStore(Plugin plugin, GenomeEngine genomeEngine) {
-        this(
-                plugin,
-                new WonderfulWolfPdcPersistence(
-                        genomeEngine,
-                        new PhenotypeSnapshotCodecV1(),
-                        new WonderfulWolfRuntimeCodecV1()));
+        this(plugin, genomeEngine, null);
+    }
+
+    public WonderfulWolfEntityStore(
+            Plugin plugin, GenomeEngine genomeEngine, GenomePayloadFiles files) {
+        this(plugin, new WonderfulWolfPdcPersistence(
+                genomeEngine,
+                new PhenotypeSnapshotCodecV1(),
+                new WonderfulWolfRuntimeCodecV1(), files));
     }
 
     WonderfulWolfEntityStore(Plugin plugin, WonderfulWolfPdcPersistence persistence) {
