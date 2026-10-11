@@ -7,7 +7,9 @@ import org.bukkit.event.entity.EntityTameEvent;
 
 public final class WonderfulWolfTameListener implements Listener {
     private final WonderfulWolfLoadedIndividuals loaded;
-    public WonderfulWolfTameListener(WonderfulWolfLoadedIndividuals loaded) {
+    private final org.bukkit.plugin.Plugin plugin;
+    public WonderfulWolfTameListener(org.bukkit.plugin.Plugin plugin, WonderfulWolfLoadedIndividuals loaded) {
+        this.plugin = plugin;
         this.loaded = loaded;
     }
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -18,6 +20,10 @@ public final class WonderfulWolfTameListener implements Listener {
         var previous = success.individual();
         loaded.saveAndRegister(wolf,
                 previous.withTamedOwner(event.getOwner().getUniqueId()));
-        if (previous.mode() == Mode.WANDER) wolf.setSitting(false);
+        if (previous.mode() == Mode.WANDER) {
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                if (wolf.isValid() && wolf.isTamed()) wolf.setSitting(false);
+            });
+        }
     }
 }
