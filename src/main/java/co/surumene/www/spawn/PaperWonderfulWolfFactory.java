@@ -63,6 +63,13 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
         deferredSeedKey = new NamespacedKey(coordinator.plugin(), "pending_natural_founder_seed");
     }
 
+    public void resumeAfterEntityAddition(Wolf wolf) {
+        if (async == null) return;
+        org.bukkit.Bukkit.getScheduler().runTaskLater(async.plugin(), () -> {
+            if (wolf.isValid() && !wolf.isDead()) resumePendingNatural(wolf);
+        }, 1L);
+    }
+
     public boolean resumePendingNatural(Wolf wolf) {
         if (deferredSeedKey == null) return false;
         Long seed = wolf.getPersistentDataContainer().get(deferredSeedKey, PersistentDataType.LONG);
