@@ -6,6 +6,7 @@ import org.bukkit.entity.Wolf;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import com.destroystokyo.paper.event.entity.EntityAddToWorldEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
 
@@ -33,6 +34,14 @@ public final class WonderfulWolfNaturalSpawnListener implements Listener {
         this.probabilityDraw = Objects.requireNonNull(probabilityDraw, "probabilityDraw");
         this.seedSupplier = Objects.requireNonNull(seedSupplier, "seedSupplier");
         this.logger = Objects.requireNonNull(logger, "logger");
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onEntityAdd(EntityAddToWorldEvent event) {
+        if (event.getEntity() instanceof Wolf wolf
+                && converter instanceof PaperWonderfulWolfFactory paper) {
+            paper.resumeAfterEntityAddition(wolf);
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
