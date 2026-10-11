@@ -77,6 +77,8 @@ public final class AsyncWolfFounderCoordinator {
         }
     }
 
+    public Plugin plugin() { return plugin; }
+
     public void shutdown() {
         closed = true;
         waiting.clear();
