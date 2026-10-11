@@ -44,6 +44,7 @@ public final class WolfTrapRuntime {
             new java.util.HashMap<>();
     private final Set<UUID> armedEvokers = new HashSet<>();
     private final Set<UUID> riderEvokers = new HashSet<>();
+    private final Set<UUID> activatingEvokers = new HashSet<>();
     private final Set<UUID> skippedWorlds = new HashSet<>();
     private boolean creatingOwnLightning;
 
@@ -315,50 +316,67 @@ public final class WolfTrapRuntime {
     }
 
     private void activate(Evoker initial) {
-        if (!states.isArmed(initial)) {
-            return;
-        }
-
-        Location origin = initial.getLocation();
-        strikeOwnLightning(origin);
-
-        WonderfulWolfEntityCreationResult firstResult =
-                wolves.spawnFounder(
-                        origin,
-                        FounderOrigin.WOLF_TRAP,
-                        seeds.getAsLong());
-        WonderfulWolfEntityCreationResult secondResult =
-                wolves.spawnFounder(
+        if (!states.isArmed(initial) || !activatingEvokers.add(initial.getUniqueId())) return;
+        UUID id = initial.getUniqueId();
+        long firstSeed = seeds.getAsLong();
+        long secondSeed = seeds.getAsLong();
+        boolean queued = wolves.prepareTrapPairAsync(firstSeed, secondSeed, pair -> {
+            activatingEvokers.remove(id);
+            if (!initial.isValid() || initial.isDead() || !states.isArmed(initial)) return;
+            if (!(pair.first() instanceof co.surumene.www.spawn.WonderfulWolfCreationResult.Success first)
+                    || !(pair.second() instanceof co.surumene.www.spawn.WonderfulWolfCreationResult.Success second)) {
+                logger.warning("Could not prepare both Wonderful Wolf trap founders");
+                states.markArmed(initial, wallClockMillis.getAsLong()
+                        + WolfTrapPolicy.ADDITIONAL_GRACE_MILLIS);
+                return;
+            }
+            Location origin = initial.getLocation();
+            Wolf one = null;
+            Wolf two = null;
+            Evoker secondRider = null;
+            try {
+                WonderfulWolfEntityCreationResult firstResult =
+                        wolves.spawnPreparedFounder(origin, first.individual());
+                WonderfulWolfEntityCreationResult secondResult =
+                        wolves.spawnPreparedFounder(origin.clone().add(1.0, 0.0, 0.0),
+                                second.individual());
+                one = createdWolf(firstResult);
+                two = createdWolf(secondResult);
+                if (one == null || two == null) throw new IllegalStateException("Could not spawn trap wolves");
+                secondRider = initial.getWorld().spawn(
                         origin.clone().add(1.0, 0.0, 0.0),
-                        FounderOrigin.WOLF_TRAP,
-                        seeds.getAsLong());
+                        Evoker.class, CreatureSpawnEvent.SpawnReason.CUSTOM);
+                secondRider.setPersistent(true);
+                initial.setPersistent(true);
+                strikeOwnLightning(origin);
 
-        Wolf first = createdWolf(firstResult);
-        Wolf second = createdWolf(secondResult);
-        if (first == null || second == null) {
-            if (first != null) discardWolf(first);
-            if (second != null) discardWolf(second);
-            logger.warning(
-                    "Could not create both Wonderful Wolf trap founders");
-            return;
+                armedEvokers.remove(id);
+                states.markRider(initial, one.getUniqueId());
+                states.markRider(secondRider, two.getUniqueId());
+                states.markMountedWolf(one, id);
+                states.markMountedWolf(two, secondRider.getUniqueId());
+                one.addPassenger(initial);
+                two.addPassenger(secondRider);
+                riderEvokers.add(id);
+                riderEvokers.add(secondRider.getUniqueId());
+            } catch (RuntimeException error) {
+                if (one != null) discardWolf(one);
+                if (two != null) discardWolf(two);
+                if (secondRider != null) secondRider.remove();
+                if (initial.isValid()) {
+                    states.clearRider(initial);
+                    states.markArmed(initial, wallClockMillis.getAsLong()
+                            + WolfTrapPolicy.ADDITIONAL_GRACE_MILLIS);
+                    armedEvokers.add(id);
+                }
+                logger.warning("WWW trap activation failed: " + error);
+            }
+        });
+        if (!queued) {
+            activatingEvokers.remove(id);
+            states.markArmed(initial, wallClockMillis.getAsLong()
+                    + WolfTrapPolicy.ADDITIONAL_GRACE_MILLIS);
         }
-
-        Evoker secondRider = initial.getWorld().spawn(
-                origin.clone().add(1.0, 0.0, 0.0),
-                Evoker.class,
-                CreatureSpawnEvent.SpawnReason.CUSTOM);
-        initial.setPersistent(true);
-        secondRider.setPersistent(true);
-
-        armedEvokers.remove(initial.getUniqueId());
-        states.markRider(initial, first.getUniqueId());
-        states.markRider(secondRider, second.getUniqueId());
-        states.markMountedWolf(first, initial.getUniqueId());
-        states.markMountedWolf(second, secondRider.getUniqueId());
-        first.addPassenger(initial);
-        second.addPassenger(secondRider);
-        riderEvokers.add(initial.getUniqueId());
-        riderEvokers.add(secondRider.getUniqueId());
     }
 
     private Wolf createdWolf(
