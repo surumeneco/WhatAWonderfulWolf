@@ -242,6 +242,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
 
         Bukkit.getWorlds().forEach(world ->
                 persistenceListener.restoreAll(world.getEntitiesByClass(Wolf.class)));
+        naturalSpawnListener.resumeLoaded();
 
         loadedIndividuals = loaded;
         abilityRuntime = abilities;
