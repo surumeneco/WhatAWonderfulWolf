@@ -80,6 +80,12 @@ public final class WonderfulWolfNaturalSpawnListener implements Listener {
 
     private void convert(Wolf wolf) {
         try {
+            if (converter instanceof PaperWonderfulWolfFactory paper) {
+                if (!paper.requestNaturalAsync(wolf, seedSupplier.getAsLong())) {
+                    logger.warning("WWW natural conversion queue is full for " + wolf.getUniqueId());
+                }
+                return;
+            }
             WonderfulWolfEntityCreationResult result =
                     converter.convert(wolf, seedSupplier.getAsLong());
             if (result instanceof WonderfulWolfEntityCreationResult.Failure failure) {
