@@ -8,6 +8,16 @@ import static org.junit.jupiter.api.Assertions.*;
 
 final class WonderfulWolfInventoryPolicyTest {
     @Test
+    void inventorySizeUsesOnlyNecessaryCargoRows() {
+        assertEquals(9, WonderfulWolfInventoryPolicy.inventorySize(0));
+        assertEquals(18, WonderfulWolfInventoryPolicy.inventorySize(1));
+        assertEquals(18, WonderfulWolfInventoryPolicy.inventorySize(9));
+        assertEquals(27, WonderfulWolfInventoryPolicy.inventorySize(10));
+        assertEquals(54, WonderfulWolfInventoryPolicy.inventorySize(45));
+        assertFalse(WonderfulWolfInventoryPolicy.isUsableCargoSlot(19, 10));
+    }
+
+    @Test
     void managementAndCargoSlotsAreSeparated() {
         assertTrue(WonderfulWolfInventoryPolicy.isManagementSlot(0));
         assertTrue(WonderfulWolfInventoryPolicy.isManagementSlot(8));
