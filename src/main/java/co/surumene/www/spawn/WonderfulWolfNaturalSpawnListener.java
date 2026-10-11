@@ -52,21 +52,21 @@ public final class WonderfulWolfNaturalSpawnListener implements Listener {
         convert(wolf);
     }
 
+    /** Resume selected but unfinished wolves already loaded at plugin startup. */
+    public void resumeLoaded() {
+        if (!(converter instanceof PaperWonderfulWolfFactory paper)) return;
+        org.bukkit.Bukkit.getWorlds().forEach(world ->
+                world.getEntitiesByClass(Wolf.class).forEach(paper::resumePendingNatural));
+    }
+
     @EventHandler(priority = EventPriority.MONITOR)
     public void onChunkLoad(ChunkLoadEvent event) {
-        if (!event.isNewChunk()) {
-            return;
-        }
-
-        double probability = currentProbability();
         for (Entity entity : event.getChunk().getEntities()) {
-            if (!(entity instanceof Wolf wolf)) {
-                continue;
-            }
-            if (NaturalWolfSpawnPolicy.shouldConvertGeneratedWolf(
-                    true,
-                    probability,
-                    probabilityDraw.getAsDouble())) {
+            if (!(entity instanceof Wolf wolf)) continue;
+            if (converter instanceof PaperWonderfulWolfFactory paper
+                    && paper.resumePendingNatural(wolf)) continue;
+            if (event.isNewChunk() && NaturalWolfSpawnPolicy.shouldConvertGeneratedWolf(
+                    true, currentProbability(), probabilityDraw.getAsDouble())) {
                 convert(wolf);
             }
         }
