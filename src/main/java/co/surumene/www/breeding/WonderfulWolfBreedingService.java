@@ -29,6 +29,13 @@ public final class WonderfulWolfBreedingService {
                 Objects.requireNonNull(profileSupplier, "profileSupplier");
     }
 
+    /** Capture the current immutable Profile before background WGL execution. */
+    public WonderfulWolfBreedingService snapshot() {
+        WonderfulWolfGenomeProfile profile =
+                Objects.requireNonNull(profileSupplier.get(), "current profile");
+        return new WonderfulWolfBreedingService(engine, () -> profile);
+    }
+
     public WonderfulWolfBreedingOutcome breed(
             BreedingParent parentA,
             BreedingParent parentB,
