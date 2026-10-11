@@ -63,6 +63,11 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
         deferredSeedKey = new NamespacedKey(coordinator.plugin(), "pending_natural_founder_seed");
     }
 
+    /** Discard stale jobs bound to a removed entity instance, preserving its PDC retry seed. */
+    public void invalidateNatural(Wolf wolf) {
+        pendingNatural.remove(wolf.getUniqueId(), wolf);
+    }
+
     public void resumeAfterEntityAddition(Wolf wolf) {
         if (async == null) return;
         org.bukkit.Bukkit.getScheduler().runTaskLater(async.plugin(), () -> {
@@ -86,7 +91,10 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
         }
         if (wolf.isDead()) return false;
         UUID id = wolf.getUniqueId();
-        if (pendingNatural.containsKey(id)) return true;
+        Wolf current = pendingNatural.get(id);
+        if (current == wolf) return true;
+        // A ClickMobs replacement can have the same UUID but a new Bukkit wrapper.
+        if (current != null) pendingNatural.remove(id, current);
         if (loaded.find(id).isPresent()) {
             wolf.getPersistentDataContainer().remove(deferredSeedKey);
             return true;
