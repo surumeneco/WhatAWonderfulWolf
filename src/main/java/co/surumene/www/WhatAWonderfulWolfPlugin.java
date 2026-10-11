@@ -89,7 +89,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
 
         WonderfulWolfEntityStore entityStore =
                 new WonderfulWolfEntityStore(this, genomeLib.engine(),
-                        new GenomePayloadFiles(Bukkit.getWorlds().getFirst().getWorldFolder().toPath()
+                        new GenomePayloadFiles(clockWorld.getWorldFolder().toPath()
                                 .resolve("data").resolve("wonderful").resolve("www").resolve("genomes")));
         WonderfulWolfLoadedIndividuals loaded =
                 new WonderfulWolfLoadedIndividuals(entityStore);
