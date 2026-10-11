@@ -33,9 +33,11 @@ public final class AsyncWolfFounderCoordinator {
                 }, new ThreadPoolExecutor.AbortPolicy());
     }
 
-    public <T> boolean submit(Callable<T> calculation, Consumer<T> mainThreadCommit) {
+    public <T> boolean submit(Callable<T> calculation, Consumer<T> mainThreadCommit,
+                              Consumer<Exception> onFailure) {
         Objects.requireNonNull(calculation);
         Objects.requireNonNull(mainThreadCommit);
+        Objects.requireNonNull(onFailure);
         if (closed || waiting.size() >= 128) return false;
         waiting.addLast(() -> {
             T result = null;
@@ -52,7 +54,7 @@ public final class AsyncWolfFounderCoordinator {
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     if (closed || !plugin.isEnabled()) return;
                     if (error != null) {
-                        logger.warning("WWW async founder synthesis failed: " + error);
+                        onFailure.accept(error);
                     } else {
                         mainThreadCommit.accept(completed);
                     }
