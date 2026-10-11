@@ -43,7 +43,22 @@ public final class WonderfulWolfEntityStore {
         if (!(entity instanceof Wolf wolf)) {
             return new RestoreResult.NotWonderful();
         }
-        return persistence.restore(values(wolf));
+        PersistentValueStore values = values(wolf);
+        RestoreResult result = persistence.restore(values);
+        if (result instanceof RestoreResult.Success success
+                && persistence.needsExternalMigration(values)) {
+            try {
+                // Inline Genome data is not removed until the new file is durable.
+                persistence.save(values, success.individual());
+            } catch (RuntimeException failure) {
+                // Keep the intact old PDC readable; never discard the individual.
+                if (plugin.getLogger() != null) {
+                    plugin.getLogger().warning("Deferred WWW external Genome migration for "
+                            + wolf.getUniqueId() + ": " + failure.getMessage());
+                }
+            }
+        }
+        return result;
     }
 
     private PersistentValueStore values(Wolf wolf) {
