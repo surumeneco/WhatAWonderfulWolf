@@ -71,7 +71,8 @@ public final class WonderfulWolfBreedingListener implements Listener {
                     () -> frozen.breed(a, b, childOwner, seed),
                     outcome -> commit(child, childId, outcome),
                     error -> logger.warning("WWW breeding computation failed for "
-                            + childId + ": " + safeMessage(error)));
+                            + childId + ": " + error.getClass().getSimpleName()
+                            + ": " + (error.getMessage() == null ? "" : error.getMessage())));
             if (!accepted) logger.warning("WWW breeding worker queue full for " + childId
                     + "; leaving vanilla child unchanged");
             return;
