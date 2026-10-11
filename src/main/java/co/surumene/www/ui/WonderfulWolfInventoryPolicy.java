@@ -18,6 +18,12 @@ public final class WonderfulWolfInventoryPolicy {
 
     private WonderfulWolfInventoryPolicy() {}
 
+    /** Complete cargo rows only; unused cells in the final visible row stay locked. */
+    public static int inventorySize(int capacity) {
+        int bounded = Math.max(0, Math.min(MAX_CARGO_SLOTS, capacity));
+        return MANAGEMENT_SIZE + 9 * ((bounded + 8) / 9);
+    }
+
     public static boolean isManagementSlot(int rawSlot) {
         return rawSlot >= 0 && rawSlot < MANAGEMENT_SIZE;
     }
