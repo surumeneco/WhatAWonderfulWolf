@@ -79,7 +79,7 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
         boolean accepted = async.submit(
                 () -> frozen.createFounder(FounderOrigin.NATURAL, owner, adultTime, seed),
                 result -> {
-                    if (pendingNatural.remove(id) != wolf || !wolf.isValid() || wolf.isDead()) return;
+                    if (!pendingNatural.remove(id, wolf) || !wolf.isValid() || wolf.isDead()) return;
                     Optional<UUID> currentOwner = wolf.isTamed()
                             ? Optional.ofNullable(wolf.getOwner()).map(AnimalTamer::getUniqueId)
                             : Optional.empty();
@@ -101,10 +101,10 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
                         logger.warning("WWW natural founder failed for " + id + ": " + failure.detail());
                     }
                 }, error -> {
-                    pendingNatural.remove(id);
+                    pendingNatural.remove(id, wolf);
                     logger.warning("WWW natural founder calculation failed for " + id + ": " + error);
                 });
-        if (!accepted) pendingNatural.remove(id);
+        if (!accepted) pendingNatural.remove(id, wolf);
         return accepted;
     }
 
