@@ -6,6 +6,8 @@ import co.surumene.www.persistence.RestoreResult;
 import co.surumene.www.persistence.WonderfulWolfLoadedIndividuals;
 import co.surumene.wgl.api.DiploidGenome;
 import org.bukkit.Location;
+import org.bukkit.NamespacedKey;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.World;
 import org.bukkit.entity.AnimalTamer;
 import org.bukkit.entity.Wolf;
@@ -27,6 +29,7 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
     private final Consumer<Wolf> abilityRefresh;
     private final Logger logger;
     private AsyncWolfFounderCoordinator async;
+    private NamespacedKey deferredSeedKey;
     private final Map<UUID, Wolf> pendingNatural = new HashMap<>();
 
     public PaperWonderfulWolfFactory(
@@ -57,6 +60,15 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
 
     public void useAsyncCoordinator(AsyncWolfFounderCoordinator coordinator) {
         this.async = Objects.requireNonNull(coordinator);
+        deferredSeedKey = new NamespacedKey(coordinator.plugin(), "pending_natural_founder_seed");
+    }
+
+    public boolean resumePendingNatural(Wolf wolf) {
+        if (deferredSeedKey == null) return false;
+        Long seed = wolf.getPersistentDataContainer().get(deferredSeedKey, PersistentDataType.LONG);
+        if (seed == null) return false;
+        requestNaturalAsync(wolf, seed);
+        return true;
     }
 
     /** Only WGL calculation runs in the worker; all entity/PDC access is synchronous. */
@@ -68,7 +80,14 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
         if (wolf.isDead()) return false;
         UUID id = wolf.getUniqueId();
         if (pendingNatural.containsKey(id)) return true;
-        if (loaded.find(id).isPresent()) return true;
+        if (loaded.find(id).isPresent()) {
+            wolf.getPersistentDataContainer().remove(deferredSeedKey);
+            return true;
+        }
+        Long previous = wolf.getPersistentDataContainer().get(deferredSeedKey, PersistentDataType.LONG);
+        long selectedSeed = previous == null ? seed : previous;
+        if (previous == null) wolf.getPersistentDataContainer().set(
+                deferredSeedKey, PersistentDataType.LONG, selectedSeed);
         Optional<UUID> owner = wolf.isTamed()
                 ? Optional.ofNullable(wolf.getOwner()).map(AnimalTamer::getUniqueId)
                 : Optional.empty();
@@ -77,7 +96,7 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
         WonderfulWolfFactory frozen = factory.snapshot();
         pendingNatural.put(id, wolf);
         boolean accepted = async.submit(
-                () -> frozen.createFounder(FounderOrigin.NATURAL, owner, adultTime, seed),
+                () -> frozen.createFounder(FounderOrigin.NATURAL, owner, adultTime, selectedSeed),
                 result -> {
                     if (!pendingNatural.remove(id, wolf) || !wolf.isValid() || wolf.isDead()) return;
                     Optional<UUID> currentOwner = wolf.isTamed()
@@ -85,7 +104,7 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
                             : Optional.empty();
                     if (!owner.equals(currentOwner) || adult != wolf.isAdult()) {
                         // Taming/growth during synthesis must not commit stale identity data.
-                        requestNaturalAsync(wolf, seed);
+                        requestNaturalAsync(wolf, selectedSeed);
                         return;
                     }
                     RestoreResult state = loaded.register(wolf);
@@ -93,6 +112,7 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
                     if (result instanceof WonderfulWolfCreationResult.Success success) {
                         try {
                             loaded.saveAndRegister(wolf, success.individual());
+                            wolf.getPersistentDataContainer().remove(deferredSeedKey);
                             if (wolf.isAdult()) abilityRefresh.accept(wolf);
                         } catch (RuntimeException error) {
                             logger.warning("WWW natural founder apply failed for " + id + ": " + error);
