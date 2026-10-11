@@ -108,6 +108,20 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
         return accepted;
     }
 
+    /** Asynchronous command founder computation without creating a placeholder Wolf. */
+    public boolean prepareFounderAsync(
+            FounderOrigin origin, long seed,
+            Consumer<WonderfulWolfCreationResult> callback) {
+        if (async == null || !(founderSource instanceof WonderfulWolfFactory factory)) return false;
+        WonderfulWolfFactory frozen = factory.snapshot();
+        long adultTime = Math.max(0L, biologicalTime.getAsLong());
+        return async.submit(
+                () -> frozen.createFounder(origin, Optional.empty(), adultTime, seed),
+                callback,
+                error -> callback.accept(
+                        new WonderfulWolfCreationResult.Failure("SYNTHESIS_FAILED", error.toString())));
+    }
+
     public record PreparedPair(WonderfulWolfCreationResult first, WonderfulWolfCreationResult second) {}
 
     /** Calculate both trap animals before spawning either one. */
