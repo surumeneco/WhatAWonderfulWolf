@@ -14,6 +14,8 @@ import co.surumene.www.runtime.WonderfulWolfTraitRuntime;
 import org.bukkit.Location;
 import org.bukkit.Server;
 import org.bukkit.World;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Enemy;
@@ -38,6 +40,7 @@ import java.util.logging.Logger;
 
 public final class WonderfulWolfBehaviorRuntime {
     private static final double RETURN_DISTANCE_SQUARED = 4.0;
+    private static final double FOLLOW_TELEPORT_DISTANCE_SQUARED = 12.0 * 12.0;
     private static final double WAIT_RETURN_DISTANCE_SQUARED = 1.0;
     private static final double FLEE_DISTANCE_BLOCKS = 8.0;
 
@@ -750,10 +753,38 @@ public final class WonderfulWolfBehaviorRuntime {
         if (commander != null
                 && commander.isOnline()
                 && distance > RETURN_DISTANCE_SQUARED) {
+            if (distance >= FOLLOW_TELEPORT_DISTANCE_SQUARED
+                    && teleportNearCommander(wolf, commander.getLocation())) {
+                wolf.getPathfinder().stopPathfinding();
+                return;
+            }
             wolf.getPathfinder().moveTo(commander, 1.0);
         } else if (distance <= RETURN_DISTANCE_SQUARED) {
             wolf.getPathfinder().stopPathfinding();
         }
+    }
+
+    /**
+     * Find a nearby two-block-high, supported, unobstructed landing spot.
+     * Do not teleport to the commander's own block or across dimensions.
+     */
+    private static boolean teleportNearCommander(Wolf wolf, Location commander) {
+        if (!sameWorld(wolf.getLocation(), commander)) return false;
+        int x = commander.getBlockX(), y = commander.getBlockY(), z = commander.getBlockZ();
+        int[][] offsets = {{2, 0}, {-2, 0}, {0, 2}, {0, -2},
+                {2, 1}, {-2, 1}, {1, 2}, {-1, -2}, {2, -1}, {-2, -1}};
+        for (int[] offset : offsets) {
+            Block feet = commander.getWorld().getBlockAt(x + offset[0], y, z + offset[1]);
+            Block head = feet.getRelative(BlockFace.UP);
+            Block ground = feet.getRelative(BlockFace.DOWN);
+            if (!feet.isPassable() || !head.isPassable()
+                    || feet.isLiquid() || head.isLiquid()
+                    || !ground.getType().isSolid()) continue;
+            Location target = feet.getLocation().add(0.5, 0, 0.5);
+            if (!commander.getWorld().getWorldBorder().isInside(target)) continue;
+            if (wolf.teleport(target)) return true;
+        }
+        return false;
     }
 
     private Location referenceLocation(

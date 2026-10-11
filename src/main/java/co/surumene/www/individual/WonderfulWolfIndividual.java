@@ -67,6 +67,18 @@ public record WonderfulWolfIndividual(
                 inventory, generation, pedigree, adminAbilityOverrides);
     }
 
+    /** Set the initial command state when a wild Wonderful Wolf becomes tamed. */
+    public WonderfulWolfIndividual withTamedOwner(UUID owner) {
+        Objects.requireNonNull(owner, "owner");
+        Mode nextMode = mode == Mode.WANDER ? Mode.FOLLOW : mode;
+        Optional<UUID> commander = mode == Mode.WANDER
+                ? Optional.of(owner) : commanderId;
+        return new WonderfulWolfIndividual(
+                genome, phenotypeSnapshot, Optional.of(owner), adultBiologicalTime,
+                nextMode, commander, actionDistance, waitLocation, affection,
+                weapon, inventory, generation, pedigree, adminAbilityOverrides);
+    }
+
     public WonderfulWolfIndividual withCommandState(
             Mode newMode,
             Optional<UUID> newCommanderId,

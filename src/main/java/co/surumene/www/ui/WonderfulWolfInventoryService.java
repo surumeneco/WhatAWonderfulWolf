@@ -61,8 +61,12 @@ public final class WonderfulWolfInventoryService {
     }
 
     public void open(Player player, Wolf wolf) {
-        WonderfulWolfIndividual individual = loaded.find(wolf.getUniqueId()).orElse(null);
-        if (individual == null || !wolf.isTamed()) return;
+        if (!wolf.isTamed()) return;
+        // ClickMobs restores an entity snapshot after item use; it does not
+        // necessarily trigger EntitiesLoadEvent. Reconcile the actual PDC here.
+        co.surumene.www.persistence.RestoreResult restored = loaded.register(wolf);
+        if (!(restored instanceof co.surumene.www.persistence.RestoreResult.Success success)) return;
+        WonderfulWolfIndividual individual = success.individual();
 
         UUID viewer = locks.get(wolf.getUniqueId());
         if (viewer != null && !viewer.equals(player.getUniqueId())) {
@@ -74,7 +78,7 @@ public final class WonderfulWolfInventoryService {
                 new WonderfulWolfInventoryHolder(wolf.getUniqueId());
         Inventory inventory = Bukkit.createInventory(
                 holder,
-                WonderfulWolfInventoryPolicy.INVENTORY_SIZE,
+                WonderfulWolfInventoryPolicy.inventorySize(capacity(wolf)),
                 Component.text("Wonderful Wolf — " + wolf.getName()));
         holder.inventory(inventory);
         populate(inventory, wolf, individual);
@@ -245,7 +249,8 @@ public final class WonderfulWolfInventoryService {
             WonderfulWolfIndividual individual) {
         populateManagement(inventory, wolf, individual);
         int capacity = capacity(wolf);
-        for (int cargo = 0; cargo < WonderfulWolfInventoryPolicy.MAX_CARGO_SLOTS; cargo++) {
+        int visible = inventory.getSize() - WonderfulWolfInventoryPolicy.MANAGEMENT_SIZE;
+        for (int cargo = 0; cargo < visible; cargo++) {
             int raw = WonderfulWolfInventoryPolicy.MANAGEMENT_SIZE + cargo;
             if (cargo >= capacity) {
                 inventory.setItem(raw, placeholder(
@@ -293,7 +298,9 @@ public final class WonderfulWolfInventoryService {
         if (current == null) return;
         int capacity = capacity(wolf);
         Map<Integer, ItemStackSnapshot> cargo = new HashMap<>(current.inventory());
-        for (int i = 0; i < capacity; i++) {
+        int visibleCapacity = Math.min(capacity,
+                inventory.getSize() - WonderfulWolfInventoryPolicy.MANAGEMENT_SIZE);
+        for (int i = 0; i < visibleCapacity; i++) {
             int cargoIndex = i;
             cargo.remove(cargoIndex);
             PaperItemStackCodec.snapshot(
