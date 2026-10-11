@@ -7,6 +7,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import com.destroystokyo.paper.event.entity.EntityAddToWorldEvent;
+import com.destroystokyo.paper.event.entity.EntityRemoveFromWorldEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
 
@@ -41,6 +42,14 @@ public final class WonderfulWolfNaturalSpawnListener implements Listener {
         if (event.getEntity() instanceof Wolf wolf
                 && converter instanceof PaperWonderfulWolfFactory paper) {
             paper.resumeAfterEntityAddition(wolf);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onEntityRemove(EntityRemoveFromWorldEvent event) {
+        if (event.getEntity() instanceof Wolf wolf
+                && converter instanceof PaperWonderfulWolfFactory paper) {
+            paper.invalidateNatural(wolf);
         }
     }
 
