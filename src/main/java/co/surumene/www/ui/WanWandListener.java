@@ -56,7 +56,7 @@ public final class WanWandListener implements Listener {
         if (!(event.getRightClicked() instanceof Wolf wolf)) return;
 
         event.setCancelled(true);
-        if (wolf.isTamed() && loaded.find(wolf.getUniqueId()).isPresent()) {
+        if (wolf.isTamed()) {
             inventories.open(event.getPlayer(), wolf);
         }
     }
