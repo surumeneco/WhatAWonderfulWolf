@@ -27,6 +27,7 @@ import co.surumene.www.runtime.PaperAbilityProjector;
 import co.surumene.www.runtime.WonderfulWolfAbilityRuntime;
 import co.surumene.www.runtime.YamlBiologicalClockStateStore;
 import co.surumene.www.spawn.PaperWonderfulWolfFactory;
+import co.surumene.www.spawn.AsyncWolfFounderCoordinator;
 import co.surumene.www.spawn.WonderfulWolfFactory;
 import co.surumene.www.spawn.WonderfulWolfNaturalSpawnListener;
 import co.surumene.www.ui.WanWandListener;
@@ -55,6 +56,8 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
     private WonderfulWolfInventoryService inventoryService;
     private WanWandService wanWandService;
     private BukkitTask abilityTask;
+    private AsyncWolfFounderCoordinator asyncFounders;
+    private BukkitTask founderTask;
     private BukkitTask behaviorTask;
     private BukkitTask weaponTask;
 
@@ -120,6 +123,9 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                         clock::currentTime,
                         abilities::refresh,
                         getLogger());
+        asyncFounders = new AsyncWolfFounderCoordinator(this, getLogger());
+        paperFactory.useAsyncCoordinator(asyncFounders);
+        founderTask = Bukkit.getScheduler().runTaskTimer(this, asyncFounders::tick, 1L, 1L);
         WonderfulWolfNaturalSpawnListener naturalSpawnListener =
                 new WonderfulWolfNaturalSpawnListener(
                         paperFactory,
@@ -271,6 +277,8 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (founderTask != null) founderTask.cancel();
+        if (asyncFounders != null) asyncFounders.shutdown();
         WonderfulWolfInventoryService inventories = inventoryService;
         inventoryService = null;
         if (inventories != null) {
