@@ -43,6 +43,58 @@ final class WonderfulWolfPdcPersistenceTest {
     }
 
     @Test
+    void externalPayloadMigratesLegacyPdcWithoutLosingIndividual(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) {
+        MemoryStore store = new MemoryStore();
+        WonderfulWolfIndividual source = individual();
+        persistence.save(store, source);
+
+        WonderfulWolfPdcPersistence external = new WonderfulWolfPdcPersistence(
+                engine, new PhenotypeSnapshotCodecV1(),
+                new WonderfulWolfRuntimeCodecV1(), new GenomePayloadFiles(dir));
+        assertEquals(source, ((RestoreResult.Success) external.restore(store)).individual());
+
+        external.save(store, source);
+        assertEquals(WonderfulWolfPdcPersistence.EXTERNAL_SCHEMA_VERSION,
+                store.integers.get(WonderfulWolfPdcPersistence.SCHEMA_VERSION_KEY));
+        assertNotNull(store.strings.get(WonderfulWolfPdcPersistence.GENOME_REFERENCE_KEY));
+        assertNull(store.bytes.get(WonderfulWolfPdcPersistence.GENOME_KEY));
+        assertNull(store.bytes.get(WonderfulWolfPdcPersistence.PHENOTYPE_KEY));
+        String firstRef = store.strings.get(WonderfulWolfPdcPersistence.GENOME_REFERENCE_KEY);
+
+        external.save(store, source);
+        assertEquals(firstRef, store.strings.get(WonderfulWolfPdcPersistence.GENOME_REFERENCE_KEY));
+
+        WonderfulWolfPdcPersistence afterRestart = new WonderfulWolfPdcPersistence(
+                engine, new PhenotypeSnapshotCodecV1(),
+                new WonderfulWolfRuntimeCodecV1(), new GenomePayloadFiles(dir));
+        assertEquals(source, ((RestoreResult.Success) afterRestart.restore(store)).individual());
+    }
+
+    @Test
+    void missingExternalPayloadDoesNotSynthesizeReplacement(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) {
+        MemoryStore store = new MemoryStore();
+        WonderfulWolfPdcPersistence external = new WonderfulWolfPdcPersistence(
+                engine, new PhenotypeSnapshotCodecV1(),
+                new WonderfulWolfRuntimeCodecV1(), new GenomePayloadFiles(dir));
+        external.save(store, individual());
+        String ref = store.strings.get(WonderfulWolfPdcPersistence.GENOME_REFERENCE_KEY);
+        assertNotNull(ref);
+        assertEquals(1L, java.nio.file.Files.exists(dir.resolve(ref + ".bin")) ? 1L : 0L);
+        try {
+            java.nio.file.Files.delete(dir.resolve(ref + ".bin"));
+        } catch (java.io.IOException error) {
+            throw new AssertionError(error);
+        }
+        WonderfulWolfPdcPersistence fresh = new WonderfulWolfPdcPersistence(
+                engine, new PhenotypeSnapshotCodecV1(),
+                new WonderfulWolfRuntimeCodecV1(), new GenomePayloadFiles(dir));
+        RestoreResult.Failure failure = assertInstanceOf(
+                RestoreResult.Failure.class, fresh.restore(store));
+        assertEquals(RestoreFailureReason.CORRUPT_DATA, failure.reason());
+        assertEquals(ref, store.strings.get(WonderfulWolfPdcPersistence.GENOME_REFERENCE_KEY));
+    }
+
+    @Test
     void entityWithoutMarkerIsNotWonderfulEvenIfStalePayloadsExist() {
         MemoryStore store = new MemoryStore();
         WonderfulWolfIndividual source = individual();

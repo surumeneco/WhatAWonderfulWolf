@@ -6,28 +6,46 @@ import co.surumene.wgl.api.DiploidGenome;
 import co.surumene.wgl.api.GenomeEngine;
 
 import java.util.Objects;
+import java.util.UUID;
 
 public final class WonderfulWolfPdcPersistence {
     public static final String TYPE_KEY = "type";
     public static final String SCHEMA_VERSION_KEY = "schema_version";
     public static final String GENOME_KEY = "genome";
+    public static final String GENOME_REFERENCE_KEY = "genome_ref";
     public static final String PHENOTYPE_KEY = "phenotype_snapshot";
     public static final String RUNTIME_KEY = "runtime_state";
 
     public static final String MARKER_VALUE = "wonderful_wolf";
     public static final int SCHEMA_VERSION = 1;
+    public static final int EXTERNAL_SCHEMA_VERSION = 2;
 
     private final GenomeEngine genomeEngine;
     private final PhenotypeSnapshotCodecV1 phenotypeCodec;
     private final WonderfulWolfRuntimeCodecV1 runtimeCodec;
+    private final GenomePayloadFiles payloadFiles;
 
     public WonderfulWolfPdcPersistence(
             GenomeEngine genomeEngine,
             PhenotypeSnapshotCodecV1 phenotypeCodec,
             WonderfulWolfRuntimeCodecV1 runtimeCodec) {
+        this(genomeEngine, phenotypeCodec, runtimeCodec, null);
+    }
+
+    public WonderfulWolfPdcPersistence(
+            GenomeEngine genomeEngine,
+            PhenotypeSnapshotCodecV1 phenotypeCodec,
+            WonderfulWolfRuntimeCodecV1 runtimeCodec,
+            GenomePayloadFiles payloadFiles) {
         this.genomeEngine = Objects.requireNonNull(genomeEngine, "genomeEngine");
         this.phenotypeCodec = Objects.requireNonNull(phenotypeCodec, "phenotypeCodec");
         this.runtimeCodec = Objects.requireNonNull(runtimeCodec, "runtimeCodec");
+        this.payloadFiles = payloadFiles;
+    }
+
+    public boolean needsExternalMigration(PersistentValueStore store) {
+        return payloadFiles != null && isWonderful(store)
+                && Integer.valueOf(SCHEMA_VERSION).equals(store.getInteger(SCHEMA_VERSION_KEY));
     }
 
     public boolean isWonderful(PersistentValueStore store) {
@@ -43,15 +61,29 @@ public final class WonderfulWolfPdcPersistence {
         byte[] phenotype = phenotypeCodec.encode(individual.phenotypeSnapshot());
         byte[] runtime = runtimeCodec.encode(individual);
 
-        /*
-         * The marker is the commit point. Encoding finishes before the first mutation,
-         * then an existing marker is removed so a partial write fails closed.
-         */
+        // Publish the immutable file before touching the entity marker. A previous
+        // version remains recoverable when disk writing fails.
+        UUID externalRef = null;
+        if (payloadFiles != null) {
+            String previous = store.getString(GENOME_REFERENCE_KEY);
+            externalRef = payloadFiles.writeOrReuse(
+                    previous == null ? null : UUID.fromString(previous), genome, phenotype);
+        }
+
+        // The marker is the commit point; never expose partially changed state.
         store.remove(TYPE_KEY);
-        store.putBytes(GENOME_KEY, genome);
-        store.putBytes(PHENOTYPE_KEY, phenotype);
+        if (externalRef == null) {
+            store.putBytes(GENOME_KEY, genome);
+            store.putBytes(PHENOTYPE_KEY, phenotype);
+            store.remove(GENOME_REFERENCE_KEY);
+            store.putInteger(SCHEMA_VERSION_KEY, SCHEMA_VERSION);
+        } else {
+            store.putString(GENOME_REFERENCE_KEY, externalRef.toString());
+            store.remove(GENOME_KEY);
+            store.remove(PHENOTYPE_KEY);
+            store.putInteger(SCHEMA_VERSION_KEY, EXTERNAL_SCHEMA_VERSION);
+        }
         store.putBytes(RUNTIME_KEY, runtime);
-        store.putInteger(SCHEMA_VERSION_KEY, SCHEMA_VERSION);
         store.putString(TYPE_KEY, MARKER_VALUE);
     }
 
@@ -65,20 +97,35 @@ public final class WonderfulWolfPdcPersistence {
         if (schemaVersion == null) {
             return failure(RestoreFailureReason.MISSING_DATA, "missing schema version");
         }
-        if (schemaVersion != SCHEMA_VERSION) {
+        if (schemaVersion != SCHEMA_VERSION && schemaVersion != EXTERNAL_SCHEMA_VERSION) {
             return failure(
                     RestoreFailureReason.UNSUPPORTED_SCHEMA,
                     "unsupported WWW PDC schema version: " + schemaVersion);
         }
 
-        byte[] genomeBytes = requiredBytes(store, GENOME_KEY);
-        byte[] phenotypeBytes = requiredBytes(store, PHENOTYPE_KEY);
         byte[] runtimeBytes = requiredBytes(store, RUNTIME_KEY);
-        if (genomeBytes == null || phenotypeBytes == null || runtimeBytes == null) {
-            return failure(RestoreFailureReason.MISSING_DATA, "missing required WWW PDC payload");
+        if (runtimeBytes == null) {
+            return failure(RestoreFailureReason.MISSING_DATA, "missing WWW runtime payload");
         }
 
         try {
+            byte[] genomeBytes;
+            byte[] phenotypeBytes;
+            if (schemaVersion == EXTERNAL_SCHEMA_VERSION) {
+                String reference = store.getString(GENOME_REFERENCE_KEY);
+                if (reference == null || payloadFiles == null) {
+                    return failure(RestoreFailureReason.MISSING_DATA, "missing WWW external Genome reference");
+                }
+                GenomePayloadFiles.Payload payload = payloadFiles.read(UUID.fromString(reference));
+                genomeBytes = payload.genome();
+                phenotypeBytes = payload.phenotype();
+            } else {
+                genomeBytes = requiredBytes(store, GENOME_KEY);
+                phenotypeBytes = requiredBytes(store, PHENOTYPE_KEY);
+            }
+            if (genomeBytes == null || phenotypeBytes == null) {
+                return failure(RestoreFailureReason.MISSING_DATA, "missing required WWW Genome payload");
+            }
             DiploidGenome genome = genomeEngine.decodeBinary(genomeBytes);
             PhenotypeSnapshot phenotype = phenotypeCodec.decode(phenotypeBytes);
             WonderfulWolfIndividual individual = runtimeCodec.decode(runtimeBytes, genome, phenotype);

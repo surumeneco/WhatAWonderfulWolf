@@ -51,43 +51,56 @@ final class WonderfulWolfSummonCommands {
 
     int execute(CommandContext<CommandSourceStack> context, String raw) {
         CommandSender sender = context.getSource().getSender();
-        Wolf wolf = null;
         try {
             Parsed parsed = parse(context.getSource().getLocation(), raw);
             Map<String, Object> options = parsed.customData() == null
                     ? Map.of() : new SnbtLikeParser(parsed.customData()).parseCompound();
-            // A bad command must not create an entity.
             validateOptions(options, sender);
-            WonderfulWolfEntityCreationResult result = factory.spawnFounder(
-                    parsed.location(), FounderOrigin.NATURAL,
-                    ThreadLocalRandom.current().nextLong());
-            if (result instanceof WonderfulWolfEntityCreationResult.Failure failure) {
-                throw new IllegalArgumentException(
-                        failure.reason() + ": " + failure.detail());
+            if (parsed.nbt() != null && RESERVED_UUID.matcher(parsed.nbt()).find()) {
+                throw new IllegalArgumentException("UUID override is not allowed");
             }
-            wolf = result instanceof WonderfulWolfEntityCreationResult.Success success
-                    ? success.wolf()
-                    : ((WonderfulWolfEntityCreationResult.AlreadyWonderful) result).wolf();
-            applyOptions(wolf, options, sender);
-            if (parsed.nbt() != null) {
-                if (RESERVED_UUID.matcher(parsed.nbt()).find()) {
-                    throw new IllegalArgumentException("UUID override is not allowed");
-                }
-                if (!Bukkit.dispatchCommand(Bukkit.getConsoleSender(),
-                        "minecraft:data merge entity " + wolf.getUniqueId() + " " + parsed.nbt())) {
-                    throw new IllegalArgumentException("Vanilla NBT merge failed");
-                }
-                abilities.refresh(wolf);
-            }
+            boolean accepted = factory.prepareFounderAsync(
+                    FounderOrigin.NATURAL, ThreadLocalRandom.current().nextLong(),
+                    prepared -> {
+                        Wolf wolf = null;
+                        try {
+                            if (!(prepared instanceof co.surumene.www.spawn.WonderfulWolfCreationResult.Success success)) {
+                                var failure = (co.surumene.www.spawn.WonderfulWolfCreationResult.Failure) prepared;
+                                throw new IllegalArgumentException(failure.reason() + ": " + failure.detail());
+                            }
+                            WonderfulWolfEntityCreationResult spawned =
+                                    factory.spawnPreparedFounder(parsed.location(), success.individual());
+                            if (!(spawned instanceof WonderfulWolfEntityCreationResult.Success created)) {
+                                var failure = (WonderfulWolfEntityCreationResult.Failure) spawned;
+                                throw new IllegalArgumentException(failure.reason() + ": " + failure.detail());
+                            }
+                            wolf = created.wolf();
+                            applyOptions(wolf, options, sender);
+                            if (parsed.nbt() != null) {
+                                if (!Bukkit.dispatchCommand(Bukkit.getConsoleSender(),
+                                        "minecraft:data merge entity " + wolf.getUniqueId() + " " + parsed.nbt())) {
+                                    throw new IllegalArgumentException("Vanilla NBT merge failed");
+                                }
+                                abilities.refresh(wolf);
+                            }
+                            sender.sendMessage(Component.text(
+                                    "Wonderful Wolfを生成しました: " + wolf.getUniqueId(),
+                                    NamedTextColor.GREEN));
+                        } catch (RuntimeException error) {
+                            if (wolf != null) {
+                                loaded.unregister(wolf);
+                                wolf.remove();
+                            }
+                            sender.sendMessage(Component.text(
+                                    error.getMessage() == null ? error.getClass().getSimpleName()
+                                            : error.getMessage(), NamedTextColor.RED));
+                        }
+                    });
+            if (!accepted) throw new IllegalStateException("Genome generation queue is full");
             sender.sendMessage(Component.text(
-                    "Wonderful Wolfを生成しました: " + wolf.getUniqueId(),
-                    NamedTextColor.GREEN));
+                    "Genome生成を受け付けました。完了時に結果を通知します。", NamedTextColor.GRAY));
             return Command.SINGLE_SUCCESS;
         } catch (Exception error) {
-            if (wolf != null) {
-                loaded.unregister(wolf);
-                wolf.remove();
-            }
             sender.sendMessage(Component.text(
                     error.getMessage() == null ? error.getClass().getSimpleName()
                             : error.getMessage(), NamedTextColor.RED));

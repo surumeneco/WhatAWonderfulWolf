@@ -26,6 +26,31 @@ final class PaperWonderfulWolfFactoryTest {
             WonderfulGenomeEngine.create(EngineConfig.defaults());
 
     @Test
+    @SuppressWarnings("unchecked")
+    void pendingNaturalJobInvalidationOnlyAffectsTheExactWolfInstance() throws Exception {
+        UUID id = UUID.fromString("f1111111-1111-1111-1111-111111111111");
+        MemoryPdc pdc = new MemoryPdc();
+        Wolf unloaded = wolf(id, pdc.proxy(), true, false, null);
+        Wolf replacement = wolf(id, pdc.proxy(), true, false, null);
+        PaperWonderfulWolfFactory factory = new PaperWonderfulWolfFactory(
+                founderSource(), loaded(pdc), () -> 1L, ignored -> {});
+
+        java.lang.reflect.Field field =
+                PaperWonderfulWolfFactory.class.getDeclaredField("pendingNatural");
+        field.setAccessible(true);
+        Map<UUID, Wolf> pending = (Map<UUID, Wolf>) field.get(factory);
+        pending.put(id, unloaded);
+
+        factory.invalidateNatural(replacement);
+        assertSame(unloaded, pending.get(id),
+                "A stale remove event must not cancel a different replacement instance");
+
+        factory.invalidateNatural(unloaded);
+        assertFalse(pending.containsKey(id),
+                "Unload must free the slot so reload can restart from its saved seed");
+    }
+
+    @Test
     void adultTamedWolfKeepsVanillaStateAndPersistsMatchingFounderMetadata() {
         UUID ownerId = UUID.fromString("10000000-0000-0000-0000-000000000001");
         OfflinePlayer owner = offlinePlayer(ownerId);

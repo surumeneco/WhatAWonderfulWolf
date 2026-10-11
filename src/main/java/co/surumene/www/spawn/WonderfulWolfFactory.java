@@ -34,6 +34,13 @@ public final class WonderfulWolfFactory implements FounderIndividualSource {
                 Objects.requireNonNull(profileSupplier, "profileSupplier");
     }
 
+    /** Capture an immutable Profile before moving CPU work off the Bukkit thread. */
+    public WonderfulWolfFactory snapshot() {
+        WonderfulWolfGenomeProfile profile =
+                Objects.requireNonNull(profileSupplier.get(), "current profile");
+        return new WonderfulWolfFactory(engine, () -> profile);
+    }
+
     @Override
     public WonderfulWolfCreationResult createFromGenome(
             DiploidGenome genome,

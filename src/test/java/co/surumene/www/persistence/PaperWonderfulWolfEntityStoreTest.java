@@ -49,6 +49,32 @@ final class PaperWonderfulWolfEntityStoreTest {
     }
 
     @Test
+    void loadingExistingWolfConvertsInlinePdcToReference(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path directory) {
+        Plugin plugin = plugin();
+        MemoryPdc memory = new MemoryPdc();
+        Wolf wolf = wolf(UUID.randomUUID(), memory.proxy());
+        WonderfulWolfIndividual original = individual();
+        new WonderfulWolfEntityStore(plugin, engine).save(wolf, original);
+
+        WonderfulWolfEntityStore external = new WonderfulWolfEntityStore(
+                plugin, engine, new GenomePayloadFiles(directory));
+        RestoreResult.Success migrated = assertInstanceOf(
+                RestoreResult.Success.class, external.restore(wolf));
+        assertEquals(original, migrated.individual());
+
+        var keys = memory.values.keySet().stream()
+                .map(NamespacedKey::toString).toList();
+        assertTrue(keys.contains("whatawonderfulwolf:genome_ref"));
+        assertFalse(keys.contains("whatawonderfulwolf:genome"));
+        assertFalse(keys.contains("whatawonderfulwolf:phenotype_snapshot"));
+        assertEquals(original,
+                ((RestoreResult.Success) new WonderfulWolfEntityStore(
+                        plugin, engine, new GenomePayloadFiles(directory))
+                        .restore(wolf)).individual());
+    }
+
+    @Test
     void nonWolfEntitiesAreNeverClassifiedAsWonderfulByTheEntityStore() {
         Plugin plugin = plugin();
         WonderfulWolfEntityStore store = new WonderfulWolfEntityStore(plugin, engine);

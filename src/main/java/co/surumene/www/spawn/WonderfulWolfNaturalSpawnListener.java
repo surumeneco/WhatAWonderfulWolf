@@ -6,6 +6,8 @@ import org.bukkit.entity.Wolf;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import com.destroystokyo.paper.event.entity.EntityAddToWorldEvent;
+import com.destroystokyo.paper.event.entity.EntityRemoveFromWorldEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
 
@@ -35,6 +37,22 @@ public final class WonderfulWolfNaturalSpawnListener implements Listener {
         this.logger = Objects.requireNonNull(logger, "logger");
     }
 
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onEntityAdd(EntityAddToWorldEvent event) {
+        if (event.getEntity() instanceof Wolf wolf
+                && converter instanceof PaperWonderfulWolfFactory paper) {
+            paper.resumeAfterEntityAddition(wolf);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onEntityRemove(EntityRemoveFromWorldEvent event) {
+        if (event.getEntity() instanceof Wolf wolf
+                && converter instanceof PaperWonderfulWolfFactory paper) {
+            paper.invalidateNatural(wolf);
+        }
+    }
+
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onCreatureSpawn(CreatureSpawnEvent event) {
         if (!(event.getEntity() instanceof Wolf wolf)
@@ -52,21 +70,21 @@ public final class WonderfulWolfNaturalSpawnListener implements Listener {
         convert(wolf);
     }
 
+    /** Resume selected but unfinished wolves already loaded at plugin startup. */
+    public void resumeLoaded() {
+        if (!(converter instanceof PaperWonderfulWolfFactory paper)) return;
+        org.bukkit.Bukkit.getWorlds().forEach(world ->
+                world.getEntitiesByClass(Wolf.class).forEach(paper::resumePendingNatural));
+    }
+
     @EventHandler(priority = EventPriority.MONITOR)
     public void onChunkLoad(ChunkLoadEvent event) {
-        if (!event.isNewChunk()) {
-            return;
-        }
-
-        double probability = currentProbability();
         for (Entity entity : event.getChunk().getEntities()) {
-            if (!(entity instanceof Wolf wolf)) {
-                continue;
-            }
-            if (NaturalWolfSpawnPolicy.shouldConvertGeneratedWolf(
-                    true,
-                    probability,
-                    probabilityDraw.getAsDouble())) {
+            if (!(entity instanceof Wolf wolf)) continue;
+            if (converter instanceof PaperWonderfulWolfFactory paper
+                    && paper.resumePendingNatural(wolf)) continue;
+            if (event.isNewChunk() && NaturalWolfSpawnPolicy.shouldConvertGeneratedWolf(
+                    true, currentProbability(), probabilityDraw.getAsDouble())) {
                 convert(wolf);
             }
         }
@@ -80,6 +98,12 @@ public final class WonderfulWolfNaturalSpawnListener implements Listener {
 
     private void convert(Wolf wolf) {
         try {
+            if (converter instanceof PaperWonderfulWolfFactory paper) {
+                if (!paper.requestNaturalAsync(wolf, seedSupplier.getAsLong())) {
+                    logger.warning("WWW natural conversion queue is full for " + wolf.getUniqueId());
+                }
+                return;
+            }
             WonderfulWolfEntityCreationResult result =
                     converter.convert(wolf, seedSupplier.getAsLong());
             if (result instanceof WonderfulWolfEntityCreationResult.Failure failure) {

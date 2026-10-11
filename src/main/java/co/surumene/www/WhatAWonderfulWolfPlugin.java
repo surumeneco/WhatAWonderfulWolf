@@ -18,6 +18,7 @@ import co.surumene.www.config.WwwConfigLoader;
 import co.surumene.www.lifecycle.WglProfileRegistryGateway;
 import co.surumene.www.lifecycle.WonderfulWolfProfileLifecycle;
 import co.surumene.www.persistence.WonderfulWolfEntityStore;
+import co.surumene.www.persistence.GenomePayloadFiles;
 import co.surumene.www.persistence.WonderfulWolfLoadedIndividuals;
 import co.surumene.www.persistence.WonderfulWolfPersistenceListener;
 import co.surumene.www.runtime.BiologicalClock;
@@ -26,6 +27,7 @@ import co.surumene.www.runtime.PaperAbilityProjector;
 import co.surumene.www.runtime.WonderfulWolfAbilityRuntime;
 import co.surumene.www.runtime.YamlBiologicalClockStateStore;
 import co.surumene.www.spawn.PaperWonderfulWolfFactory;
+import co.surumene.www.spawn.AsyncWolfFounderCoordinator;
 import co.surumene.www.spawn.WonderfulWolfFactory;
 import co.surumene.www.spawn.WonderfulWolfNaturalSpawnListener;
 import co.surumene.www.ui.WanWandListener;
@@ -54,6 +56,8 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
     private WonderfulWolfInventoryService inventoryService;
     private WanWandService wanWandService;
     private BukkitTask abilityTask;
+    private AsyncWolfFounderCoordinator asyncFounders;
+    private BukkitTask founderTask;
     private BukkitTask behaviorTask;
     private BukkitTask weaponTask;
 
@@ -84,7 +88,9 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         biologicalClock = clock;
 
         WonderfulWolfEntityStore entityStore =
-                new WonderfulWolfEntityStore(this, genomeLib.engine());
+                new WonderfulWolfEntityStore(this, genomeLib.engine(),
+                        new GenomePayloadFiles(Bukkit.getWorlds().getFirst().getWorldFolder().toPath()
+                                .resolve("data").resolve("wonderful").resolve("www").resolve("genomes")));
         WonderfulWolfLoadedIndividuals loaded =
                 new WonderfulWolfLoadedIndividuals(entityStore);
         WonderfulWolfPersistenceListener persistenceListener =
@@ -117,6 +123,10 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                         clock::currentTime,
                         abilities::refresh,
                         getLogger());
+        asyncFounders = new AsyncWolfFounderCoordinator(this, getLogger());
+        paperFactory.useAsyncCoordinator(asyncFounders);
+        breedingListener.useAsyncCoordinator(asyncFounders);
+        founderTask = Bukkit.getScheduler().runTaskTimer(this, asyncFounders::tick, 1L, 1L);
         WonderfulWolfNaturalSpawnListener naturalSpawnListener =
                 new WonderfulWolfNaturalSpawnListener(
                         paperFactory,
@@ -232,6 +242,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
 
         Bukkit.getWorlds().forEach(world ->
                 persistenceListener.restoreAll(world.getEntitiesByClass(Wolf.class)));
+        naturalSpawnListener.resumeLoaded();
 
         loadedIndividuals = loaded;
         abilityRuntime = abilities;
@@ -268,6 +279,8 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (founderTask != null) founderTask.cancel();
+        if (asyncFounders != null) asyncFounders.shutdown();
         WonderfulWolfInventoryService inventories = inventoryService;
         inventoryService = null;
         if (inventories != null) {
