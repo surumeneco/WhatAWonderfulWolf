@@ -15,15 +15,17 @@ public final class WonderfulWolfTameListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onTame(EntityTameEvent event) {
         if (!(event.getEntity() instanceof Wolf wolf)) return;
-        RestoreResult result = loaded.register(wolf);
-        if (!(result instanceof RestoreResult.Success success)) return;
-        var previous = success.individual();
-        loaded.saveAndRegister(wolf,
-                previous.withTamedOwner(event.getOwner().getUniqueId()));
-        if (previous.mode() == Mode.WANDER) {
-            plugin.getServer().getScheduler().runTask(plugin, () -> {
-                if (wolf.isValid() && wolf.isTamed()) wolf.setSitting(false);
-            });
-        }
+        var ownerId = event.getOwner().getUniqueId();
+        // The vanilla tame handler sets owner/sitting state after this event.
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
+            if (!wolf.isValid() || wolf.isDead() || !wolf.isTamed()
+                    || wolf.getOwner() == null
+                    || !ownerId.equals(wolf.getOwner().getUniqueId())) return;
+            RestoreResult result = loaded.register(wolf);
+            if (!(result instanceof RestoreResult.Success success)) return;
+            var previous = success.individual();
+            loaded.saveAndRegister(wolf, previous.withTamedOwner(ownerId));
+            if (previous.mode() == Mode.WANDER) wolf.setSitting(false);
+        });
     }
 }
