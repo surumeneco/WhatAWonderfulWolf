@@ -66,7 +66,7 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
             convert(wolf, seed);
             return true;
         }
-        if (!wolf.isValid() || wolf.isDead()) return false;
+        if (wolf.isDead()) return false;
         UUID id = wolf.getUniqueId();
         if (pendingNatural.containsKey(id)) return true;
         if (loaded.find(id).isPresent()) return true;
