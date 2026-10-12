@@ -11,10 +11,16 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 public final class WonderfulWolfLoadedIndividuals {
     private final WonderfulWolfEntityStore store;
     private final Map<UUID, LoadedIndividual> loaded = new HashMap<>();
+    private Consumer<Wolf> firstCreation = wolf -> {};
+
+    public void onFirstCreation(Consumer<Wolf> initializer) {
+        firstCreation = Objects.requireNonNull(initializer, "initializer");
+    }
 
     public WonderfulWolfLoadedIndividuals(WonderfulWolfEntityStore store) {
         this.store = Objects.requireNonNull(store, "store");
@@ -38,8 +44,12 @@ public final class WonderfulWolfLoadedIndividuals {
     public void saveAndRegister(Wolf wolf, WonderfulWolfIndividual individual) {
         Objects.requireNonNull(wolf, "wolf");
         Objects.requireNonNull(individual, "individual");
+        boolean newlyCreated = !store.isWonderful(wolf);
         store.save(wolf, individual);
         loaded.put(wolf.getUniqueId(), new LoadedIndividual(wolf, individual));
+        if (newlyCreated) {
+            firstCreation.accept(wolf);
+        }
     }
 
     public void unregister(Entity entity) {
