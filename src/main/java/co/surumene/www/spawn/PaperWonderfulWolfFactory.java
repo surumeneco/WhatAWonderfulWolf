@@ -59,11 +59,6 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
         this.loaded.onFirstCreation(wolf -> {
             try {
                 initializeNew.accept(wolf);
-                org.bukkit.attribute.AttributeInstance max =
-                        wolf.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
-                if (max != null && max.getValue() > 0.0) {
-                    wolf.setHealth(max.getValue());
-                }
             } catch (RuntimeException error) {
                 logger.warning("Could not initialize new WWW wolf "
                         + wolf.getUniqueId() + ": " + safeMessage(error));
