@@ -26,7 +26,7 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
     private final FounderIndividualSource founderSource;
     private final WonderfulWolfLoadedIndividuals loaded;
     private final LongSupplier biologicalTime;
-    private final Consumer<Wolf> abilityRefresh;
+    private final Consumer<Wolf> initializeNew;
     private final Logger logger;
     private AsyncWolfFounderCoordinator async;
     private NamespacedKey deferredSeedKey;
@@ -36,12 +36,12 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
             FounderIndividualSource founderSource,
             WonderfulWolfLoadedIndividuals loaded,
             LongSupplier biologicalTime,
-            Consumer<Wolf> abilityRefresh) {
+            Consumer<Wolf> initializeNew) {
         this(
                 founderSource,
                 loaded,
                 biologicalTime,
-                abilityRefresh,
+                initializeNew,
                 Logger.getLogger(PaperWonderfulWolfFactory.class.getName()));
     }
 
@@ -49,12 +49,12 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
             FounderIndividualSource founderSource,
             WonderfulWolfLoadedIndividuals loaded,
             LongSupplier biologicalTime,
-            Consumer<Wolf> abilityRefresh,
+            Consumer<Wolf> initializeNew,
             Logger logger) {
         this.founderSource = Objects.requireNonNull(founderSource, "founderSource");
         this.loaded = Objects.requireNonNull(loaded, "loaded");
         this.biologicalTime = Objects.requireNonNull(biologicalTime, "biologicalTime");
-        this.abilityRefresh = Objects.requireNonNull(abilityRefresh, "abilityRefresh");
+        this.initializeNew = Objects.requireNonNull(initializeNew, "initializeNew");
         this.logger = Objects.requireNonNull(logger, "logger");
     }
 
@@ -128,7 +128,7 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
                         try {
                             loaded.saveAndRegister(wolf, success.individual());
                             wolf.getPersistentDataContainer().remove(deferredSeedKey);
-                            if (wolf.isAdult()) abilityRefresh.accept(wolf);
+                            initializeNew.accept(wolf);
                         } catch (RuntimeException error) {
                             logger.warning("WWW natural founder apply failed for " + id + ": " + error);
                         }
@@ -184,7 +184,7 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
         Wolf wolf = world.spawn(location, Wolf.class, CreatureSpawnEvent.SpawnReason.CUSTOM);
         try {
             loaded.saveAndRegister(wolf, individual);
-            abilityRefresh.accept(wolf);
+            initializeNew.accept(wolf);
             return new WonderfulWolfEntityCreationResult.Success(wolf, individual);
         } catch (RuntimeException error) {
             loaded.unregister(wolf);
@@ -251,16 +251,14 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
                     safeMessage(error));
         }
 
-        if (wolf.isAdult()) {
-            try {
-                abilityRefresh.accept(wolf);
-            } catch (RuntimeException error) {
-                logger.warning(
-                        "Could not immediately project Wonderful Wolf attributes for "
-                                + wolf.getUniqueId()
-                                + ": "
-                                + safeMessage(error));
-            }
+        try {
+            initializeNew.accept(wolf);
+        } catch (RuntimeException error) {
+            logger.warning(
+                    "Could not initialize Wonderful Wolf abilities and health for "
+                            + wolf.getUniqueId()
+                            + ": "
+                            + safeMessage(error));
         }
 
         return new WonderfulWolfEntityCreationResult.Success(wolf, individual);
@@ -296,7 +294,7 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
                 ((WonderfulWolfCreationResult.Success) created).individual();
         try {
             loaded.saveAndRegister(wolf, individual);
-            abilityRefresh.accept(wolf);
+            initializeNew.accept(wolf);
         } catch (RuntimeException error) {
             loaded.unregister(wolf);
             wolf.remove();
