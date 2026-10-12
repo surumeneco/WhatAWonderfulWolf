@@ -56,6 +56,19 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
         this.biologicalTime = Objects.requireNonNull(biologicalTime, "biologicalTime");
         this.initializeNew = Objects.requireNonNull(initializeNew, "initializeNew");
         this.logger = Objects.requireNonNull(logger, "logger");
+        this.loaded.onFirstCreation(wolf -> {
+            try {
+                initializeNew.accept(wolf);
+                org.bukkit.attribute.AttributeInstance max =
+                        wolf.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+                if (max != null && max.getValue() > 0.0) {
+                    wolf.setHealth(max.getValue());
+                }
+            } catch (RuntimeException error) {
+                logger.warning("Could not initialize new WWW wolf "
+                        + wolf.getUniqueId() + ": " + safeMessage(error));
+            }
+        });
     }
 
     public void useAsyncCoordinator(AsyncWolfFounderCoordinator coordinator) {
@@ -128,7 +141,6 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
                         try {
                             loaded.saveAndRegister(wolf, success.individual());
                             wolf.getPersistentDataContainer().remove(deferredSeedKey);
-                            initializeNew.accept(wolf);
                         } catch (RuntimeException error) {
                             logger.warning("WWW natural founder apply failed for " + id + ": " + error);
                         }
@@ -184,7 +196,6 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
         Wolf wolf = world.spawn(location, Wolf.class, CreatureSpawnEvent.SpawnReason.CUSTOM);
         try {
             loaded.saveAndRegister(wolf, individual);
-            initializeNew.accept(wolf);
             return new WonderfulWolfEntityCreationResult.Success(wolf, individual);
         } catch (RuntimeException error) {
             loaded.unregister(wolf);
@@ -251,15 +262,6 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
                     safeMessage(error));
         }
 
-        try {
-            initializeNew.accept(wolf);
-        } catch (RuntimeException error) {
-            logger.warning(
-                    "Could not initialize Wonderful Wolf abilities and health for "
-                            + wolf.getUniqueId()
-                            + ": "
-                            + safeMessage(error));
-        }
 
         return new WonderfulWolfEntityCreationResult.Success(wolf, individual);
     }
@@ -294,7 +296,6 @@ public final class PaperWonderfulWolfFactory implements NaturalWolfConverter {
                 ((WonderfulWolfCreationResult.Success) created).individual();
         try {
             loaded.saveAndRegister(wolf, individual);
-            initializeNew.accept(wolf);
         } catch (RuntimeException error) {
             loaded.unregister(wolf);
             wolf.remove();
