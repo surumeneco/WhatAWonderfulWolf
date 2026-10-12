@@ -56,6 +56,22 @@ public final class WonderfulWolfAbilityRuntime {
         current.keySet().retainAll(seen);
     }
 
+    /**
+     * Initialize a newly created WWW entity after its Individual has been registered.
+     * Never call this during PDC restoration, routine refresh, or administrative edits.
+     */
+    public void initializeNew(Wolf wolf) {
+        Objects.requireNonNull(wolf, "wolf");
+        refresh(wolf);
+        if (current.containsKey(wolf.getUniqueId()) && wolf.isValid() && !wolf.isDead()) {
+            org.bukkit.attribute.AttributeInstance maxHealth =
+                    wolf.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+            if (maxHealth != null && maxHealth.getValue() > 0.0) {
+                wolf.setHealth(maxHealth.getValue());
+            }
+        }
+    }
+
     public void refresh(Wolf wolf) {
         Objects.requireNonNull(wolf, "wolf");
         WonderfulWolfIndividual individual = loaded.find(wolf.getUniqueId())
@@ -77,12 +93,12 @@ public final class WonderfulWolfAbilityRuntime {
             long now,
             WwwConfig.Runtime runtime) {
         UUID id = wolf.getUniqueId();
-        if (!wolf.isValid() || !wolf.isAdult()) {
+        if (!wolf.isValid() || wolf.isDead()) {
             current.remove(id);
             return;
         }
 
-        if (individual.adultBiologicalTime() == 0L && now > 0L) {
+        if (wolf.isAdult() && individual.adultBiologicalTime() == 0L && now > 0L) {
             individual = individual.withAdultBiologicalTime(now);
             try {
                 loaded.saveAndRegister(wolf, individual);
@@ -97,9 +113,9 @@ public final class WonderfulWolfAbilityRuntime {
             }
         }
 
-        double ageGameDays = ageGameDays(
-                now,
-                individual.adultBiologicalTime());
+        double ageGameDays = wolf.isAdult()
+                ? ageGameDays(now, individual.adultBiologicalTime())
+                : 0.0;
         try {
             EffectiveAbilities abilities =
                     EffectiveAbilityPipeline.evaluate(

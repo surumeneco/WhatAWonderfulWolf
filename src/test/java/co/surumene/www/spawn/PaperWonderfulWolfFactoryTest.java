@@ -107,7 +107,7 @@ final class PaperWonderfulWolfFactoryTest {
 
         assertTrue(success.individual().ownerId().isEmpty());
         assertEquals(0L, success.individual().adultBiologicalTime());
-        assertEquals(0, refreshes.get());
+        assertEquals(1, refreshes.get());
     }
 
     @Test

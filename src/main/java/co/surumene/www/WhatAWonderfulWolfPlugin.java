@@ -121,7 +121,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                         founderFactory,
                         loaded,
                         clock::currentTime,
-                        abilities::refresh,
+                        abilities::initializeNew,
                         getLogger());
         asyncFounders = new AsyncWolfFounderCoordinator(this, getLogger());
         paperFactory.useAsyncCoordinator(asyncFounders);
