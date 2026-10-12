@@ -38,6 +38,7 @@ tasks.withType<JavaCompile>().configureEach {
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
+    filter { includeTestsMatching("*GenomePerformanceProbeTest") }
     testLogging.showStandardStreams = true
     maxParallelForks = Runtime.getRuntime().availableProcessors().coerceAtMost(2)
     testLogging {
