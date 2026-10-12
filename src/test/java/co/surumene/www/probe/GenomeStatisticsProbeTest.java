@@ -33,6 +33,10 @@ final class GenomeStatisticsProbeTest {
         return ph.expressedTraits().stream().map(t->t.trait().name()).toList();
     }
 
+    private static String traitDetail(PhenotypeSnapshot ph) {
+        return ph.expressedTraits().stream().map(t->t.trait().name()+"@"+t.strength().name())
+            .reduce((a,b)->a+","+b).orElse("_");
+    }
     @Test void executeStatisticalCohort(){
         System.out.printf("STAT_META species=WWW shard=%d families=%d siblings_per_family=%d%n",
           GenomeStats.SHARD,GenomeStats.FAMILIES,GenomeStats.SIBLINGS);
@@ -82,6 +86,16 @@ final class GenomeStatisticsProbeTest {
                   c.developmentFactors(),up.developmentFactors());
                 GenomeStats.categorical("WWW",f,i,ap.personality(),bp.personality(),c.personality(),up.personality(),
                   traits(ap),traits(bp),traits(c),traits(up));
+                String markerA=engine.marker(profile.backbone(),a.genome()).formatted();
+                String markerB=engine.marker(profile.backbone(),b.genome()).formatted();
+                String markerC=engine.marker(profile.backbone(),child.genome()).formatted();
+                String markerU=engine.marker(profile.backbone(),unrelated.genome()).formatted();
+                assertEquals(markerC,outcome.lineageId());
+                System.out.printf("STAT_MARKER species=WWW shard=%d family=%d sibling=%d parent_a=%s parent_b=%s child=%s unrelated=%s%n",
+                  GenomeStats.SHARD,f,i,markerA,markerB,markerC,markerU);
+                System.out.printf("STAT_TRAIT_DETAIL species=WWW shard=%d family=%d sibling=%d parent_a=%s parent_b=%s child=%s unrelated=%s%n",
+                  GenomeStats.SHARD,f,i,traitDetail(ap),traitDetail(bp),traitDetail(c),traitDetail(up));
+
                 System.out.printf(Locale.ROOT,
                   "STAT_GENETIC species=WWW shard=%d family=%d sibling=%d divine=%s injuries=%d initial_affection=%d affection_delta=%d%n",
                   GenomeStats.SHARD,f,i,c.divineLineageExpressed(),c.injuries().size(),
