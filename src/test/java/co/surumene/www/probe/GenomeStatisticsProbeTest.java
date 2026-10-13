@@ -48,6 +48,26 @@ final class GenomeStatisticsProbeTest {
             throw new IllegalStateException("MarkerEngine locus inspection failed", e);
         }
     }
+    private static BitSequence resolvedMaterial(BitSequence sequence, MarkerLocus locus) {
+        if (locus == null) return null;
+        try {
+            var method = MarkerEngine.class.getDeclaredMethod(
+                    "resolveLocus", BitSequence.class, MarkerLocus.class);
+            method.setAccessible(true);
+            return (BitSequence) method.invoke(new MarkerEngine(), sequence, locus);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Marker material reflection failed", e);
+        }
+    }
+    private static int closestMaterialDistance(BitSequence material,
+                                               ChromosomePair parent, MarkerLocus locus) {
+        if (material == null) return -1;
+        BitSequence first = resolvedMaterial(parent.haplotypeA(), locus);
+        BitSequence second = resolvedMaterial(parent.haplotypeB(), locus);
+        int a = first == null ? Integer.MAX_VALUE : material.hammingDistance(first);
+        int b = second == null ? Integer.MAX_VALUE : material.hammingDistance(second);
+        return Math.min(a, b) == Integer.MAX_VALUE ? -1 : Math.min(a, b);
+    }
     private static boolean inherited(String child, String a, String b) {
         return (a.indexOf(child.charAt(0)) >= 0 && b.indexOf(child.charAt(1)) >= 0)
             || (a.indexOf(child.charAt(1)) >= 0 && b.indexOf(child.charAt(0)) >= 0);
@@ -118,6 +138,14 @@ final class GenomeStatisticsProbeTest {
                         hasLocus(apair.haplotypeA(),locus),hasLocus(apair.haplotypeB(),locus),
                         hasLocus(bpair.haplotypeA(),locus),hasLocus(bpair.haplotypeB(),locus),
                         hasLocus(cpair.haplotypeA(),locus),hasLocus(cpair.haplotypeB(),locus));
+                    BitSequence paternalMaterial = resolvedMaterial(cpair.haplotypeA(), locus);
+                    BitSequence maternalMaterial = resolvedMaterial(cpair.haplotypeB(), locus);
+                    System.out.printf(Locale.ROOT,
+                        "STAT_MARKER_MATERIAL species=WWW shard=%d family=%d sibling=%d chr=%d reproducible=%s paternal_dist=%d maternal_dist=%d%n",
+                        GenomeStats.SHARD, f, i, chromosome,
+                        inherited(mc[chromosome], ma[chromosome], mb[chromosome]),
+                        closestMaterialDistance(paternalMaterial, apair, locus),
+                        closestMaterialDistance(maternalMaterial, bpair, locus));
                 }
 
                 System.out.printf("STAT_MARKER species=WWW shard=%d family=%d sibling=%d parent_a=%s parent_b=%s child=%s unrelated=%s%n",
