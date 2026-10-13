@@ -53,7 +53,8 @@ public final class WonderfulWolfWeaponRuntime {
                     continue;
                 }
                 AttributeInstance attackSpeed = wolf.getAttribute(Attribute.ATTACK_SPEED);
-                double attacksPerSecond = attackSpeed == null ? 0.0 : attackSpeed.getValue();
+                if (attackSpeed == null) continue;
+                double attacksPerSecond = attackSpeed.getValue();
                 long cooldown = WonderfulWolfWeaponTiming.cooldownTicks(
                         Math.max(0.0, attacksPerSecond));
                 long previous = lastAttackTick.getOrDefault(id, Long.MIN_VALUE / 2);
