@@ -37,6 +37,21 @@ final class GenomeStatisticsProbeTest {
         return ph.expressedTraits().stream().map(t->t.trait().name()+"@"+t.strength().name())
             .reduce((a,b)->a+","+b).orElse("_");
     }
+    private static boolean hasLocus(BitSequence sequence, MarkerLocus locus) {
+        if (locus == null) return false;
+        try {
+            var method = MarkerEngine.class.getDeclaredMethod("resolveLocus",
+                    BitSequence.class, MarkerLocus.class);
+            method.setAccessible(true);
+            return method.invoke(new MarkerEngine(), sequence, locus) != null;
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("MarkerEngine locus inspection failed", e);
+        }
+    }
+    private static boolean inherited(String child, String a, String b) {
+        return (a.indexOf(child.charAt(0)) >= 0 && b.indexOf(child.charAt(1)) >= 0)
+            || (a.indexOf(child.charAt(1)) >= 0 && b.indexOf(child.charAt(0)) >= 0);
+    }
     @Test void executeStatisticalCohort(){
         System.out.printf("STAT_META species=WWW shard=%d families=%d siblings_per_family=%d%n",
           GenomeStats.SHARD,GenomeStats.FAMILIES,GenomeStats.SIBLINGS);
@@ -91,6 +106,20 @@ final class GenomeStatisticsProbeTest {
                 String markerC=engine.marker(profile.backbone(),child.genome()).formatted();
                 String markerU=engine.marker(profile.backbone(),unrelated.genome()).formatted();
                 assertEquals(markerC,outcome.lineageId());
+                String[] ma=markerA.split("-"), mb=markerB.split("-"), mc=markerC.split("-");
+                for (int chromosome=0; chromosome<mc.length; chromosome++) {
+                    MarkerLocus locus=profile.backbone().chromosomes().get(chromosome).markerLocus();
+                    ChromosomePair apair=a.genome().chromosomePairs().get(chromosome);
+                    ChromosomePair bpair=b.genome().chromosomePairs().get(chromosome);
+                    ChromosomePair cpair=child.genome().chromosomePairs().get(chromosome);
+                    System.out.printf(Locale.ROOT,
+                        "STAT_MARKER_LOCUS species=WWW shard=%d family=%d sibling=%d chr=%d reproducible=%s parentAresolved=%s,%s parentBresolved=%s,%s childResolved=%s,%s%n",
+                        GenomeStats.SHARD,f,i,chromosome,inherited(mc[chromosome],ma[chromosome],mb[chromosome]),
+                        hasLocus(apair.haplotypeA(),locus),hasLocus(apair.haplotypeB(),locus),
+                        hasLocus(bpair.haplotypeA(),locus),hasLocus(bpair.haplotypeB(),locus),
+                        hasLocus(cpair.haplotypeA(),locus),hasLocus(cpair.haplotypeB(),locus));
+                }
+
                 System.out.printf("STAT_MARKER species=WWW shard=%d family=%d sibling=%d parent_a=%s parent_b=%s child=%s unrelated=%s%n",
                   GenomeStats.SHARD,f,i,markerA,markerB,markerC,markerU);
                 System.out.printf("STAT_TRAIT_DETAIL species=WWW shard=%d family=%d sibling=%d parent_a=%s parent_b=%s child=%s unrelated=%s%n",
