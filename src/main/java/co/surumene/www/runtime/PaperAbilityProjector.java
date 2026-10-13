@@ -42,10 +42,7 @@ public final class PaperAbilityProjector {
                 wolf,
                 Attribute.ATTACK_DAMAGE,
                 abilities.canonical(Ability.ATTACK_DAMAGE));
-        setAttribute(
-                wolf,
-                Attribute.ATTACK_SPEED,
-                abilities.canonical(Ability.ATTACK_SPEED));
+        projectAttackSpeed(wolf, abilities.canonical(Ability.ATTACK_SPEED));
         setAttribute(
                 wolf,
                 Attribute.ARMOR,
@@ -89,6 +86,47 @@ public final class PaperAbilityProjector {
         }
         double ratio = jumpStrength / 0.42;
         return 1.25 * ratio * ratio;
+    }
+
+    /**
+     * Register missing Wolf attack speed before projecting the phenotype base value.
+     * Item and external modifiers remain attached to the same attribute instance.
+     */
+    void projectAttackSpeed(Wolf wolf, double baseAttacksPerSecond) {
+        Objects.requireNonNull(wolf, "wolf");
+        projectAttackSpeedSlot(
+                () -> wolf.getAttribute(Attribute.ATTACK_SPEED) != null,
+                () -> wolf.registerAttribute(Attribute.ATTACK_SPEED),
+                value -> setAttribute(wolf, Attribute.ATTACK_SPEED, value),
+                baseAttacksPerSecond,
+                wolf.getUniqueId().toString());
+    }
+
+    /**
+     * Small bootstrap-independent seam for testing the registration contract.
+     */
+    static void projectAttackSpeedSlot(
+            java.util.function.BooleanSupplier available,
+            Runnable register,
+            java.util.function.DoubleConsumer apply,
+            double baseAttacksPerSecond,
+            String wolfId) {
+        Objects.requireNonNull(available, "available");
+        Objects.requireNonNull(register, "register");
+        Objects.requireNonNull(apply, "apply");
+        if (!available.getAsBoolean()) {
+            try {
+                register.run();
+            } catch (RuntimeException error) {
+                throw new IllegalStateException(
+                        "Could not register attack_speed on Wonderful Wolf " + wolfId, error);
+            }
+            if (!available.getAsBoolean()) {
+                throw new IllegalStateException(
+                        "attack_speed unavailable after registration for Wonderful Wolf " + wolfId);
+            }
+        }
+        apply.accept(baseAttacksPerSecond);
     }
 
     private void setAttribute(
