@@ -42,10 +42,7 @@ public final class PaperAbilityProjector {
                 wolf,
                 Attribute.ATTACK_DAMAGE,
                 abilities.canonical(Ability.ATTACK_DAMAGE));
-        setAttribute(
-                wolf,
-                Attribute.ATTACK_SPEED,
-                abilities.canonical(Ability.ATTACK_SPEED));
+        projectAttackSpeed(wolf, abilities.canonical(Ability.ATTACK_SPEED));
         setAttribute(
                 wolf,
                 Attribute.ARMOR,
@@ -89,6 +86,30 @@ public final class PaperAbilityProjector {
         }
         double ratio = jumpStrength / 0.42;
         return 1.25 * ratio * ratio;
+    }
+
+    /**
+     * Register attack speed on wolves lacking the normally optional attribute.
+     * The base value is projected without replacing equipment modifiers.
+     */
+    void projectAttackSpeed(Wolf wolf, double baseAttacksPerSecond) {
+        Objects.requireNonNull(wolf, "wolf");
+        AttributeInstance instance = wolf.getAttribute(Attribute.ATTACK_SPEED);
+        if (instance == null) {
+            try {
+                wolf.registerAttribute(Attribute.ATTACK_SPEED);
+            } catch (RuntimeException error) {
+                throw new IllegalStateException(
+                        "Could not register attack_speed on Wonderful Wolf "
+                                + wolf.getUniqueId(), error);
+            }
+            if (wolf.getAttribute(Attribute.ATTACK_SPEED) == null) {
+                throw new IllegalStateException(
+                        "attack_speed unavailable after registration for Wonderful Wolf "
+                                + wolf.getUniqueId());
+            }
+        }
+        setAttribute(wolf, Attribute.ATTACK_SPEED, baseAttacksPerSecond);
     }
 
     private void setAttribute(
