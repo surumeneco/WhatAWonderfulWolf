@@ -7,6 +7,7 @@ import co.surumene.www.individual.WonderfulWolfIndividual;
 import co.surumene.www.persistence.WonderfulWolfLoadedIndividuals;
 import org.bukkit.entity.Wolf;
 
+import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -25,7 +26,14 @@ public final class WonderfulWolfAbilityRuntime {
     private final Supplier<WwwConfig.Runtime> runtimeConfig;
     private final PaperAbilityProjector projector;
     private final Logger logger;
+    private static final int MAX_REFRESHES_PER_TICK = 16;
+    private static final long AGE_REFRESH_QUANTUM = 200L;
+
     private final Map<UUID, EffectiveAbilities> current = new HashMap<>();
+    private final Map<UUID, WonderfulWolfIndividual> projectedIndividuals = new HashMap<>();
+    private final Map<UUID, Long> projectedAges = new HashMap<>();
+    private final ArrayDeque<WonderfulWolfLoadedIndividuals.LoadedSnapshot> pending = new ArrayDeque<>();
+    private long nextScanTick;
 
     public WonderfulWolfAbilityRuntime(
             WonderfulWolfLoadedIndividuals loaded,
@@ -40,20 +48,48 @@ public final class WonderfulWolfAbilityRuntime {
         this.logger = Objects.requireNonNull(logger, "logger");
     }
 
+    /**
+     * Incremental maintenance rather than reevaluating every loaded individual
+     * on one server tick. Explicit edits still use refresh(Wolf) immediately.
+     */
     public void tick() {
+        long tick = org.bukkit.Bukkit.getCurrentTick();
+        if (pending.isEmpty()) {
+            if (tick < nextScanTick) return;
+            nextScanTick = tick + 200L;
+            var snapshots = loaded.snapshots();
+            Set<UUID> seen = new HashSet<>(snapshots.size());
+            for (var snapshot : snapshots) seen.add(snapshot.entity().getUniqueId());
+            current.keySet().retainAll(seen);
+            projectedIndividuals.keySet().retainAll(seen);
+            projectedAges.keySet().retainAll(seen);
+            pending.addAll(snapshots);
+        }
+
         long now = clock.currentTime();
         WwwConfig.Runtime runtime = Objects.requireNonNull(
                 runtimeConfig.get(), "runtime config");
-        Set<UUID> seen = new HashSet<>();
-
-        for (WonderfulWolfLoadedIndividuals.LoadedSnapshot snapshot :
-                loaded.snapshots()) {
+        for (int i = 0; i < MAX_REFRESHES_PER_TICK && !pending.isEmpty(); i++) {
+            var snapshot = pending.removeFirst();
             Wolf wolf = snapshot.entity();
-            seen.add(wolf.getUniqueId());
-            refreshAt(wolf, snapshot.individual(), now, runtime);
-        }
+            UUID id = wolf.getUniqueId();
+            // A newer on-demand edit can supersede a snapshot captured earlier.
+            WonderfulWolfIndividual latest = loaded.find(id).orElse(null);
+            if (latest == null || !wolf.isValid() || wolf.isDead()) {
+                current.remove(id);
+                projectedIndividuals.remove(id);
+                projectedAges.remove(id);
+                continue;
+            }
 
-        current.keySet().retainAll(seen);
+            long ageBucket = now / AGE_REFRESH_QUANTUM;
+            if (current.containsKey(id)
+                    && projectedIndividuals.get(id) == latest
+                    && projectedAges.getOrDefault(id, Long.MIN_VALUE) == ageBucket) {
+                continue;
+            }
+            refreshAt(wolf, latest, now, runtime);
+        }
     }
 
     /**
@@ -125,6 +161,9 @@ public final class WonderfulWolfAbilityRuntime {
                             individual.adminAbilityOverrides());
             projector.project(wolf, abilities);
             current.put(id, abilities);
+            // The adulthood timestamp can be initialized during refreshAt.
+            projectedIndividuals.put(id, individual);
+            projectedAges.put(id, now / AGE_REFRESH_QUANTUM);
         } catch (RuntimeException error) {
             logger.warning(
                     "Failed to evaluate effective abilities for Wonderful Wolf "
@@ -132,6 +171,8 @@ public final class WonderfulWolfAbilityRuntime {
                             + ": "
                             + safeMessage(error));
             current.remove(id);
+            projectedIndividuals.remove(id);
+            projectedAges.remove(id);
         }
     }
 
@@ -140,8 +181,19 @@ public final class WonderfulWolfAbilityRuntime {
                 current.get(Objects.requireNonNull(entityId, "entityId")));
     }
 
+    /** Invalidate cached projections after a runtime configuration reload. */
+    public void markAllDirty() {
+        projectedAges.clear();
+        pending.clear();
+        nextScanTick = 0L;
+    }
+
     public void clear() {
         current.clear();
+        projectedIndividuals.clear();
+        projectedAges.clear();
+        pending.clear();
+        nextScanTick = 0L;
     }
 
     public static double ageGameDays(

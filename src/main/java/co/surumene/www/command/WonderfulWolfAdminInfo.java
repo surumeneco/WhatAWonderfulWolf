@@ -1,6 +1,7 @@
 package co.surumene.www.command;
 
 import co.surumene.www.ability.AbilityRank;
+import co.surumene.www.config.MessageService;
 import co.surumene.www.ability.AbilityScale;
 import co.surumene.www.ability.EffectiveAbilities;
 import co.surumene.www.ability.EffectiveAbility;
@@ -24,6 +25,8 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Server;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.Wolf;
 import org.bukkit.inventory.ItemStack;
@@ -62,16 +65,19 @@ public final class WonderfulWolfAdminInfo {
             Trait.INTIMIDATION);
 
     private final Server server;
+    private final MessageService messages;
     private final GenomeEngine engine;
     private final Supplier<WonderfulWolfGenomeProfile> profile;
 
     public WonderfulWolfAdminInfo(
             Server server,
             GenomeEngine engine,
-            Supplier<WonderfulWolfGenomeProfile> profile) {
+            Supplier<WonderfulWolfGenomeProfile> profile,
+            MessageService messages) {
         this.server = java.util.Objects.requireNonNull(server, "server");
         this.engine = java.util.Objects.requireNonNull(engine, "engine");
         this.profile = java.util.Objects.requireNonNull(profile, "profile");
+        this.messages = java.util.Objects.requireNonNull(messages, "messages");
     }
 
     public Component render(
@@ -79,135 +85,114 @@ public final class WonderfulWolfAdminInfo {
             WonderfulWolfIndividual individual,
             Optional<EffectiveAbilities> effective,
             int index,
-            int total) {
+            int total,
+            CommandSender sender) {
+        Locale locale = sender instanceof Player player ? player.locale() : Locale.JAPANESE;
         Component out = Component.text("◆ ", NamedTextColor.GOLD)
-                .append(displayName(wolf)
-                        .color(NamedTextColor.YELLOW)
+                .append(displayName(wolf).color(NamedTextColor.YELLOW)
                         .decorate(TextDecoration.BOLD))
-                .append(Component.text(
-                        "  " + index + "/" + total,
-                        NamedTextColor.YELLOW)
+                .append(Component.text(" " + index + "/" + total, NamedTextColor.YELLOW)
                         .decorate(TextDecoration.BOLD));
 
-        out = append(out, section(
-                "基本",
-                "UUID",
-                wolf.getUniqueId().toString()));
-        out = append(out, line(
-                "Owner",
-                individual.ownerId()
-                        .map(this::playerName)
-                        .orElse("無し")));
+        out = append(out, section(locale, "basic"));
+        out = append(out, localizedLine(locale, "uuid", wolf.getUniqueId().toString()));
+        out = append(out, localizedLine(locale, "owner", individual.ownerId()
+                .map(this::playerName).orElse(msg(locale, "none"))));
         double maximumHealth = wolf.getAttribute(Attribute.MAX_HEALTH) == null
-                ? wolf.getHealth()
-                : wolf.getAttribute(Attribute.MAX_HEALTH).getValue();
-        out = append(out, line(
-                "現在HP",
+                ? wolf.getHealth() : wolf.getAttribute(Attribute.MAX_HEALTH).getValue();
+        out = append(out, localizedLine(locale, "current_health",
                 format(wolf.getHealth()) + " / " + format(maximumHealth)));
-        out = append(out, line(
-                "現在日齢",
-                effective.map(v -> format(v.ageGameDays())).orElse("幼体")));
+        out = append(out, localizedLine(locale, "current_age",
+                !wolf.isAdult() ? msg(locale, "immature")
+                        : effective.map(v -> format(v.ageGameDays()))
+                                .orElse(msg(locale, "immature"))));
 
-        String lineage = engine.marker(
-                profile.get().backbone(),
+        String marker = engine.marker(profile.get().backbone(),
                 individual.genome()).formatted();
-        out = append(out, section(
-                "血統",
-                "血統ID",
-                lineage));
-        out = append(out, line("世代", Integer.toString(individual.generation())));
+        out = append(out, section(locale, "pedigree"));
+        out = append(out, localizedLine(locale, "bloodline", marker));
+        out = append(out, localizedLine(locale, "generation",
+                Integer.toString(individual.generation())));
         PedigreeSnapshot pedigree = individual.pedigree();
-        out = append(out, ancestor("親A", pedigree.parentA().map(ParentSnapshot::ancestor)));
-        out = append(out, ancestor("親B", pedigree.parentB().map(ParentSnapshot::ancestor)));
-        out = append(out, ancestor("祖父母A-A", pedigree.grandparentAA()));
-        out = append(out, ancestor("祖父母A-B", pedigree.grandparentAB()));
-        out = append(out, ancestor("祖父母B-A", pedigree.grandparentBA()));
-        out = append(out, ancestor("祖父母B-B", pedigree.grandparentBB()));
+        out = append(out, parent(locale, "parent_a", pedigree.parentA()));
+        out = append(out, parent(locale, "parent_b", pedigree.parentB()));
+        out = append(out, ancestor(locale, "grandparent_aa", pedigree.grandparentAA()));
+        out = append(out, ancestor(locale, "grandparent_ab", pedigree.grandparentAB()));
+        out = append(out, ancestor(locale, "grandparent_ba", pedigree.grandparentBA()));
+        out = append(out, ancestor(locale, "grandparent_bb", pedigree.grandparentBB()));
 
-        String mode = individual.mode().displayName()
-                + individual.commanderId()
-                    .map(id -> " (指揮者: " + playerName(id) + ")")
-                    .orElse("");
-        out = append(out, section("行動", "モード", mode));
-        out = append(out, line(
-                "行動距離",
-                individual.actionDistance().displayName()));
-        out = append(out, line(
-                "待機地点",
-                individual.waitLocation()
-                        .map(this::position)
-                        .orElse("無し")));
-        out = append(out, weaponLine(individual));
+        out = append(out, section(locale, "behavior"));
+        String mode = messages.display(locale, "mode", individual.mode())
+                + individual.commanderId().map(id -> " (" + msg(locale, "commander")
+                        + ": " + playerName(id) + ")").orElse("");
+        out = append(out, localizedLine(locale, "mode", mode));
+        out = append(out, localizedLine(locale, "action_distance",
+                messages.display(locale, "distance", individual.actionDistance())));
+        out = append(out, localizedLine(locale, "wait_location",
+                individual.waitLocation().map(this::position).orElse(msg(locale, "none"))));
+        out = append(out, weaponLine(locale, individual));
 
-        boolean firstAbility = true;
+        out = append(out, section(locale, "abilities"));
         for (Ability ability : ABILITIES) {
-            Component abilityLine = abilityLine(
-                    wolf,
-                    ability,
-                    individual,
-                    effective);
-            if (firstAbility) {
-                abilityLine = prefix("能力").append(abilityLine);
-                firstAbility = false;
-            }
-            out = append(out, abilityLine);
+            out = append(out, abilityLine(locale, wolf, ability, individual, effective));
         }
 
+        out = append(out, section(locale, "traits"));
         Personality personality = individual.phenotypeSnapshot().personality();
-        out = append(out, section(
-                "性格・特性",
-                "性格",
-                personalityText(personality)));
-        out = append(out, line(
-                "特性",
-                traitText(individual.phenotypeSnapshot().expressedTraits())));
-        out = append(out, line(
-                "神の系譜",
-                String.format(
-                        Locale.ROOT,
-                        "%.3f (%s)",
+        out = append(out, localizedLine(locale, "personality",
+                messages.display(locale, "personality", personality)));
+        out = append(out, localizedLine(locale, "trait",
+                traitText(locale, individual.phenotypeSnapshot().expressedTraits())));
+        out = append(out, localizedLine(locale, "divine_lineage",
+                String.format(Locale.ROOT, "%.3f (%s)",
                         individual.phenotypeSnapshot().divineLineageTotalScore(),
-                        individual.phenotypeSnapshot().divineLineageExpressed()
-                                ? "発現"
-                                : "未発現")));
+                        msg(locale, individual.phenotypeSnapshot().divineLineageExpressed()
+                                ? "expressed" : "not_expressed"))));
 
-        out = append(out, ageLine(effective));
+        out = append(out, section(locale, "age"));
+        out = append(out, ageLine(locale, effective));
 
-        List<InjuryPhenotype> injuries =
-                individual.phenotypeSnapshot().injuries();
+        out = append(out, section(locale, "injuries"));
+        List<InjuryPhenotype> injuries = individual.phenotypeSnapshot().injuries();
         if (injuries.isEmpty()) {
-            out = append(out, section("怪我", "怪我", "無し"));
+            out = append(out, localizedLine(locale, "injury", msg(locale, "none")));
         } else {
-            for (int i = 0; i < injuries.size(); i++) {
-                InjuryPhenotype injury = injuries.get(i);
-                double age = effective.map(EffectiveAbilities::ageGameDays)
-                        .orElse(0.0);
+            for (InjuryPhenotype injury : injuries) {
+                double age = effective.map(EffectiveAbilities::ageGameDays).orElse(0.0);
                 boolean active = age >= injury.onsetGameDay();
-                String value = injury.ability().displayName()
-                        + " / 発症 " + format(injury.onsetGameDay()) + "日"
-                        + " / 重症度 " + format(injury.severityRank()) + "ランク"
-                        + " / " + (active ? "発症中" : "未発症");
-                Component injuryLine = Component.text(
-                        (i == 0 ? "" : "  ") + "怪我: ",
-                        NamedTextColor.GRAY)
-                        .append(Component.text(
-                                value,
-                                active ? NamedTextColor.RED : NamedTextColor.WHITE));
-                if (i == 0) injuryLine = prefix("怪我").append(injuryLine);
-                out = append(out, injuryLine);
+                String value = messages.display(locale, "ability", injury.ability())
+                        + " / " + msg(locale, "injury_onset") + " "
+                        + format(injury.onsetGameDay())
+                        + " / " + msg(locale, "injury_severity") + " "
+                        + format(injury.severityRank())
+                        + " / " + msg(locale, active ? "injury_active" : "injury_latent");
+                out = append(out, localizedLine(locale, "injury", value));
             }
         }
 
         var relation = individual.phenotypeSnapshot().relationshipPerformance();
-        out = append(out, section(
-                "関係性能",
-                "関係性能",
-                "初期好感度 " + relation.initialAffection()
-                        + " / 好感度増減量 " + relation.affectionDelta()));
+        out = append(out, section(locale, "relationship"));
+        out = append(out, localizedLine(locale, "relationship",
+                msg(locale, "initial_affection") + " " + relation.initialAffection()
+                        + " / " + msg(locale, "affection_delta") + " "
+                        + relation.affectionDelta()));
         return out;
     }
 
+    private String msg(Locale locale, String key) {
+        return messages.text(locale, "info." + key);
+    }
+
+    private Component section(Locale locale, String key) {
+        return prefix(msg(locale, key));
+    }
+
+    private Component localizedLine(Locale locale, String key, String value) {
+        return line(msg(locale, key), value);
+    }
+
     private Component abilityLine(
+            Locale locale,
             Wolf wolf,
             Ability ability,
             WonderfulWolfIndividual individual,
@@ -236,13 +221,13 @@ public final class WonderfulWolfAdminInfo {
                 .map(v -> v.get(ability).injuryActive())
                 .orElse(false);
         return Component.text(
-                        "  " + ability.displayName() + ": ",
+                        "  " + messages.display(locale, "ability", ability) + ": ",
                         injury ? NamedTextColor.RED : NamedTextColor.GRAY)
                 .append(Component.text(
                         format(base) + " (" + format(current) + ") / ",
                         NamedTextColor.WHITE))
                 .append(Component.text(
-                        rank.displayName(),
+                        messages.display(locale, "rank", rank),
                         rankColor(rank))
                         .decorate(TextDecoration.BOLD))
                 .append(Component.text(
@@ -278,33 +263,29 @@ public final class WonderfulWolfAdminInfo {
         };
     }
 
-    private Component ageLine(Optional<EffectiveAbilities> effective) {
+    private Component ageLine(Locale locale, Optional<EffectiveAbilities> effective) {
         if (effective.isEmpty()) {
-            return section("成長・老化", "成長・老化", "幼体");
+            return localizedLine(locale, "growth_age", msg(locale, "immature"));
         }
         EffectiveAbilities values = effective.orElseThrow();
         double age = values.ageGameDays();
         var curve = values.ageCurve();
-        String stage = age < curve.growthEndGameDay()
-                ? "成長期"
-                : age < curve.agingStartGameDay()
-                    ? "全盛期"
-                    : age < curve.elderGameDay()
-                        ? "老化期"
-                        : "高齢期";
-        return section(
-                "成長・老化",
-                "成長・老化",
+        String stage = age < curve.growthEndGameDay() ? msg(locale, "stage_growing")
+                : age < curve.agingStartGameDay() ? msg(locale, "stage_prime")
+                : age < curve.elderGameDay() ? msg(locale, "stage_aging")
+                : msg(locale, "stage_elder");
+        return localizedLine(locale, "growth_age",
                 stage
-                        + " / 成長終了 " + format(curve.growthEndGameDay()) + "日"
-                        + " / 老化開始 " + format(curve.agingStartGameDay()) + "日"
-                        + " / 高齢期 " + format(curve.elderGameDay()) + "日"
-                        + " / 最大低下 " + format(curve.maximumAgingReductionRank()) + "ランク");
+                        + " / " + msg(locale, "growth_end") + " " + format(curve.growthEndGameDay())
+                        + " / " + msg(locale, "aging_start") + " " + format(curve.agingStartGameDay())
+                        + " / " + msg(locale, "elder_day") + " " + format(curve.elderGameDay())
+                        + " / " + msg(locale, "max_reduction") + " "
+                        + format(curve.maximumAgingReductionRank()));
     }
 
-    private Component weaponLine(WonderfulWolfIndividual individual) {
+    private Component weaponLine(Locale locale, WonderfulWolfIndividual individual) {
         if (individual.weapon().isEmpty()) {
-            return line("武器", "無し");
+            return localizedLine(locale, "weapon", msg(locale, "none"));
         }
         ItemStack item = PaperItemStackCodec.restore(
                 individual.weapon().orElseThrow());
@@ -313,36 +294,62 @@ public final class WonderfulWolfAdminInfo {
         if (name == null) {
             name = Component.translatable(item.getType().translationKey());
         }
-        return Component.text("  武器: ", NamedTextColor.GRAY)
+        return Component.text("  " + msg(locale, "weapon") + ": ", NamedTextColor.GRAY)
                 .append(name);
     }
 
-    private static String personalityText(Personality personality) {
-        return personality.displayName();
-    }
-
-    private static String traitText(List<ExpressedTrait> traits) {
-        if (traits.isEmpty()) return "無し";
+    private String traitText(Locale locale, List<ExpressedTrait> traits) {
+        if (traits.isEmpty()) return msg(locale, "none");
         return traits.stream()
-                .map(entry -> entry.trait().displayName()
+                .map(entry -> traitName(locale, entry.trait())
                         + (entry.strength() == TraitStrength.STRONG
-                            && STRONG_VISIBLE.contains(entry.trait())
-                            ? "II"
-                            : ""))
+                            && STRONG_VISIBLE.contains(entry.trait()) ? "II" : ""))
                 .reduce((a, b) -> a + " / " + b)
-                .orElse("無し");
+                .orElse(msg(locale, "none"));
     }
 
-    private Component ancestor(
-            String label,
-            Optional<AncestorSnapshot> ancestor) {
-        return line(
-                label,
-                ancestor.map(value ->
-                        value.displayName()
-                                + " / " + value.generation()
-                                + "世代 / " + value.lineageId())
-                        .orElse("無し"));
+    private String traitName(Locale locale, Trait trait) {
+        return messages.text(locale, "trait." + trait.name().toLowerCase(Locale.ROOT) + ".name");
+    }
+
+    private Component parent(Locale locale, String key, Optional<ParentSnapshot> parent) {
+        return localizedLine(locale, key, parent.map(value -> {
+            String personality;
+            try {
+                personality = messages.display(locale, "personality",
+                        Personality.valueOf(value.personalityId()));
+            } catch (IllegalArgumentException error) {
+                personality = msg(locale, "unknown");
+            }
+            String traits = value.expressedTraitIds().isEmpty() ? msg(locale, "none")
+                    : value.expressedTraitIds().stream()
+                            .map(id -> {
+                                try { return traitName(locale, Trait.valueOf(id)); }
+                                catch (IllegalArgumentException error) { return msg(locale, "unknown"); }
+                            })
+                            .reduce((a, b) -> a + "/" + b).orElse(msg(locale, "none"));
+            return ancestorText(value.ancestor()) + " " + personality + " " + traits;
+        }).orElse(msg(locale, "none")));
+    }
+
+    private Component ancestor(Locale locale, String key, Optional<AncestorSnapshot> ancestor) {
+        return localizedLine(locale, key, ancestor.map(value -> {
+            String personality = value.personalityId().map(id -> {
+                try { return messages.display(locale, "personality", Personality.valueOf(id)); }
+                catch (IllegalArgumentException error) { return msg(locale, "unknown"); }
+            }).orElse(msg(locale, "unknown"));
+            String traits = value.personalityId().isEmpty() ? msg(locale, "unknown")
+                    : value.expressedTraitIds().isEmpty() ? msg(locale, "none")
+                    : value.expressedTraitIds().stream().map(id -> {
+                        try { return traitName(locale, Trait.valueOf(id)); }
+                        catch (IllegalArgumentException error) { return msg(locale, "unknown"); }
+                    }).reduce((x, y) -> x + "/" + y).orElse(msg(locale, "none"));
+            return ancestorText(value) + " " + personality + " " + traits;
+        }).orElse(msg(locale, "none")));
+    }
+
+    private static String ancestorText(AncestorSnapshot value) {
+        return value.displayName() + "(" + value.generation() + ") " + value.lineageId();
     }
 
     private String playerName(UUID id) {
@@ -375,12 +382,12 @@ public final class WonderfulWolfAdminInfo {
             String section,
             String label,
             String value) {
-        return prefix(section).append(line(label, value));
+        return prefix(section).append(Component.newline()).append(line(label, value));
     }
 
     private static Component prefix(String section) {
         return Component.text(
-                "[" + section + "] ",
+                "[" + section + "]",
                 NamedTextColor.AQUA)
                 .decorate(TextDecoration.BOLD);
     }

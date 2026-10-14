@@ -421,7 +421,8 @@ public final class WonderfulWolfAdminCommands {
                     individual,
                     abilities.find(wolf.getUniqueId()),
                     i + 1,
-                    targets.size()));
+                    targets.size(),
+                    sender));
         }
     }
 
