@@ -154,15 +154,16 @@ public final class WonderfulWolfBreedingService {
         WonderfulWolfIndividual individual = parent.individual();
         PhenotypeSnapshot phenotype = individual.phenotypeSnapshot();
 
-        AncestorSnapshot ancestor = new AncestorSnapshot(
-                parent.displayName(),
-                individual.generation(),
-                marker(profile, individual.genome()));
-
         List<String> traits = phenotype.expressedTraits().stream()
                 .map(ExpressedTrait::trait)
                 .map(Enum::name)
                 .toList();
+
+        AncestorSnapshot ancestor = new AncestorSnapshot(
+                parent.displayName(),
+                individual.generation(),
+                marker(profile, individual.genome()))
+                .withPhenotype(phenotype.personality().name(), traits);
 
         return new ParentSnapshot(
                 ancestor,
@@ -173,7 +174,10 @@ public final class WonderfulWolfBreedingService {
 
     private static Optional<AncestorSnapshot> grandparent(
             Optional<ParentSnapshot> parent) {
-        return parent.map(ParentSnapshot::ancestor);
+        // Old parent records contain phenotype separately; propagate it to
+        // the grandparent snapshot without consulting mutable/live entities.
+        return parent.map(value -> value.ancestor().withPhenotype(
+                value.personalityId(), value.expressedTraitIds()));
     }
 
     private String marker(
