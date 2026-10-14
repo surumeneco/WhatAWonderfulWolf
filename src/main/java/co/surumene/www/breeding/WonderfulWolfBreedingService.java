@@ -130,8 +130,12 @@ public final class WonderfulWolfBreedingService {
                 generation,
                 pedigree);
 
+        // Keep breeding and taming initialization consistent for owned offspring.
+        WonderfulWolfIndividual initialized = childOwnerId
+                .map(child::withTamedOwner)
+                .orElse(child);
         return new WonderfulWolfBreedingOutcome.Success(
-                child,
+                initialized,
                 marker(profile, childGenome));
     }
 
