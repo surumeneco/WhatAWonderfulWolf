@@ -60,6 +60,8 @@ gui:
   busy: "Another player is already using this Wonderful Wolf."
   age: "Age"
   disabled: "Unavailable"
+  weapon: "Weapon"
+  reserved: "Reserved"
 mode:
   wander: "Wander"
   follow: "Follow"
