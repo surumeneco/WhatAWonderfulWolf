@@ -206,7 +206,7 @@ public final class WonderfulWolfInventoryService {
                         wolf.getWorld().dropItemNaturally(wolf.getLocation(), item));
             }
         }
-        populateManagement(top, wolf, updated);
+        populateManagement(top, player, wolf, updated);
     }
 
     private void changeMode(
@@ -219,7 +219,7 @@ public final class WonderfulWolfInventoryService {
         Mode next = WonderfulWolfInventoryPolicy.cycleMode(current.mode(), forward);
         if (commands.changeMode(wolf, next, player.getUniqueId())) {
             loaded.find(wolf.getUniqueId()).ifPresent(value ->
-                    populateManagement(top, wolf, value));
+                    populateManagement(top, player, wolf, value));
         }
     }
 
@@ -234,7 +234,7 @@ public final class WonderfulWolfInventoryService {
                 current.actionDistance(), forward);
         if (commands.changeActionDistance(wolf, next)) {
             loaded.find(wolf.getUniqueId()).ifPresent(value ->
-                    populateManagement(top, wolf, value));
+                    populateManagement(top, player, wolf, value));
         }
     }
 
