@@ -260,9 +260,9 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
 
         abilityTask = Bukkit.getScheduler().runTaskTimer(
                 this,
-                abilities::tick,
-                20L,
-                20L);
+                abilities::tickIncremental,
+                1L,
+                1L);
         behaviorTask = Bukkit.getScheduler().runTaskTimer(
                 this,
                 () -> {
