@@ -148,7 +148,8 @@ public final class WonderfulWolfAdminInfo {
                 messages.text(locale, "common.mode"), mode));
         out = append(out, line(
                 messages.text(locale, "common.action_distance"),
-                individual.actionDistance().displayName()));
+                messages.text(locale,
+                        "action_distance." + individual.actionDistance().name())));
         out = append(out, line(
                 messages.text(locale, "common.waiting_position"),
                 individual.waitLocation()
@@ -203,10 +204,11 @@ public final class WonderfulWolfAdminInfo {
                 double age = effective.map(EffectiveAbilities::ageGameDays)
                         .orElse(0.0);
                 boolean active = age >= injury.onsetGameDay();
-                String value = injury.ability().displayName()
-                        + " / 発症 " + format(injury.onsetGameDay()) + "日"
-                        + " / 重症度 " + format(injury.severityRank()) + "ランク"
-                        + " / " + (active ? "発症中" : "未発症");
+                String value = messages.text(locale, "ability." + injury.ability().name())
+                        + " / " + messages.text(locale, "admin.onset") + " " + format(injury.onsetGameDay())
+                        + " / " + messages.text(locale, "admin.severity") + " " + format(injury.severityRank())
+                        + " / " + messages.text(locale,
+                                active ? "admin.injury_active" : "admin.injury_latent");
                 Component injuryLine = Component.text(
                         (i == 0 ? "" : "  ") + messages.text(locale, "common.injury") + ": ",
                         NamedTextColor.GRAY)
@@ -264,7 +266,7 @@ public final class WonderfulWolfAdminInfo {
                         format(base) + " (" + format(current) + ") / ",
                         NamedTextColor.WHITE))
                 .append(Component.text(
-                        rank.displayName(),
+                        messages.text(locale, "rank." + rank.key()),
                         rankColor(rank))
                         .decorate(TextDecoration.BOLD))
                 .append(Component.text(
