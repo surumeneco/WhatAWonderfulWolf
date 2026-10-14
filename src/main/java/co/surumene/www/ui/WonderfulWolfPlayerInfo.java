@@ -105,12 +105,12 @@ public final class WonderfulWolfPlayerInfo {
         lore.add(Component.text(messages.text(viewer.locale(), "gui.bloodline") + ": " + lineageId, NamedTextColor.GRAY));
         lore.add(Component.text(messages.text(viewer.locale(), "gui.generation") + ": " + individual.generation(), NamedTextColor.GRAY));
         PedigreeSnapshot p = individual.pedigree();
-        lore.add(ancestorLine("親A", p.parentA().map(ParentSnapshot::ancestor)));
-        lore.add(ancestorLine("親B", p.parentB().map(ParentSnapshot::ancestor)));
-        lore.add(ancestorLine("祖父母A-A", p.grandparentAA()));
-        lore.add(ancestorLine("祖父母A-B", p.grandparentAB()));
-        lore.add(ancestorLine("祖父母B-A", p.grandparentBA()));
-        lore.add(ancestorLine("祖父母B-B", p.grandparentBB()));
+        lore.add(ancestorLine(viewer.locale(), "parent_a", p.parentA().map(ParentSnapshot::ancestor)));
+        lore.add(ancestorLine(viewer.locale(), "parent_b", p.parentB().map(ParentSnapshot::ancestor)));
+        lore.add(ancestorLine(viewer.locale(), "grandparent_aa", p.grandparentAA()));
+        lore.add(ancestorLine(viewer.locale(), "grandparent_ab", p.grandparentAB()));
+        lore.add(ancestorLine(viewer.locale(), "grandparent_ba", p.grandparentBA()));
+        lore.add(ancestorLine(viewer.locale(), "grandparent_bb", p.grandparentBB()));
         lore.add(Component.text(messages.text(viewer.locale(), "gui.click_detail"), NamedTextColor.DARK_GRAY));
         meta.lore(lore);
         item.setItemMeta(meta);
@@ -178,12 +178,12 @@ public final class WonderfulWolfPlayerInfo {
                 .append(Component.text(messages.text(player.locale(), "gui.generation") + ": " + individual.generation(), NamedTextColor.GRAY));
 
         PedigreeSnapshot p = individual.pedigree();
-        message = appendParent(player.locale(), message, "親A", p.parentA());
-        message = appendParent(player.locale(), message, "親B", p.parentB());
-        message = appendAncestor(player.locale(), message, "祖父母A-A", p.grandparentAA());
-        message = appendAncestor(player.locale(), message, "祖父母A-B", p.grandparentAB());
-        message = appendAncestor(player.locale(), message, "祖父母B-A", p.grandparentBA());
-        message = appendAncestor(player.locale(), message, "祖父母B-B", p.grandparentBB());
+        message = appendParent(player.locale(), message, "parent_a", p.parentA());
+        message = appendParent(player.locale(), message, "parent_b", p.parentB());
+        message = appendAncestor(player.locale(), message, "grandparent_aa", p.grandparentAA());
+        message = appendAncestor(player.locale(), message, "grandparent_ab", p.grandparentAB());
+        message = appendAncestor(player.locale(), message, "grandparent_ba", p.grandparentBA());
+        message = appendAncestor(player.locale(), message, "grandparent_bb", p.grandparentBB());
         player.sendMessage(message);
     }
 
@@ -297,49 +297,47 @@ public final class WonderfulWolfPlayerInfo {
         }
     }
 
-    private static Component ancestorLine(
-            String label,
-            Optional<AncestorSnapshot> ancestor) {
-        return Component.text(label + ": " + ancestorText(ancestor), NamedTextColor.GRAY);
+    private Component ancestorLine(
+            Locale locale, String key, Optional<AncestorSnapshot> ancestor) {
+        return Component.text(messages.text(locale, "info." + key) + ": "
+                + ancestorText(locale, ancestor), NamedTextColor.GRAY);
     }
 
-    private static String ancestorText(Optional<AncestorSnapshot> ancestor) {
+    private String ancestorText(Locale locale, Optional<AncestorSnapshot> ancestor) {
         return ancestor.map(value ->
-                value.displayName()
-                        + " / " + value.generation()
-                        + "世代 / " + value.lineageId())
-                .orElse("無し");
+                value.displayName() + "(" + value.generation() + ") " + value.lineageId())
+                .orElse(messages.text(locale, "info.none"));
     }
 
     private Component appendAncestor(
             Locale locale, Component base,
-            String label,
-            Optional<AncestorSnapshot> ancestor) {
-        return base.append(Component.newline())
-                .append(ancestorLine(label, ancestor));
+            String key, Optional<AncestorSnapshot> ancestor) {
+        return base.append(Component.newline()).append(ancestorLine(locale, key, ancestor));
     }
 
     private Component appendParent(
             Locale locale, Component base,
-            String label,
-            Optional<ParentSnapshot> parent) {
+            String key, Optional<ParentSnapshot> parent) {
+        String label = messages.text(locale, "info." + key);
         if (parent.isEmpty()) {
             return base.append(Component.newline())
-                    .append(Component.text(label + ": 無し", NamedTextColor.GRAY));
+                    .append(Component.text(label + ": "
+                            + messages.text(locale, "info.none"), NamedTextColor.GRAY));
         }
         ParentSnapshot value = parent.orElseThrow();
         String personality;
         try {
-            personality = messages.display(locale, "personality", Personality.valueOf(value.personalityId()));
+            personality = messages.display(locale, "personality",
+                    Personality.valueOf(value.personalityId()));
         } catch (IllegalArgumentException ignored) {
-            personality = value.personalityId();
+            personality = messages.text(locale, "info.unknown");
         }
-        String genetics = personality
-                + " / " + traitNames(locale, value.expressedTraitIds())
-                + (value.divineLineageExpressed() ? " / " + messages.text(locale, "gui.divine_lineage") : "");
+        String genetics = personality + " / " + traitNames(locale, value.expressedTraitIds())
+                + (value.divineLineageExpressed()
+                        ? " / " + messages.text(locale, "gui.divine_lineage") : "");
         return base.append(Component.newline())
-                .append(Component.text(
-                        label + ": " + ancestorText(Optional.of(value.ancestor())),
+                .append(Component.text(label + ": "
+                        + ancestorText(locale, Optional.of(value.ancestor())),
                         NamedTextColor.GRAY))
                 .append(Component.text(" / " + genetics, NamedTextColor.WHITE));
     }
