@@ -60,6 +60,8 @@ gui:
   busy: "このWonderful Wolfは他のプレイヤーが操作中です。"
   age: "年齢"
   disabled: "使用不可"
+  weapon: "武器"
+  reserved: "予約枠"
 mode:
   wander: "放浪"
   follow: "追従"
