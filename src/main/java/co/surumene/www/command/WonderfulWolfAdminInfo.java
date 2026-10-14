@@ -333,9 +333,19 @@ public final class WonderfulWolfAdminInfo {
     }
 
     private Component ancestor(Locale locale, String key, Optional<AncestorSnapshot> ancestor) {
-        return localizedLine(locale, key, ancestor.map(value ->
-                ancestorText(value) + " " + msg(locale, "unknown") + " "
-                        + msg(locale, "unknown")).orElse(msg(locale, "none")));
+        return localizedLine(locale, key, ancestor.map(value -> {
+            String personality = value.personalityId().map(id -> {
+                try { return messages.display(locale, "personality", Personality.valueOf(id)); }
+                catch (IllegalArgumentException error) { return msg(locale, "unknown"); }
+            }).orElse(msg(locale, "unknown"));
+            String traits = value.personalityId().isEmpty() ? msg(locale, "unknown")
+                    : value.expressedTraitIds().isEmpty() ? msg(locale, "none")
+                    : value.expressedTraitIds().stream().map(id -> {
+                        try { return traitName(locale, Trait.valueOf(id)); }
+                        catch (IllegalArgumentException error) { return msg(locale, "unknown"); }
+                    }).reduce((x, y) -> x + "/" + y).orElse(msg(locale, "none"));
+            return ancestorText(value) + " " + personality + " " + traits;
+        }).orElse(msg(locale, "none")));
     }
 
     private static String ancestorText(AncestorSnapshot value) {
