@@ -2,6 +2,7 @@ package co.surumene.www.ui;
 
 import co.surumene.www.ability.AbilityScale;
 import co.surumene.www.behavior.WonderfulWolfCommandService;
+import co.surumene.www.config.WonderfulWolfMessages;
 import co.surumene.www.combat.WonderfulWolfWeaponRuntime;
 import co.surumene.www.domain.Ability;
 import co.surumene.www.domain.ActionDistance;
@@ -42,7 +43,7 @@ public final class WonderfulWolfInventoryService {
     private final WonderfulWolfWeaponRuntime weapons;
     private final GenomeEngine engine;
     private final Supplier<WonderfulWolfGenomeProfile> profile;
-    private final WonderfulWolfPlayerInfo info = new WonderfulWolfPlayerInfo();
+    private final WonderfulWolfPlayerInfo info;
     private final Map<UUID, UUID> locks = new HashMap<>();
 
     public WonderfulWolfInventoryService(
@@ -51,13 +52,15 @@ public final class WonderfulWolfInventoryService {
             WonderfulWolfCommandService commands,
             WonderfulWolfWeaponRuntime weapons,
             GenomeEngine engine,
-            Supplier<WonderfulWolfGenomeProfile> profile) {
+            Supplier<WonderfulWolfGenomeProfile> profile,
+            WonderfulWolfMessages messages) {
         this.loaded = Objects.requireNonNull(loaded, "loaded");
         this.abilities = Objects.requireNonNull(abilities, "abilities");
         this.commands = Objects.requireNonNull(commands, "commands");
         this.weapons = Objects.requireNonNull(weapons, "weapons");
         this.engine = Objects.requireNonNull(engine, "engine");
         this.profile = Objects.requireNonNull(profile, "profile");
+        this.info = new WonderfulWolfPlayerInfo(Objects.requireNonNull(messages, "messages"));
     }
 
     public void open(Player player, Wolf wolf) {
