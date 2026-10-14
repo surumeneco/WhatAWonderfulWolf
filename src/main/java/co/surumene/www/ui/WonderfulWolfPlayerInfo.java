@@ -1,6 +1,7 @@
 package co.surumene.www.ui;
 
 import co.surumene.www.ability.AbilityRank;
+import co.surumene.www.config.WonderfulWolfMessages;
 import co.surumene.www.ability.EffectiveAbilities;
 import co.surumene.www.ability.EffectiveAbility;
 import co.surumene.www.ability.PersonalityAbilityModifier;
@@ -25,6 +26,12 @@ import java.util.Locale;
 import java.util.Optional;
 
 public final class WonderfulWolfPlayerInfo {
+    private final WonderfulWolfMessages messages;
+
+    public WonderfulWolfPlayerInfo(WonderfulWolfMessages messages) {
+        this.messages = java.util.Objects.requireNonNull(messages, "messages");
+    }
+
     private static final List<Ability> DISPLAY_ORDER = List.of(
             Ability.HEALTH,
             Ability.SIZE,
@@ -77,6 +84,7 @@ public final class WonderfulWolfPlayerInfo {
                 .map(entry -> entry.trait().name())
                 .toList());
         lore.add(Component.text("特性: " + traits, NamedTextColor.AQUA));
+        appendTraitDescriptions(lore, individual, Locale.JAPANESE);
         if (individual.phenotypeSnapshot().divineLineageExpressed()) {
             lore.add(Component.text("神の系譜", NamedTextColor.LIGHT_PURPLE));
         }
@@ -141,6 +149,12 @@ public final class WonderfulWolfPlayerInfo {
                                 .map(entry -> entry.trait().name())
                                 .toList()),
                         NamedTextColor.AQUA));
+        for (var expressed : individual.phenotypeSnapshot().expressedTraits()) {
+            message = message.append(Component.newline()).append(Component.text(
+                    "  " + messages.text(player.locale(),
+                            "trait." + expressed.trait().name() + ".description"),
+                    NamedTextColor.GRAY));
+        }
         if (individual.phenotypeSnapshot().divineLineageExpressed()) {
             message = message.append(Component.newline())
                     .append(Component.text("神の系譜: 発現", NamedTextColor.LIGHT_PURPLE));
@@ -240,6 +254,15 @@ public final class WonderfulWolfPlayerInfo {
             case MYTHICAL -> NamedTextColor.DARK_PURPLE;
             case IMPOSSIBLE -> NamedTextColor.GOLD;
         };
+    }
+
+    private void appendTraitDescriptions(
+            List<Component> lines, WonderfulWolfIndividual individual, Locale locale) {
+        for (var trait : individual.phenotypeSnapshot().expressedTraits()) {
+            lines.add(Component.text("  " + messages.text(locale,
+                    "trait." + trait.trait().name() + ".description"),
+                    NamedTextColor.GRAY));
+        }
     }
 
     private static String traitNames(List<String> ids) {
