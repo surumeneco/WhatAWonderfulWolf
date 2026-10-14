@@ -285,7 +285,7 @@ public final class WonderfulWolfPlayerInfo {
         return ids.stream()
                 .map(id -> traitName(locale, id))
                 .reduce((a, b) -> a + " / " + b)
-                .orElse("無し");
+                .orElse(messages.text(locale, "info.none"));
     }
 
     private String traitName(Locale locale, String id) {
