@@ -69,6 +69,14 @@ public final class WonderfulWolfLoadedIndividuals {
         return current == null ? Optional.empty() : Optional.of(current.individual());
     }
 
+    /** Resolve the current entity AND Individual atomically on the server thread. */
+    public Optional<LoadedSnapshot> findSnapshot(UUID entityId) {
+        LoadedIndividual value = loaded.get(Objects.requireNonNull(entityId, "entityId"));
+        return value == null
+                ? Optional.empty()
+                : Optional.of(new LoadedSnapshot(value.entity(), value.individual()));
+    }
+
     public int size() {
         return loaded.size();
     }
