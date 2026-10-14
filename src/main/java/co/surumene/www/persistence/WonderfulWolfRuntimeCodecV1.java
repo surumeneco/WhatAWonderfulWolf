@@ -13,7 +13,7 @@ import java.util.*;
 
 public final class WonderfulWolfRuntimeCodecV1 {
     private static final int MAGIC = 0x57575254; // WWRT
-    public static final int CONTAINER_VERSION = 2;
+    public static final int CONTAINER_VERSION = 3;
 
     public byte[] encode(WonderfulWolfIndividual individual) {
         Objects.requireNonNull(individual, "individual");
@@ -57,7 +57,7 @@ public final class WonderfulWolfRuntimeCodecV1 {
                 throw new PersistenceCodecException("invalid runtime state magic");
             }
             int version = in.readUnsignedByte();
-            if (version != 1 && version != CONTAINER_VERSION) {
+            if (version < 1 || version > CONTAINER_VERSION) {
                 throw new PersistenceCodecException("unsupported runtime state container version: " + version);
             }
 
@@ -71,7 +71,7 @@ public final class WonderfulWolfRuntimeCodecV1 {
             Optional<ItemStackSnapshot> weapon = readOptionalItem(in);
             Map<Integer, ItemStackSnapshot> inventory = readInventory(in);
             int generation = in.readInt();
-            PedigreeSnapshot pedigree = readPedigree(in);
+            PedigreeSnapshot pedigree = readPedigree(in, version);
             Map<Ability, Double> overrides = version >= 2
                     ? readAbilityOverrides(in) : Map.of();
 
@@ -253,14 +253,14 @@ public final class WonderfulWolfRuntimeCodecV1 {
         writeOptionalAncestor(out, pedigree.grandparentBB());
     }
 
-    private static PedigreeSnapshot readPedigree(DataInputStream in) throws IOException {
+    private static PedigreeSnapshot readPedigree(DataInputStream in, int version) throws IOException {
         return new PedigreeSnapshot(
-                readOptionalParent(in),
-                readOptionalParent(in),
-                readOptionalAncestor(in),
-                readOptionalAncestor(in),
-                readOptionalAncestor(in),
-                readOptionalAncestor(in));
+                readOptionalParent(in, version),
+                readOptionalParent(in, version),
+                readOptionalAncestor(in, version),
+                readOptionalAncestor(in, version),
+                readOptionalAncestor(in, version),
+                readOptionalAncestor(in, version));
     }
 
     private static void writeOptionalParent(
@@ -276,9 +276,10 @@ public final class WonderfulWolfRuntimeCodecV1 {
         writeFlag(out, value.divineLineageExpressed());
     }
 
-    private static Optional<ParentSnapshot> readOptionalParent(DataInputStream in) throws IOException {
+    private static Optional<ParentSnapshot> readOptionalParent(DataInputStream in, int version)
+            throws IOException {
         if (!readFlag(in)) return Optional.empty();
-        AncestorSnapshot ancestor = readAncestor(in);
+        AncestorSnapshot ancestor = readAncestor(in, version);
         String personalityId = readString(in);
         int traitCount = in.readUnsignedByte();
         if (traitCount > 2) {
@@ -301,18 +302,38 @@ public final class WonderfulWolfRuntimeCodecV1 {
         if (ancestor.isPresent()) writeAncestor(out, ancestor.orElseThrow());
     }
 
-    private static Optional<AncestorSnapshot> readOptionalAncestor(DataInputStream in) throws IOException {
-        return readFlag(in) ? Optional.of(readAncestor(in)) : Optional.empty();
+    private static Optional<AncestorSnapshot> readOptionalAncestor(DataInputStream in, int version)
+            throws IOException {
+        return readFlag(in) ? Optional.of(readAncestor(in, version)) : Optional.empty();
     }
 
-    private static void writeAncestor(DataOutputStream out, AncestorSnapshot ancestor) throws IOException {
+    private static void writeAncestor(DataOutputStream out, AncestorSnapshot ancestor)
+            throws IOException {
         writeString(out, ancestor.displayName());
         out.writeInt(ancestor.generation());
         writeString(out, ancestor.lineageId());
+        writeFlag(out, ancestor.personalityId().isPresent());
+        if (ancestor.personalityId().isPresent()) {
+            writeString(out, ancestor.personalityId().orElseThrow());
+        }
+        out.writeByte(ancestor.expressedTraitIds().size());
+        for (String trait : ancestor.expressedTraitIds()) writeString(out, trait);
     }
 
-    private static AncestorSnapshot readAncestor(DataInputStream in) throws IOException {
-        return new AncestorSnapshot(readString(in), in.readInt(), readString(in));
+    private static AncestorSnapshot readAncestor(DataInputStream in, int version)
+            throws IOException {
+        String name = readString(in);
+        int generation = in.readInt();
+        String lineageId = readString(in);
+        if (version < 3) return new AncestorSnapshot(name, generation, lineageId);
+        Optional<String> personality = readFlag(in)
+                ? Optional.of(readString(in)) : Optional.empty();
+        int count = in.readUnsignedByte();
+        if (count > 2) throw new PersistenceCodecException(
+                "ancestor snapshot contains too many expressed traits");
+        List<String> traitIds = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) traitIds.add(readString(in));
+        return new AncestorSnapshot(name, generation, lineageId, personality, traitIds);
     }
 
     private static void writeFlag(DataOutputStream out, boolean value) throws IOException {
