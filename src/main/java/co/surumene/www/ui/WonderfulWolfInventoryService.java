@@ -1,6 +1,7 @@
 package co.surumene.www.ui;
 
 import co.surumene.www.ability.AbilityScale;
+import co.surumene.www.config.MessageService;
 import co.surumene.www.behavior.WonderfulWolfCommandService;
 import co.surumene.www.combat.WonderfulWolfWeaponRuntime;
 import co.surumene.www.domain.Ability;
@@ -42,7 +43,8 @@ public final class WonderfulWolfInventoryService {
     private final WonderfulWolfWeaponRuntime weapons;
     private final GenomeEngine engine;
     private final Supplier<WonderfulWolfGenomeProfile> profile;
-    private final WonderfulWolfPlayerInfo info = new WonderfulWolfPlayerInfo();
+    private final MessageService messages;
+    private final WonderfulWolfPlayerInfo info;
     private final Map<UUID, UUID> locks = new HashMap<>();
 
     public WonderfulWolfInventoryService(
@@ -51,13 +53,16 @@ public final class WonderfulWolfInventoryService {
             WonderfulWolfCommandService commands,
             WonderfulWolfWeaponRuntime weapons,
             GenomeEngine engine,
-            Supplier<WonderfulWolfGenomeProfile> profile) {
+            Supplier<WonderfulWolfGenomeProfile> profile,
+            MessageService messages) {
         this.loaded = Objects.requireNonNull(loaded, "loaded");
         this.abilities = Objects.requireNonNull(abilities, "abilities");
         this.commands = Objects.requireNonNull(commands, "commands");
         this.weapons = Objects.requireNonNull(weapons, "weapons");
         this.engine = Objects.requireNonNull(engine, "engine");
         this.profile = Objects.requireNonNull(profile, "profile");
+        this.messages = Objects.requireNonNull(messages, "messages");
+        this.info = new WonderfulWolfPlayerInfo(messages);
     }
 
     public void open(Player player, Wolf wolf) {
@@ -70,7 +75,7 @@ public final class WonderfulWolfInventoryService {
 
         UUID viewer = locks.get(wolf.getUniqueId());
         if (viewer != null && !viewer.equals(player.getUniqueId())) {
-            player.sendMessage(Component.text("このWonderful Wolfは他のプレイヤーが操作中です。", NamedTextColor.RED));
+            player.sendMessage(Component.text(messages.text(player.locale(), "gui.busy"), NamedTextColor.RED));
             return;
         }
 
@@ -81,7 +86,7 @@ public final class WonderfulWolfInventoryService {
                 WonderfulWolfInventoryPolicy.inventorySize(capacity(wolf)),
                 Component.text("Wonderful Wolf — " + wolf.getName()));
         holder.inventory(inventory);
-        populate(inventory, wolf, individual);
+        populate(inventory, player, wolf, individual);
         locks.put(wolf.getUniqueId(), player.getUniqueId());
         player.openInventory(inventory);
     }
@@ -245,16 +250,18 @@ public final class WonderfulWolfInventoryService {
 
     private void populate(
             Inventory inventory,
+            Player viewer,
             Wolf wolf,
             WonderfulWolfIndividual individual) {
-        populateManagement(inventory, wolf, individual);
+        populateManagement(inventory, viewer, wolf, individual);
         int capacity = capacity(wolf);
         int visible = inventory.getSize() - WonderfulWolfInventoryPolicy.MANAGEMENT_SIZE;
         for (int cargo = 0; cargo < visible; cargo++) {
             int raw = WonderfulWolfInventoryPolicy.MANAGEMENT_SIZE + cargo;
             if (cargo >= capacity) {
                 inventory.setItem(raw, placeholder(
-                        Material.BLACK_STAINED_GLASS_PANE, "使用不可"));
+                        Material.BLACK_STAINED_GLASS_PANE,
+                        messages.text(viewer.locale(), "gui.disabled")));
                 continue;
             }
             ItemStack item = individual.inventory().containsKey(cargo)
@@ -266,6 +273,7 @@ public final class WonderfulWolfInventoryService {
 
     private void populateManagement(
             Inventory inventory,
+            Player viewer,
             Wolf wolf,
             WonderfulWolfIndividual individual) {
         inventory.setItem(
@@ -280,17 +288,19 @@ public final class WonderfulWolfInventoryService {
         inventory.setItem(
                 WonderfulWolfInventoryPolicy.SLOT_ACTION_DISTANCE,
                 named(Material.COMPASS,
-                        "行動距離: " + individual.actionDistance().displayName()));
+                        messages.text(viewer.locale(), "info.action_distance") + ": "
+                                + messages.display(viewer.locale(), "distance", individual.actionDistance())));
         inventory.setItem(
                 WonderfulWolfInventoryPolicy.SLOT_MODE,
                 named(modeMaterial(individual.mode()),
-                        "モード: " + individual.mode().displayName()));
+                        messages.text(viewer.locale(), "info.mode") + ": "
+                                + messages.display(viewer.locale(), "mode", individual.mode())));
         inventory.setItem(
                 WonderfulWolfInventoryPolicy.SLOT_INFO,
-                info.infoItem(wolf, individual, abilities.find(wolf.getUniqueId())));
+                info.infoItem(viewer, wolf, individual, abilities.find(wolf.getUniqueId())));
         inventory.setItem(
                 WonderfulWolfInventoryPolicy.SLOT_PEDIGREE,
-                info.pedigreeItem(individual, lineageId(individual)));
+                info.pedigreeItem(viewer, individual, lineageId(individual)));
     }
 
     private void persistCargo(Wolf wolf, Inventory inventory) {
