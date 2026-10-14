@@ -232,7 +232,8 @@ public final class WonderfulWolfAdminInfo {
             Wolf wolf,
             Ability ability,
             WonderfulWolfIndividual individual,
-            Optional<EffectiveAbilities> effective) {
+            Optional<EffectiveAbilities> effective,
+            Locale locale) {
         double genomeNormalized = individual.phenotypeSnapshot()
                 .abilities().get(ability);
         double normalized = individual.adminAbilityOverrides().containsKey(ability)
@@ -257,7 +258,7 @@ public final class WonderfulWolfAdminInfo {
                 .map(v -> v.get(ability).injuryActive())
                 .orElse(false);
         return Component.text(
-                        "  " + ability.displayName() + ": ",
+                        "  " + messages.text(locale, "ability." + ability.name()) + ": ",
                         injury ? NamedTextColor.RED : NamedTextColor.GRAY)
                 .append(Component.text(
                         format(base) + " (" + format(current) + ") / ",
@@ -299,33 +300,40 @@ public final class WonderfulWolfAdminInfo {
         };
     }
 
-    private Component ageLine(Optional<EffectiveAbilities> effective) {
+    private Component ageLine(Optional<EffectiveAbilities> effective, Locale locale) {
         if (effective.isEmpty()) {
-            return section("成長・老化", "成長・老化", "幼体");
+            return section(messages.text(locale, "sections.aging"),
+                    messages.text(locale, "sections.aging"),
+                    messages.text(locale, "common.juvenile"));
         }
         EffectiveAbilities values = effective.orElseThrow();
         double age = values.ageGameDays();
         var curve = values.ageCurve();
         String stage = age < curve.growthEndGameDay()
-                ? "成長期"
+                ? messages.text(locale, "common.stage_growth")
                 : age < curve.agingStartGameDay()
-                    ? "全盛期"
+                    ? messages.text(locale, "common.stage_prime")
                     : age < curve.elderGameDay()
-                        ? "老化期"
-                        : "高齢期";
+                        ? messages.text(locale, "common.stage_aging")
+                        : messages.text(locale, "common.stage_elder");
         return section(
-                "成長・老化",
-                "成長・老化",
+                messages.text(locale, "sections.aging"),
+                messages.text(locale, "sections.aging"),
                 stage
-                        + " / 成長終了 " + format(curve.growthEndGameDay()) + "日"
-                        + " / 老化開始 " + format(curve.agingStartGameDay()) + "日"
-                        + " / 高齢期 " + format(curve.elderGameDay()) + "日"
-                        + " / 最大低下 " + format(curve.maximumAgingReductionRank()) + "ランク");
+                        + " / " + messages.text(locale, "admin.age_growth_end")
+                        + " " + format(curve.growthEndGameDay())
+                        + " / " + messages.text(locale, "admin.age_aging_start")
+                        + " " + format(curve.agingStartGameDay())
+                        + " / " + messages.text(locale, "admin.age_elder")
+                        + " " + format(curve.elderGameDay())
+                        + " / " + messages.text(locale, "admin.age_max_reduction")
+                        + " " + format(curve.maximumAgingReductionRank()));
     }
 
-    private Component weaponLine(WonderfulWolfIndividual individual) {
+    private Component weaponLine(WonderfulWolfIndividual individual, Locale locale) {
         if (individual.weapon().isEmpty()) {
-            return line("武器", "無し");
+            return line(messages.text(locale, "common.weapon"),
+                    messages.text(locale, "common.none"));
         }
         ItemStack item = PaperItemStackCodec.restore(
                 individual.weapon().orElseThrow());
@@ -334,12 +342,12 @@ public final class WonderfulWolfAdminInfo {
         if (name == null) {
             name = Component.translatable(item.getType().translationKey());
         }
-        return Component.text("  武器: ", NamedTextColor.GRAY)
+        return Component.text("  " + messages.text(locale, "common.weapon") + ": ", NamedTextColor.GRAY)
                 .append(name);
     }
 
-    private static String personalityText(Personality personality) {
-        return personality.displayName();
+    private String personalityText(Personality personality, Locale locale) {
+        return messages.text(locale, "personality." + personality.name());
     }
 
     private String traitText(List<ExpressedTrait> traits, Locale locale) {
@@ -361,7 +369,8 @@ public final class WonderfulWolfAdminInfo {
         AncestorSnapshot ancestor = snapshot.ancestor();
         String personality;
         try {
-            personality = Personality.valueOf(snapshot.personalityId()).displayName();
+            personality = messages.text(locale,
+                    "personality." + Personality.valueOf(snapshot.personalityId()).name());
         } catch (IllegalArgumentException invalidLegacyId) {
             personality = messages.text(locale, "common.unknown");
         }
