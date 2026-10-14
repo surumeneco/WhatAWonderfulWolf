@@ -117,8 +117,8 @@ public final class WonderfulWolfAdminInfo {
                 lineage));
         out = append(out, line("世代", Integer.toString(individual.generation())));
         PedigreeSnapshot pedigree = individual.pedigree();
-        out = append(out, ancestor("親A", pedigree.parentA().map(ParentSnapshot::ancestor)));
-        out = append(out, ancestor("親B", pedigree.parentB().map(ParentSnapshot::ancestor)));
+        out = append(out, parent("親A", pedigree.parentA()));
+        out = append(out, parent("親B", pedigree.parentB()));
         out = append(out, ancestor("祖父母A-A", pedigree.grandparentAA()));
         out = append(out, ancestor("祖父母A-B", pedigree.grandparentAB()));
         out = append(out, ancestor("祖父母B-A", pedigree.grandparentBA()));
@@ -147,7 +147,7 @@ public final class WonderfulWolfAdminInfo {
                     individual,
                     effective);
             if (firstAbility) {
-                abilityLine = prefix("能力").append(abilityLine);
+                abilityLine = prefix("能力").append(Component.newline()).append(abilityLine);
                 firstAbility = false;
             }
             out = append(out, abilityLine);
@@ -333,16 +333,35 @@ public final class WonderfulWolfAdminInfo {
                 .orElse("無し");
     }
 
-    private Component ancestor(
+    private Component parent(
             String label,
-            Optional<AncestorSnapshot> ancestor) {
-        return line(
-                label,
-                ancestor.map(value ->
-                        value.displayName()
-                                + " / " + value.generation()
-                                + "世代 / " + value.lineageId())
-                        .orElse("無し"));
+            Optional<ParentSnapshot> parent) {
+        return line(label, parent.map(value -> {
+            String personality;
+            try {
+                personality = Personality.valueOf(value.personalityId()).displayName();
+            } catch (IllegalArgumentException error) {
+                personality = "不明";
+            }
+            String traits = value.expressedTraitIds().isEmpty() ? "無し"
+                    : value.expressedTraitIds().stream()
+                            .map(id -> {
+                                try { return Trait.valueOf(id).displayName(); }
+                                catch (IllegalArgumentException error) { return "不明"; }
+                            })
+                            .reduce((a, b) -> a + "/" + b).orElse("無し");
+            return ancestorText(value.ancestor()) + " " + personality + " " + traits;
+        }).orElse("無し"));
+    }
+
+    private Component ancestor(String label, Optional<AncestorSnapshot> ancestor) {
+        // Legacy grandparent snapshots contain no phenotype: never invent it.
+        return line(label, ancestor.map(value ->
+                ancestorText(value) + " 不明 不明").orElse("無し"));
+    }
+
+    private static String ancestorText(AncestorSnapshot value) {
+        return value.displayName() + "(" + value.generation() + ") " + value.lineageId();
     }
 
     private String playerName(UUID id) {
@@ -375,12 +394,12 @@ public final class WonderfulWolfAdminInfo {
             String section,
             String label,
             String value) {
-        return prefix(section).append(line(label, value));
+        return prefix(section).append(Component.newline()).append(line(label, value));
     }
 
     private static Component prefix(String section) {
         return Component.text(
-                "[" + section + "] ",
+                "[" + section + "]",
                 NamedTextColor.AQUA)
                 .decorate(TextDecoration.BOLD);
     }
