@@ -33,6 +33,7 @@ sections:
   injuries: "怪我"
   relationship: "関係性能"
 ui:
+  commander: "指揮者"
   parent_a: "親A"
   parent_b: "親B"
   grandparent_aa: "祖父母A-A"
@@ -146,3 +147,21 @@ admin:
   initial_affection: "初期好感度"
   affection_delta: "好感度増減量"
   generation_suffix: "世代"
+
+rank:
+  miserable: "劣悪"
+  very_low: "とても低い"
+  low: "低い"
+  slightly_low: "やや低い"
+  common: "普通"
+  slightly_high: "やや高い"
+  high: "高い"
+  very_high: "とても高い"
+  legendary: "伝説級"
+  mythical: "神話級"
+  impossible: "規格外"
+action_distance:
+  NARROW: "狭い"
+  NORMAL: "普通"
+  WIDE: "広い"
+  VERY_WIDE: "とても広い"
