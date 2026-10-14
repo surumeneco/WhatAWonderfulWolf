@@ -84,7 +84,7 @@ public final class WonderfulWolfInventoryService {
                 WonderfulWolfInventoryPolicy.inventorySize(capacity(wolf)),
                 Component.text("Wonderful Wolf — " + wolf.getName()));
         holder.inventory(inventory);
-        populate(inventory, wolf, individual);
+        populate(inventory, wolf, individual, player);
         locks.put(wolf.getUniqueId(), player.getUniqueId());
         player.openInventory(inventory);
     }
@@ -204,7 +204,7 @@ public final class WonderfulWolfInventoryService {
                         wolf.getWorld().dropItemNaturally(wolf.getLocation(), item));
             }
         }
-        populateManagement(top, wolf, updated);
+        populateManagement(top, wolf, updated, player);
     }
 
     private void changeMode(
@@ -217,7 +217,7 @@ public final class WonderfulWolfInventoryService {
         Mode next = WonderfulWolfInventoryPolicy.cycleMode(current.mode(), forward);
         if (commands.changeMode(wolf, next, player.getUniqueId())) {
             loaded.find(wolf.getUniqueId()).ifPresent(value ->
-                    populateManagement(top, wolf, value));
+                    populateManagement(top, wolf, value, player));
         }
     }
 
@@ -232,7 +232,7 @@ public final class WonderfulWolfInventoryService {
                 current.actionDistance(), forward);
         if (commands.changeActionDistance(wolf, next)) {
             loaded.find(wolf.getUniqueId()).ifPresent(value ->
-                    populateManagement(top, wolf, value));
+                    populateManagement(top, wolf, value, player));
         }
     }
 
@@ -249,8 +249,9 @@ public final class WonderfulWolfInventoryService {
     private void populate(
             Inventory inventory,
             Wolf wolf,
-            WonderfulWolfIndividual individual) {
-        populateManagement(inventory, wolf, individual);
+            WonderfulWolfIndividual individual,
+            Player viewer) {
+        populateManagement(inventory, wolf, individual, viewer);
         int capacity = capacity(wolf);
         int visible = inventory.getSize() - WonderfulWolfInventoryPolicy.MANAGEMENT_SIZE;
         for (int cargo = 0; cargo < visible; cargo++) {
@@ -270,7 +271,8 @@ public final class WonderfulWolfInventoryService {
     private void populateManagement(
             Inventory inventory,
             Wolf wolf,
-            WonderfulWolfIndividual individual) {
+            WonderfulWolfIndividual individual,
+            Player viewer) {
         inventory.setItem(
                 WonderfulWolfInventoryPolicy.SLOT_WEAPON,
                 individual.weapon().map(PaperItemStackCodec::restore)
@@ -290,10 +292,10 @@ public final class WonderfulWolfInventoryService {
                         "モード: " + individual.mode().displayName()));
         inventory.setItem(
                 WonderfulWolfInventoryPolicy.SLOT_INFO,
-                info.infoItem(wolf, individual, abilities.find(wolf.getUniqueId())));
+                info.infoItem(wolf, individual, abilities.find(wolf.getUniqueId()), viewer.locale()));
         inventory.setItem(
                 WonderfulWolfInventoryPolicy.SLOT_PEDIGREE,
-                info.pedigreeItem(individual, lineageId(individual)));
+                info.pedigreeItem(individual, lineageId(individual), viewer.locale()));
     }
 
     private void persistCargo(Wolf wolf, Inventory inventory) {
