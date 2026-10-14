@@ -7,6 +7,7 @@ import co.surumene.www.individual.WonderfulWolfIndividual;
 import co.surumene.www.persistence.WonderfulWolfLoadedIndividuals;
 import org.bukkit.entity.Wolf;
 
+import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -26,6 +27,10 @@ public final class WonderfulWolfAbilityRuntime {
     private final PaperAbilityProjector projector;
     private final Logger logger;
     private final Map<UUID, EffectiveAbilities> current = new HashMap<>();
+    private static final int REFRESH_SPAN_TICKS = 20;
+    private final ArrayDeque<UUID> incrementalQueue = new ArrayDeque<>();
+    private int incrementalTick;
+    private int incrementalBudget;
 
     public WonderfulWolfAbilityRuntime(
             WonderfulWolfLoadedIndividuals loaded,
@@ -54,6 +59,45 @@ public final class WonderfulWolfAbilityRuntime {
         }
 
         current.keySet().retainAll(seen);
+    }
+
+    /**
+     * Evenly distribute the previous one-second full refresh over 20 ticks.
+     * The queue contains UUIDs only: the current entity and Individual are
+     * resolved at execution time, never from a stale cached snapshot.
+     */
+    public void tickIncremental() {
+        if (incrementalTick == 0) {
+            incrementalQueue.clear();
+            for (WonderfulWolfLoadedIndividuals.LoadedSnapshot snapshot : loaded.snapshots()) {
+                incrementalQueue.addLast(snapshot.entity().getUniqueId());
+            }
+            incrementalBudget = perTickBudget(incrementalQueue.size());
+        }
+        incrementalTick = (incrementalTick + 1) % REFRESH_SPAN_TICKS;
+
+        long now = clock.currentTime();
+        WwwConfig.Runtime runtime = Objects.requireNonNull(
+                runtimeConfig.get(), "runtime config");
+        for (int processed = 0;
+                processed < incrementalBudget && !incrementalQueue.isEmpty();
+                processed++) {
+            UUID id = incrementalQueue.removeFirst();
+            loaded.findSnapshot(id)
+                    .ifPresent(snapshot -> refreshAt(
+                            snapshot.entity(), snapshot.individual(), now, runtime));
+        }
+        if (incrementalTick == 0) {
+            // Include wolves created during this cycle; do not evict their
+            // creation-time projected abilities on the basis of an old list.
+            current.keySet().removeIf(id -> loaded.find(id).isEmpty());
+        }
+    }
+
+    static int perTickBudget(int count) {
+        if (count < 0) throw new IllegalArgumentException("count must be >= 0");
+        return Math.max(1, count / REFRESH_SPAN_TICKS
+                + (count % REFRESH_SPAN_TICKS == 0 ? 0 : 1));
     }
 
     /**
@@ -142,6 +186,8 @@ public final class WonderfulWolfAbilityRuntime {
 
     public void clear() {
         current.clear();
+        incrementalQueue.clear();
+        incrementalTick = 0;
     }
 
     public static double ageGameDays(
