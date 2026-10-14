@@ -1,0 +1,97 @@
+common:
+  none: "None"
+  unknown: "Unknown"
+  juvenile: "Juvenile"
+  click_detail: "Click for details"
+  owner: "Owner"
+  current_hp: "Current HP"
+  current_age: "Current age"
+  bloodline: "Lineage ID"
+  generation: "Generation"
+  mode: "Mode"
+  action_distance: "Action range"
+  waiting_position: "Wait position"
+  weapon: "Weapon"
+  personality: "Personality"
+  trait: "Traits"
+  divine: "Divine lineage"
+  injury: "Injuries"
+  affection: "Relationship"
+  stage_growth: "Growing"
+  stage_prime: "Prime"
+  stage_aging: "Aging"
+  stage_elder: "Elder"
+  expressed: "Expressed"
+  latent: "Latent"
+sections:
+  basic: "Basic"
+  pedigree: "Pedigree"
+  behavior: "Behavior"
+  abilities: "Abilities"
+  traits: "Personality & Traits"
+  aging: "Growth & Aging"
+  injuries: "Injuries"
+  relationship: "Relationship"
+ui:
+  info: "Individual Info"
+  pedigree: "Pedigree"
+  wolf: "Wonderful Wolf"
+  follow: "Follow"
+  guard: "Guard"
+  wait: "Wait"
+  wander: "Wander"
+trait:
+  MINING_SUPPORT:
+    name: "Mining Support"
+    description: "Grants faster mining to nearby players."
+  MUSCLE:
+    name: "Muscle"
+    description: "Boosts attack damage for nearby players."
+  GUARDIAN:
+    name: "Guardian"
+    description: "Grants resistance to nearby players."
+  HEALING:
+    name: "Healing"
+    description: "Regenerates health for nearby players."
+  DIRECT_INHERITANCE:
+    name: "Direct Inheritance"
+    description: "More reliably passes beneficial genome segments to offspring."
+  WILD:
+    name: "Unpredictable"
+    description: "Increases the chance of mutations in offspring."
+  WATCHMAN:
+    name: "Watchman"
+    description: "Warns about nearby threats and highlights them."
+  HOLY_POISON:
+    name: "Holy Poison"
+    description: "Inflicts lingering damage on attacked targets."
+  QUIRK_BOOST:
+    name: "Quirk Boost"
+    description: "Amplifies the effects of personality."
+  UNYIELDING:
+    name: "Unyielding"
+    description: "Gradually regenerates its own health."
+  SCAVENGER:
+    name: "Scavenger"
+    description: "Picks up dropped items and eats meat to heal when injured."
+  LIFE_DRAIN:
+    name: "Life Drain"
+    description: "Restores health when defeating a mob."
+  FIRE_BIRD:
+    name: "Fire Bird"
+    description: "Immune to fire damage."
+  INTIMIDATION:
+    name: "Intimidation"
+    description: "Weakens enemies on hit."
+  LIGHTWEIGHT:
+    name: "Lightweight"
+    description: "Immune to fall damage."
+  TARGET:
+    name: "Target"
+    description: "Highlights the current attack target."
+  SWIMMER:
+    name: "Swimmer"
+    description: "Prevents drowning damage."
+  SNOWBORN:
+    name: "Snowborn"
+    description: "Prevents freezing damage."
