@@ -280,10 +280,12 @@ public final class WonderfulWolfInventoryService {
                 WonderfulWolfInventoryPolicy.SLOT_WEAPON,
                 individual.weapon().map(PaperItemStackCodec::restore)
                         .orElseGet(() -> placeholder(
-                                Material.WHITE_STAINED_GLASS_PANE, "武器")));
+                                Material.WHITE_STAINED_GLASS_PANE,
+                                messages.text(viewer.locale(), "gui.weapon"))));
         for (int slot = 1; slot <= 4; slot++) {
             inventory.setItem(slot, placeholder(
-                    Material.BLACK_STAINED_GLASS_PANE, "予約枠"));
+                    Material.BLACK_STAINED_GLASS_PANE,
+                    messages.text(viewer.locale(), "gui.reserved")));
         }
         inventory.setItem(
                 WonderfulWolfInventoryPolicy.SLOT_ACTION_DISTANCE,
