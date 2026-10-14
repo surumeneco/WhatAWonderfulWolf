@@ -13,6 +13,7 @@ import co.surumene.www.breeding.WonderfulWolfBreedingListener;
 import co.surumene.www.breeding.WonderfulWolfBreedingService;
 import co.surumene.www.breeding.WonderfulWolfOffspringService;
 import co.surumene.www.combat.WonderfulWolfWeaponRuntime;
+import co.surumene.www.config.MessageService;
 import co.surumene.www.config.WwwConfig;
 import co.surumene.www.config.WwwConfigLoader;
 import co.surumene.www.lifecycle.WglProfileRegistryGateway;
@@ -46,6 +47,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
     private WonderfulGenomeLibService genomeLib;
+    private MessageService messages;
     private WonderfulWolfProfileLifecycle profileLifecycle;
     private WonderfulWolfLoadedIndividuals loadedIndividuals;
     private BiologicalClock biologicalClock;
@@ -69,6 +71,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         }
 
         saveDefaultConfig();
+        messages = new MessageService(this);
         WwwConfig config = WwwConfigLoader.load(getConfig());
         World clockWorld = requireClockWorld(config.runtime().age().clockWorld());
 
@@ -173,7 +176,8 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                         commands,
                         weapons,
                         genomeLib.engine(),
-                        lifecycle::currentWolfProfile);
+                        lifecycle::currentWolfProfile,
+                        messages);
         WonderfulWolfOffspringService offspringService =
                 new WonderfulWolfOffspringService(
                         genomeLib.engine(),
@@ -189,7 +193,8 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                         new co.surumene.www.command.WonderfulWolfAdminInfo(
                                 Bukkit.getServer(),
                                 genomeLib.engine(),
-                                lifecycle::currentWolfProfile),
+                                lifecycle::currentWolfProfile,
+                                messages),
                         commands);
         getLifecycleManager().registerEventHandler(
                 io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents.COMMANDS,
@@ -386,8 +391,10 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
             throw clockError;
         }
 
+        messages.reload();
         WonderfulWolfAbilityRuntime abilities = abilityRuntime;
         if (abilities != null) {
+            abilities.markAllDirty();
             abilities.tick();
         }
         WonderfulWolfBehaviorRuntime behavior = behaviorRuntime;
