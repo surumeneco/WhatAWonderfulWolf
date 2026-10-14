@@ -64,10 +64,10 @@ public final class WonderfulWolfPlayerInfo {
         List<Component> lore = new ArrayList<>();
         Personality personality = individual.phenotypeSnapshot().personality();
         lore.add(Component.text(messages.text(viewer.locale(), "gui.nature") + ": " + messages.display(viewer.locale(), "personality", personality), NamedTextColor.AQUA));
-        lore.add(ageLine(wolf, effective));
+        lore.add(ageLine(viewer.locale(), wolf, effective));
         effective.ifPresent(values -> {
             for (Ability ability : DISPLAY_ORDER) {
-                lore.add(abilityLine(ability, values.get(ability), personality));
+                lore.add(abilityLine(viewer.locale(), ability, values.get(ability), personality));
             }
         });
         if (effective.isEmpty()) {
@@ -75,7 +75,8 @@ public final class WonderfulWolfPlayerInfo {
                 AbilityRank rank = AbilityRank.fromNormalized(
                         individual.phenotypeSnapshot().abilities().get(ability));
                 lore.add(Component.text(
-                        abilityLabel(ability, personality) + ": " + rank.displayName(),
+                        abilityLabel(viewer.locale(), ability, personality) + ": "
+                                + messages.display(viewer.locale(), "rank", rank),
                         rankColor(rank)));
             }
         }
@@ -127,13 +128,13 @@ public final class WonderfulWolfPlayerInfo {
                         .decorate(TextDecoration.BOLD));
         Personality personality = individual.phenotypeSnapshot().personality();
         message = message.append(Component.newline())
-                .append(personalityDetail(personality))
+                .append(personalityDetail(player.locale(), personality))
                 .append(Component.newline())
-                .append(ageLine(wolf, effective));
+                .append(ageLine(player.locale(), wolf, effective));
         if (effective.isPresent()) {
             for (Ability ability : DISPLAY_ORDER) {
                 message = message.append(Component.newline())
-                        .append(abilityLine(ability, effective.orElseThrow().get(ability), personality));
+                        .append(abilityLine(player.locale(), ability, effective.orElseThrow().get(ability), personality));
             }
         } else {
             for (Ability ability : DISPLAY_ORDER) {
@@ -141,9 +142,9 @@ public final class WonderfulWolfPlayerInfo {
                         individual.phenotypeSnapshot().abilities().get(ability));
                 message = message.append(Component.newline()).append(
                         Component.text(
-                                abilityLabel(ability, personality) + ": ",
+                                abilityLabel(player.locale(), ability, personality) + ": ",
                                 NamedTextColor.GRAY)
-                                .append(rankComponent(rank)));
+                                .append(rankComponent(player.locale(), rank)));
             }
         }
         player.sendMessage(message);
@@ -186,69 +187,57 @@ public final class WonderfulWolfPlayerInfo {
         player.sendMessage(message);
     }
 
-    private static Component abilityLine(
+    private Component abilityLine(
+            Locale locale,
             Ability ability,
             EffectiveAbility value,
             Personality personality) {
         boolean changed = Math.abs(value.effectiveNormalized() - value.baseNormalized()) > 1.0e-9;
         NamedTextColor labelColor = value.injuryActive()
-                ? NamedTextColor.RED
-                : NamedTextColor.GRAY;
-        Component line = Component.text(
-                abilityLabel(ability, personality) + ": ",
-                labelColor).append(rankComponent(value.rank()));
+                ? NamedTextColor.RED : NamedTextColor.GRAY;
+        Component line = Component.text(abilityLabel(locale, ability, personality) + ": ",
+                labelColor).append(rankComponent(locale, value.rank()));
         if (changed) {
-            AbilityRank current = AbilityRank.fromNormalized(value.effectiveNormalized());
+            AbilityRank updated = AbilityRank.fromNormalized(value.effectiveNormalized());
             line = line.append(Component.text(" → ", NamedTextColor.DARK_GRAY))
-                    .append(rankComponent(current));
+                    .append(rankComponent(locale, updated));
         }
         return line;
     }
 
-    private static Component personalityDetail(Personality personality) {
-        return Component.text(
-                messages.text(viewer.locale(), "gui.nature") + ": " + messages.display(viewer.locale(), "personality", personality),
-                NamedTextColor.AQUA);
+    private Component personalityDetail(Locale locale, Personality personality) {
+        return Component.text(messages.text(locale, "gui.nature") + ": "
+                + messages.display(locale, "personality", personality), NamedTextColor.AQUA);
     }
 
-    private static Component ageLine(
-            Wolf wolf,
-            Optional<EffectiveAbilities> effective) {
+    private Component ageLine(Locale locale, Wolf wolf, Optional<EffectiveAbilities> effective) {
+        String label = messages.text(locale, "gui.age");
         if (!wolf.isAdult()) {
-            return Component.text("年齢: 幼体", NamedTextColor.GRAY);
+            return Component.text(label + ": " + messages.text(locale, "info.immature"),
+                    NamedTextColor.GRAY);
         }
         if (effective.isEmpty()) {
-            return Component.text("年齢: 0.0日 / 成長期", NamedTextColor.GRAY);
+            return Component.text(label + ": 0.0 / "
+                    + messages.text(locale, "info.stage_growing"), NamedTextColor.GRAY);
         }
         EffectiveAbilities values = effective.orElseThrow();
         double age = values.ageGameDays();
-        String stage;
-        if (age < values.ageCurve().growthEndGameDay()) {
-            stage = "成長期";
-        } else if (age < values.ageCurve().agingStartGameDay()) {
-            stage = "全盛期";
-        } else if (age < values.ageCurve().elderGameDay()) {
-            stage = "老化期";
-        } else {
-            stage = "高齢期";
-        }
-        return Component.text(
-                String.format(Locale.ROOT, "年齢: %.1f日 / %s", age, stage),
-                NamedTextColor.GRAY);
+        String stage = age < values.ageCurve().growthEndGameDay() ? "stage_growing"
+                : age < values.ageCurve().agingStartGameDay() ? "stage_prime"
+                : age < values.ageCurve().elderGameDay() ? "stage_aging" : "stage_elder";
+        return Component.text(String.format(Locale.ROOT, "%s: %.1f / %s", label,
+                age, messages.text(locale, "info." + stage)), NamedTextColor.GRAY);
     }
 
-    private static String abilityLabel(Ability ability, Personality personality) {
-        if (PersonalityAbilityModifier.positive(personality).contains(ability)) {
-            return ability.displayName() + "↑";
-        }
-        if (PersonalityAbilityModifier.negative(personality).contains(ability)) {
-            return ability.displayName() + "↓";
-        }
-        return ability.displayName();
+    private String abilityLabel(Locale locale, Ability ability, Personality personality) {
+        String label = messages.display(locale, "ability", ability);
+        if (PersonalityAbilityModifier.positive(personality).contains(ability)) return label + "↑";
+        if (PersonalityAbilityModifier.negative(personality).contains(ability)) return label + "↓";
+        return label;
     }
 
-    private static Component rankComponent(AbilityRank rank) {
-        return Component.text(rank.displayName(), rankColor(rank))
+    private Component rankComponent(Locale locale, AbilityRank rank) {
+        return Component.text(messages.display(locale, "rank", rank), rankColor(rank))
                 .decorate(TextDecoration.BOLD);
     }
 
