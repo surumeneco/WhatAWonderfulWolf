@@ -249,6 +249,13 @@ final class WonderfulWolfBreedingServiceIntegrationTest {
         assertEquals(
                 "B-B",
                 pedigree.grandparentBB().orElseThrow().displayName());
+        // Grandparents preserve the actual phenotype of each parent's parent
+        // even if the original parent snapshot used the older 3-field ancestor.
+        assertEquals(Optional.of(Personality.SERIOUS.name()),
+                pedigree.grandparentAA().orElseThrow().personalityId());
+        assertTrue(pedigree.grandparentAA().orElseThrow().expressedTraitIds().isEmpty());
+        assertEquals(Optional.of(Personality.SERIOUS.name()),
+                pedigree.grandparentBB().orElseThrow().personalityId());
     }
 
     private WonderfulWolfIndividual founder(double ability, long seed) {
