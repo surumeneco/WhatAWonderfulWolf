@@ -1,6 +1,9 @@
 package co.surumene.www.ui;
 
 import co.surumene.www.ability.AbilityRank;
+import co.surumene.www.config.MessageService;
+import co.surumene.www.domain.ExpressedTrait;
+import co.surumene.www.domain.TraitStrength;
 import co.surumene.www.ability.EffectiveAbilities;
 import co.surumene.www.ability.EffectiveAbility;
 import co.surumene.www.ability.PersonalityAbilityModifier;
@@ -16,10 +19,13 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
 import org.bukkit.entity.Wolf;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.Set;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -37,11 +43,23 @@ public final class WonderfulWolfPlayerInfo {
             Ability.PATIENCE,
             Ability.INVENTORY);
 
+    private static final Set<Trait> STRONG_VISIBLE = EnumSet.of(
+            Trait.MINING_SUPPORT, Trait.MUSCLE, Trait.GUARDIAN, Trait.HEALING,
+            Trait.DIRECT_INHERITANCE, Trait.WILD, Trait.HOLY_POISON,
+            Trait.UNYIELDING, Trait.LIFE_DRAIN, Trait.INTIMIDATION);
+
+    private final MessageService messages;
+
+    public WonderfulWolfPlayerInfo(MessageService messages) {
+        this.messages = java.util.Objects.requireNonNull(messages, "messages");
+    }
+
     public ItemStack infoItem(
+            Player viewer,
             Wolf wolf,
             WonderfulWolfIndividual individual,
             Optional<EffectiveAbilities> effective) {
-        ItemStack item = named(Material.PAPER, "個体情報");
+        ItemStack item = named(Material.PAPER, messages.text(viewer.locale(), "gui.info"));
         ItemMeta meta = item.getItemMeta();
         List<Component> lore = new ArrayList<>();
         Personality personality = individual.phenotypeSnapshot().personality();
@@ -68,15 +86,18 @@ public final class WonderfulWolfPlayerInfo {
     }
 
     public ItemStack pedigreeItem(
+            Player viewer,
             WonderfulWolfIndividual individual,
             String lineageId) {
-        ItemStack item = named(Material.WRITABLE_BOOK, "血統情報");
+        ItemStack item = named(Material.WRITABLE_BOOK, messages.text(viewer.locale(), "gui.pedigree"));
         ItemMeta meta = item.getItemMeta();
         List<Component> lore = new ArrayList<>();
-        String traits = traitNames(individual.phenotypeSnapshot().expressedTraits().stream()
-                .map(entry -> entry.trait().name())
-                .toList());
-        lore.add(Component.text("特性: " + traits, NamedTextColor.AQUA));
+        String traits = displayedTraits(viewer.locale(),
+                individual.phenotypeSnapshot().expressedTraits());
+        lore.add(Component.text(messages.text(viewer.locale(), "gui.trait")
+                + ": " + traits, NamedTextColor.AQUA));
+        lore.addAll(traitDescriptionLines(viewer.locale(),
+                individual.phenotypeSnapshot().expressedTraits()));
         if (individual.phenotypeSnapshot().divineLineageExpressed()) {
             lore.add(Component.text("神の系譜", NamedTextColor.LIGHT_PURPLE));
         }
@@ -100,7 +121,8 @@ public final class WonderfulWolfPlayerInfo {
             Wolf wolf,
             WonderfulWolfIndividual individual,
             Optional<EffectiveAbilities> effective) {
-        Component message = Component.text("◆ 個体情報 — ", NamedTextColor.GOLD)
+        Component message = Component.text("◆ " + messages.text(player.locale(), "gui.info")
+                + " — ", NamedTextColor.GOLD)
                 .append(Component.text(wolf.getName(), NamedTextColor.YELLOW)
                         .decorate(TextDecoration.BOLD));
         Personality personality = individual.phenotypeSnapshot().personality();
@@ -132,15 +154,19 @@ public final class WonderfulWolfPlayerInfo {
             Wolf wolf,
             WonderfulWolfIndividual individual,
             String lineageId) {
-        Component message = Component.text("◆ 血統情報 — ", NamedTextColor.GOLD)
+        Component message = Component.text("◆ " + messages.text(player.locale(), "gui.pedigree")
+                + " — ", NamedTextColor.GOLD)
                 .append(Component.text(wolf.getName(), NamedTextColor.YELLOW)
                         .decorate(TextDecoration.BOLD));
         message = message.append(Component.newline())
-                .append(Component.text(
-                        "特性: " + traitNames(individual.phenotypeSnapshot().expressedTraits().stream()
-                                .map(entry -> entry.trait().name())
-                                .toList()),
+                .append(Component.text(messages.text(player.locale(), "gui.trait") + ": "
+                        + displayedTraits(player.locale(),
+                                individual.phenotypeSnapshot().expressedTraits()),
                         NamedTextColor.AQUA));
+        for (Component detail : traitDescriptionLines(player.locale(),
+                individual.phenotypeSnapshot().expressedTraits())) {
+            message = message.append(Component.newline()).append(detail);
+        }
         if (individual.phenotypeSnapshot().divineLineageExpressed()) {
             message = message.append(Component.newline())
                     .append(Component.text("神の系譜: 発現", NamedTextColor.LIGHT_PURPLE));
@@ -240,6 +266,29 @@ public final class WonderfulWolfPlayerInfo {
             case MYTHICAL -> NamedTextColor.DARK_PURPLE;
             case IMPOSSIBLE -> NamedTextColor.GOLD;
         };
+    }
+
+    private String displayedTraits(Locale locale, List<ExpressedTrait> traits) {
+        if (traits.isEmpty()) return messages.text(locale, "info.none");
+        return traits.stream().map(entry -> {
+            String key = "trait." + entry.trait().name().toLowerCase(Locale.ROOT);
+            String name = messages.text(locale, key + ".name");
+            return name + (entry.strength() == TraitStrength.STRONG
+                    && STRONG_VISIBLE.contains(entry.trait()) ? "II" : "");
+        }).reduce((a, b) -> a + " / " + b).orElse(messages.text(locale, "info.none"));
+    }
+
+    private List<Component> traitDescriptionLines(Locale locale, List<ExpressedTrait> traits) {
+        List<Component> result = new ArrayList<>();
+        for (ExpressedTrait entry : traits) {
+            String key = "trait." + entry.trait().name().toLowerCase(Locale.ROOT);
+            String name = messages.text(locale, key + ".name")
+                    + (entry.strength() == TraitStrength.STRONG
+                        && STRONG_VISIBLE.contains(entry.trait()) ? "II" : "");
+            result.add(Component.text("  " + name + ": "
+                    + messages.text(locale, key + ".description"), NamedTextColor.GRAY));
+        }
+        return result;
     }
 
     private static String traitNames(List<String> ids) {
