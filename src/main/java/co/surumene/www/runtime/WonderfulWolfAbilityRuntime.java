@@ -27,6 +27,7 @@ public final class WonderfulWolfAbilityRuntime {
     private final PaperAbilityProjector projector;
     private final Logger logger;
     private final Map<UUID, EffectiveAbilities> current = new HashMap<>();
+    private final Map<UUID, EvaluationSource> evaluationSources = new HashMap<>();
     private static final int REFRESH_SPAN_TICKS = 20;
     private final ArrayDeque<UUID> incrementalQueue = new ArrayDeque<>();
     private int incrementalTick;
@@ -59,6 +60,7 @@ public final class WonderfulWolfAbilityRuntime {
         }
 
         current.keySet().retainAll(seen);
+        evaluationSources.keySet().retainAll(seen);
     }
 
     /**
@@ -91,6 +93,7 @@ public final class WonderfulWolfAbilityRuntime {
             // Include wolves created during this cycle; do not evict their
             // creation-time projected abilities on the basis of an old list.
             current.keySet().removeIf(id -> loaded.find(id).isEmpty());
+            evaluationSources.keySet().removeIf(id -> loaded.find(id).isEmpty());
         }
     }
 
@@ -122,6 +125,7 @@ public final class WonderfulWolfAbilityRuntime {
                 .orElse(null);
         if (individual == null) {
             current.remove(wolf.getUniqueId());
+            evaluationSources.remove(wolf.getUniqueId());
             return;
         }
         refreshAt(
@@ -139,6 +143,7 @@ public final class WonderfulWolfAbilityRuntime {
         UUID id = wolf.getUniqueId();
         if (!wolf.isValid() || wolf.isDead()) {
             current.remove(id);
+            evaluationSources.remove(id);
             return;
         }
 
@@ -153,6 +158,7 @@ public final class WonderfulWolfAbilityRuntime {
                                 + ": "
                                 + safeMessage(error));
                 current.remove(id);
+                evaluationSources.remove(id);
                 return;
             }
         }
@@ -161,6 +167,22 @@ public final class WonderfulWolfAbilityRuntime {
                 ? ageGameDays(now, individual.adultBiologicalTime())
                 : 0.0;
         try {
+            EffectiveAbilities previous = current.get(id);
+            EvaluationSource priorSource = evaluationSources.get(id);
+            if (previous != null && priorSource != null
+                    && priorSource.individual() == individual
+                    && priorSource.runtime() == runtime
+                    && priorSource.adult() == wolf.isAdult()
+                    && sameAgeModifiers(previous, ageGameDays,
+                            individual.phenotypeSnapshot().injuries())) {
+                // The phenotype and effective age/injury modifiers have not
+                // changed. Keep live age accurate without the full decoder.
+                EffectiveAbilities unchanged = new EffectiveAbilities(
+                        previous.abilities(), ageGameDays, previous.ageCurve());
+                projector.project(wolf, unchanged);
+                current.put(id, unchanged);
+                return;
+            }
             EffectiveAbilities abilities =
                     EffectiveAbilityPipeline.evaluate(
                             individual.phenotypeSnapshot(),
@@ -169,6 +191,7 @@ public final class WonderfulWolfAbilityRuntime {
                             individual.adminAbilityOverrides());
             projector.project(wolf, abilities);
             current.put(id, abilities);
+            evaluationSources.put(id, new EvaluationSource(individual, runtime, wolf.isAdult()));
         } catch (RuntimeException error) {
             logger.warning(
                     "Failed to evaluate effective abilities for Wonderful Wolf "
@@ -176,8 +199,27 @@ public final class WonderfulWolfAbilityRuntime {
                             + ": "
                             + safeMessage(error));
             current.remove(id);
+            evaluationSources.remove(id);
         }
     }
+
+    /** Return true iff every age-dependent penalty and injury activation is unchanged. */
+    static boolean sameAgeModifiers(
+            EffectiveAbilities previous,
+            double ageGameDays,
+            java.util.List<co.surumene.www.domain.InjuryPhenotype> injuries) {
+        if (Double.compare(previous.ageCurve().rankReductionAt(previous.ageGameDays()),
+                previous.ageCurve().rankReductionAt(ageGameDays)) != 0) return false;
+        for (var injury : injuries) {
+            boolean wasActive = previous.ageGameDays() >= injury.onsetGameDay();
+            boolean activeNow = ageGameDays >= injury.onsetGameDay();
+            if (wasActive != activeNow) return false;
+        }
+        return true;
+    }
+
+    private record EvaluationSource(
+            WonderfulWolfIndividual individual, WwwConfig.Runtime runtime, boolean adult) {}
 
     public Optional<EffectiveAbilities> find(UUID entityId) {
         return Optional.ofNullable(
@@ -186,6 +228,7 @@ public final class WonderfulWolfAbilityRuntime {
 
     public void clear() {
         current.clear();
+        evaluationSources.clear();
         incrementalQueue.clear();
         incrementalTick = 0;
     }
