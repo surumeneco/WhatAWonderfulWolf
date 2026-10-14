@@ -181,6 +181,13 @@ public final class WonderfulWolfAbilityRuntime {
                 current.get(Objects.requireNonNull(entityId, "entityId")));
     }
 
+    /** Invalidate cached projections after a runtime configuration reload. */
+    public void markAllDirty() {
+        projectedAges.clear();
+        pending.clear();
+        nextScanTick = 0L;
+    }
+
     public void clear() {
         current.clear();
         projectedIndividuals.clear();
