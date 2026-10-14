@@ -5,6 +5,7 @@ import co.surumene.www.ability.AbilityScale;
 import co.surumene.www.ability.EffectiveAbilities;
 import co.surumene.www.ability.EffectiveAbility;
 import co.surumene.www.ability.PersonalityAbilityModifier;
+import co.surumene.www.config.WonderfulWolfMessages;
 import co.surumene.www.domain.Ability;
 import co.surumene.www.domain.ExpressedTrait;
 import co.surumene.www.domain.InjuryPhenotype;
@@ -64,14 +65,17 @@ public final class WonderfulWolfAdminInfo {
     private final Server server;
     private final GenomeEngine engine;
     private final Supplier<WonderfulWolfGenomeProfile> profile;
+    private final WonderfulWolfMessages messages;
 
     public WonderfulWolfAdminInfo(
             Server server,
             GenomeEngine engine,
-            Supplier<WonderfulWolfGenomeProfile> profile) {
+            Supplier<WonderfulWolfGenomeProfile> profile,
+            WonderfulWolfMessages messages) {
         this.server = java.util.Objects.requireNonNull(server, "server");
         this.engine = java.util.Objects.requireNonNull(engine, "engine");
         this.profile = java.util.Objects.requireNonNull(profile, "profile");
+        this.messages = java.util.Objects.requireNonNull(messages, "messages");
     }
 
     public Component render(
@@ -80,6 +84,16 @@ public final class WonderfulWolfAdminInfo {
             Optional<EffectiveAbilities> effective,
             int index,
             int total) {
+        return render(wolf, individual, effective, index, total, Locale.JAPANESE);
+    }
+
+    public Component render(
+            Wolf wolf,
+            WonderfulWolfIndividual individual,
+            Optional<EffectiveAbilities> effective,
+            int index,
+            int total,
+            Locale locale) {
         Component out = Component.text("◆ ", NamedTextColor.GOLD)
                 .append(displayName(wolf)
                         .color(NamedTextColor.YELLOW)
@@ -117,8 +131,8 @@ public final class WonderfulWolfAdminInfo {
                 lineage));
         out = append(out, line("世代", Integer.toString(individual.generation())));
         PedigreeSnapshot pedigree = individual.pedigree();
-        out = append(out, ancestor("親A", pedigree.parentA().map(ParentSnapshot::ancestor)));
-        out = append(out, ancestor("親B", pedigree.parentB().map(ParentSnapshot::ancestor)));
+        out = append(out, parent("親A", pedigree.parentA(), locale));
+        out = append(out, parent("親B", pedigree.parentB(), locale));
         out = append(out, ancestor("祖父母A-A", pedigree.grandparentAA()));
         out = append(out, ancestor("祖父母A-B", pedigree.grandparentAB()));
         out = append(out, ancestor("祖父母B-A", pedigree.grandparentBA()));
@@ -160,7 +174,7 @@ public final class WonderfulWolfAdminInfo {
                 personalityText(personality)));
         out = append(out, line(
                 "特性",
-                traitText(individual.phenotypeSnapshot().expressedTraits())));
+                traitText(individual.phenotypeSnapshot().expressedTraits(), locale)));
         out = append(out, line(
                 "神の系譜",
                 String.format(
@@ -321,16 +335,40 @@ public final class WonderfulWolfAdminInfo {
         return personality.displayName();
     }
 
-    private static String traitText(List<ExpressedTrait> traits) {
-        if (traits.isEmpty()) return "無し";
+    private String traitText(List<ExpressedTrait> traits, Locale locale) {
+        if (traits.isEmpty()) return messages.text(locale, "common.none");
         return traits.stream()
-                .map(entry -> entry.trait().displayName()
+                .map(entry -> messages.text(locale, "trait." + entry.trait().name() + ".name")
                         + (entry.strength() == TraitStrength.STRONG
                             && STRONG_VISIBLE.contains(entry.trait())
                             ? "II"
                             : ""))
                 .reduce((a, b) -> a + " / " + b)
                 .orElse("無し");
+    }
+
+    private Component parent(
+            String label, Optional<ParentSnapshot> parent, Locale locale) {
+        if (parent.isEmpty()) return line(label, messages.text(locale, "common.none"));
+        ParentSnapshot snapshot = parent.orElseThrow();
+        AncestorSnapshot ancestor = snapshot.ancestor();
+        String personality;
+        try {
+            personality = Personality.valueOf(snapshot.personalityId()).displayName();
+        } catch (IllegalArgumentException invalidLegacyId) {
+            personality = messages.text(locale, "common.unknown");
+        }
+        String traits = snapshot.expressedTraitIds().isEmpty()
+                ? messages.text(locale, "common.none")
+                : snapshot.expressedTraitIds().stream().map(id -> {
+                    try {
+                        return messages.text(locale, "trait." + Trait.valueOf(id).name() + ".name");
+                    } catch (IllegalArgumentException invalidLegacyId) {
+                        return messages.text(locale, "common.unknown");
+                    }
+                }).reduce((a, b) -> a + "/" + b).orElse(messages.text(locale, "common.none"));
+        return line(label, ancestor.displayName() + "(" + ancestor.generation()
+                + ") " + ancestor.lineageId() + " " + personality + " " + traits);
     }
 
     private Component ancestor(
