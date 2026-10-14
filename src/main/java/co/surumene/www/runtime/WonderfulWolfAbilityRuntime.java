@@ -27,7 +27,7 @@ public final class WonderfulWolfAbilityRuntime {
     private final PaperAbilityProjector projector;
     private final Logger logger;
     private static final int MAX_REFRESHES_PER_TICK = 16;
-    private static final long AGE_REFRESH_QUANTUM = 1_200L;
+    private static final long AGE_REFRESH_QUANTUM = 200L;
 
     private final Map<UUID, EffectiveAbilities> current = new HashMap<>();
     private final Map<UUID, WonderfulWolfIndividual> projectedIndividuals = new HashMap<>();
@@ -56,7 +56,7 @@ public final class WonderfulWolfAbilityRuntime {
         long tick = org.bukkit.Bukkit.getCurrentTick();
         if (pending.isEmpty()) {
             if (tick < nextScanTick) return;
-            nextScanTick = tick + 20L;
+            nextScanTick = tick + 200L;
             var snapshots = loaded.snapshots();
             Set<UUID> seen = new HashSet<>(snapshots.size());
             for (var snapshot : snapshots) seen.add(snapshot.entity().getUniqueId());
