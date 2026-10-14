@@ -33,6 +33,7 @@ sections:
   injuries: "Injuries"
   relationship: "Relationship"
 ui:
+  commander: "Commander"
   parent_a: "Parent A"
   parent_b: "Parent B"
   grandparent_aa: "Grandparent A-A"
@@ -146,3 +147,21 @@ admin:
   initial_affection: "Initial affection"
   affection_delta: "Affection change"
   generation_suffix: "generation"
+
+rank:
+  miserable: "Miserable"
+  very_low: "Very low"
+  low: "Low"
+  slightly_low: "Slightly low"
+  common: "Common"
+  slightly_high: "Slightly high"
+  high: "High"
+  very_high: "Very high"
+  legendary: "Legendary"
+  mythical: "Mythical"
+  impossible: "Exceptional"
+action_distance:
+  NARROW: "Narrow"
+  NORMAL: "Normal"
+  WIDE: "Wide"
+  VERY_WIDE: "Very wide"
