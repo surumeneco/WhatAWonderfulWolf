@@ -66,7 +66,8 @@ final class WonderfulWolfRuntimeCodecV1Test {
 
     @Test
     void decodesLegacyV1StateWithoutAdminOverrides() {
-        WonderfulWolfIndividual original = individual(false);
+        // No ancestors: the V3 and V1 pedigree prefixes are identical.
+        WonderfulWolfIndividual original = withPedigree(individual(false), PedigreeSnapshot.founder());
         byte[] bytes = codec.encode(original);
         // V1 had no trailing override count.
         byte[] legacy = Arrays.copyOf(bytes, bytes.length - 1);
@@ -88,13 +89,49 @@ final class WonderfulWolfRuntimeCodecV1Test {
     @Test
     void rejectsUnsupportedContainerVersionAndTrailingBytes() {
         byte[] encoded = codec.encode(individual(false));
-        encoded[4] = 3;
+        encoded[4] = 4;
         assertThrows(PersistenceCodecException.class, () ->
                 codec.decode(encoded, genome(), phenotype()));
 
         byte[] valid = codec.encode(individual(false));
         assertThrows(PersistenceCodecException.class, () ->
                 codec.decode(Arrays.copyOf(valid, valid.length + 1), genome(), phenotype()));
+    }
+
+    @Test
+    void roundTripsGrandparentPhenotypesAndStillReadsVersion2WithoutAncestors() {
+        WonderfulWolfIndividual original = individual(false);
+        PedigreeSnapshot old = original.pedigree();
+        AncestorSnapshot grandmother = new AncestorSnapshot("AA", 1,
+                "21-22-23-24-25-26", Optional.of(Personality.BRAVE.name()),
+                List.of(Trait.HEALING.name(), Trait.GUARDIAN.name()));
+        PedigreeSnapshot pedigree = new PedigreeSnapshot(
+                old.parentA(), old.parentB(),
+                Optional.of(grandmother), old.grandparentAB(),
+                old.grandparentBA(), old.grandparentBB());
+        WonderfulWolfIndividual enriched = withPedigree(original, pedigree);
+        WonderfulWolfIndividual decoded = codec.decode(codec.encode(enriched),
+                original.genome(), original.phenotypeSnapshot());
+        assertEquals(enriched, decoded);
+        assertEquals(Optional.of(Personality.BRAVE.name()),
+                decoded.pedigree().grandparentAA().orElseThrow().personalityId());
+        assertEquals(List.of(Trait.HEALING.name(), Trait.GUARDIAN.name()),
+                decoded.pedigree().grandparentAA().orElseThrow().expressedTraitIds());
+
+        WonderfulWolfIndividual founder = withPedigree(original, PedigreeSnapshot.founder());
+        byte[] previous = codec.encode(founder);
+        previous[4] = 2;
+        assertEquals(founder, codec.decode(previous, founder.genome(), founder.phenotypeSnapshot()));
+    }
+
+    private static WonderfulWolfIndividual withPedigree(
+            WonderfulWolfIndividual source, PedigreeSnapshot pedigree) {
+        return new WonderfulWolfIndividual(
+                source.genome(), source.phenotypeSnapshot(), source.ownerId(),
+                source.adultBiologicalTime(), source.mode(), source.commanderId(),
+                source.actionDistance(), source.waitLocation(), source.affection(),
+                source.weapon(), source.inventory(), source.generation(), pedigree,
+                source.adminAbilityOverrides());
     }
 
     private static WonderfulWolfIndividual individual(boolean reverseMaps) {
