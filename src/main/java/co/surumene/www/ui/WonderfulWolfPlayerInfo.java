@@ -47,12 +47,14 @@ public final class WonderfulWolfPlayerInfo {
     public ItemStack infoItem(
             Wolf wolf,
             WonderfulWolfIndividual individual,
-            Optional<EffectiveAbilities> effective) {
-        ItemStack item = named(Material.PAPER, "個体情報");
+            Optional<EffectiveAbilities> effective,
+            Locale locale) {
+        ItemStack item = named(Material.PAPER, messages.text(locale, "ui.info"));
         ItemMeta meta = item.getItemMeta();
         List<Component> lore = new ArrayList<>();
         Personality personality = individual.phenotypeSnapshot().personality();
-        lore.add(Component.text("性格: " + personality.displayName(), NamedTextColor.AQUA));
+        lore.add(Component.text(messages.text(locale, "common.personality")
+                + ": " + personality.displayName(), NamedTextColor.AQUA));
         lore.add(ageLine(wolf, effective));
         effective.ifPresent(values -> {
             for (Ability ability : DISPLAY_ORDER) {
@@ -68,7 +70,7 @@ public final class WonderfulWolfPlayerInfo {
                         rankColor(rank)));
             }
         }
-        lore.add(Component.text("クリックで詳細", NamedTextColor.DARK_GRAY));
+        lore.add(Component.text(messages.text(locale, "common.click_detail"), NamedTextColor.DARK_GRAY));
         meta.lore(lore);
         item.setItemMeta(meta);
         return item;
@@ -76,15 +78,16 @@ public final class WonderfulWolfPlayerInfo {
 
     public ItemStack pedigreeItem(
             WonderfulWolfIndividual individual,
-            String lineageId) {
-        ItemStack item = named(Material.WRITABLE_BOOK, "血統情報");
+            String lineageId,
+            Locale locale) {
+        ItemStack item = named(Material.WRITABLE_BOOK, messages.text(locale, "ui.pedigree"));
         ItemMeta meta = item.getItemMeta();
         List<Component> lore = new ArrayList<>();
-        String traits = traitNames(individual.phenotypeSnapshot().expressedTraits().stream()
+        String traits = traitNames(locale, individual.phenotypeSnapshot().expressedTraits().stream()
                 .map(entry -> entry.trait().name())
                 .toList());
-        lore.add(Component.text("特性: " + traits, NamedTextColor.AQUA));
-        appendTraitDescriptions(lore, individual, Locale.JAPANESE);
+        lore.add(Component.text(messages.text(locale, "common.trait") + ": " + traits, NamedTextColor.AQUA));
+        appendTraitDescriptions(lore, individual, locale);
         if (individual.phenotypeSnapshot().divineLineageExpressed()) {
             lore.add(Component.text("神の系譜", NamedTextColor.LIGHT_PURPLE));
         }
@@ -97,7 +100,7 @@ public final class WonderfulWolfPlayerInfo {
         lore.add(ancestorLine("祖父母A-B", p.grandparentAB()));
         lore.add(ancestorLine("祖父母B-A", p.grandparentBA()));
         lore.add(ancestorLine("祖父母B-B", p.grandparentBB()));
-        lore.add(Component.text("クリックで詳細", NamedTextColor.DARK_GRAY));
+        lore.add(Component.text(messages.text(locale, "common.click_detail"), NamedTextColor.DARK_GRAY));
         meta.lore(lore);
         item.setItemMeta(meta);
         return item;
@@ -145,7 +148,8 @@ public final class WonderfulWolfPlayerInfo {
                         .decorate(TextDecoration.BOLD));
         message = message.append(Component.newline())
                 .append(Component.text(
-                        "特性: " + traitNames(individual.phenotypeSnapshot().expressedTraits().stream()
+                        messages.text(player.locale(), "common.trait") + ": "
+                                + traitNames(player.locale(), individual.phenotypeSnapshot().expressedTraits().stream()
                                 .map(entry -> entry.trait().name())
                                 .toList()),
                         NamedTextColor.AQUA));
@@ -265,17 +269,16 @@ public final class WonderfulWolfPlayerInfo {
         }
     }
 
-    private static String traitNames(List<String> ids) {
-        if (ids.isEmpty()) return "無し";
-        return ids.stream()
-                .map(WonderfulWolfPlayerInfo::traitName)
+    private String traitNames(Locale locale, List<String> ids) {
+        if (ids.isEmpty()) return messages.text(locale, "common.none");
+        return ids.stream().map(id -> traitName(locale, id))
                 .reduce((a, b) -> a + " / " + b)
-                .orElse("無し");
+                .orElse(messages.text(locale, "common.none"));
     }
 
-    private static String traitName(String id) {
+    private String traitName(Locale locale, String id) {
         try {
-            return Trait.valueOf(id).displayName();
+            return messages.text(locale, "trait." + Trait.valueOf(id).name() + ".name");
         } catch (IllegalArgumentException ignored) {
             return id;
         }
@@ -303,7 +306,7 @@ public final class WonderfulWolfPlayerInfo {
                 .append(ancestorLine(label, ancestor));
     }
 
-    private static Component appendParent(
+    private Component appendParent(
             Component base,
             String label,
             Optional<ParentSnapshot> parent) {
@@ -319,7 +322,7 @@ public final class WonderfulWolfPlayerInfo {
             personality = value.personalityId();
         }
         String genetics = personality
-                + " / " + traitNames(value.expressedTraitIds())
+                + " / " + traitNames(Locale.JAPANESE, value.expressedTraitIds())
                 + (value.divineLineageExpressed() ? " / 神の系譜" : "");
         return base.append(Component.newline())
                 .append(Component.text(
