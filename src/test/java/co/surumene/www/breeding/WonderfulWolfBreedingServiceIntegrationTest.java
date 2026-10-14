@@ -77,6 +77,26 @@ final class WonderfulWolfBreedingServiceIntegrationTest {
     }
 
     @Test
+    void tamedChildStartsFollowingItsOwnerWithoutChangingItsInheritedState() {
+        UUID owner = UUID.fromString("b9c62d6c-f3b8-4d58-ac7b-b9c04b11ad89");
+        WonderfulWolfBreedingOutcome.Success outcome = assertInstanceOf(
+                WonderfulWolfBreedingOutcome.Success.class,
+                service.breed(
+                        new BreedingParent("Alpha", alpha),
+                        new BreedingParent("Beta", beta),
+                        Optional.of(owner),
+                        202610070025L));
+
+        WonderfulWolfIndividual child = outcome.child();
+        assertEquals(Optional.of(owner), child.ownerId());
+        assertEquals(Mode.FOLLOW, child.mode());
+        assertEquals(Optional.of(owner), child.commanderId());
+        assertEquals(ActionDistance.NORMAL, child.actionDistance());
+        assertEquals(1, child.generation());
+        assertTrue(child.waitLocation().isEmpty());
+    }
+
+    @Test
     void batchBreedingProducesValidChildrenWithoutFallback() {
         for (int i = 0; i < 8; i++) {
             WonderfulWolfBreedingOutcome.Success success = assertInstanceOf(
