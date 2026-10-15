@@ -19,6 +19,22 @@ final class ActiveThreatPolicyTest {
     }
 
     @Test
+    void foxIsAlwaysConsideredAnActiveThreatEvenWithoutHostility() {
+        assertTrue(ActiveThreatPolicy.isActiveThreat(
+                EntityType.FOX, false, false));
+        assertTrue(ActiveThreatPolicy.isActiveThreat(
+                EntityType.FOX, false, true));
+    }
+
+    @Test
+    void ocelotIsAlwaysConsideredAnActiveThreatEvenWithoutHostility() {
+        assertTrue(ActiveThreatPolicy.isActiveThreat(
+                EntityType.OCELOT, false, false));
+        assertTrue(ActiveThreatPolicy.isActiveThreat(
+                EntityType.OCELOT, false, true));
+    }
+
+    @Test
     void alwaysHostileEnemyTypesCanBeProactivelySelected() {
         assertTrue(ActiveThreatPolicy.isActiveThreat(
                 EntityType.HOGLIN, true, false));
