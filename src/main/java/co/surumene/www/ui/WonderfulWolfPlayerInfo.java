@@ -4,6 +4,7 @@ import co.surumene.www.ability.AbilityRank;
 import co.surumene.www.config.MessageService;
 import co.surumene.www.domain.ExpressedTrait;
 import co.surumene.www.domain.TraitStrength;
+import co.surumene.www.util.WolfDisplayName;
 import co.surumene.www.ability.EffectiveAbilities;
 import co.surumene.www.ability.EffectiveAbility;
 import co.surumene.www.ability.PersonalityAbilityModifier;
@@ -124,7 +125,8 @@ public final class WonderfulWolfPlayerInfo {
             Optional<EffectiveAbilities> effective) {
         Component message = Component.text("◆ " + messages.text(player.locale(), "gui.info")
                 + " — ", NamedTextColor.GOLD)
-                .append(Component.text(wolf.getName(), NamedTextColor.YELLOW)
+                .append(WolfDisplayName.fromWolf(wolf,
+                        Component.text(messages.text(player.locale(), "info.unnamed"), NamedTextColor.YELLOW))
                         .decorate(TextDecoration.BOLD));
         Personality personality = individual.phenotypeSnapshot().personality();
         message = message.append(Component.newline())
@@ -157,7 +159,8 @@ public final class WonderfulWolfPlayerInfo {
             String lineageId) {
         Component message = Component.text("◆ " + messages.text(player.locale(), "gui.pedigree")
                 + " — ", NamedTextColor.GOLD)
-                .append(Component.text(wolf.getName(), NamedTextColor.YELLOW)
+                .append(WolfDisplayName.fromWolf(wolf,
+                        Component.text(messages.text(player.locale(), "info.unnamed"), NamedTextColor.YELLOW))
                         .decorate(TextDecoration.BOLD));
         message = message.append(Component.newline())
                 .append(Component.text(messages.text(player.locale(), "gui.trait") + ": "
