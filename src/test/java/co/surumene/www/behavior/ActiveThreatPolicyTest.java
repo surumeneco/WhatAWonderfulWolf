@@ -27,6 +27,14 @@ final class ActiveThreatPolicyTest {
     }
 
     @Test
+    void ocelotIsAlwaysConsideredAnActiveThreatEvenWithoutHostility() {
+        assertTrue(ActiveThreatPolicy.isActiveThreat(
+                EntityType.OCELOT, false, false));
+        assertTrue(ActiveThreatPolicy.isActiveThreat(
+                EntityType.OCELOT, false, true));
+    }
+
+    @Test
     void alwaysHostileEnemyTypesCanBeProactivelySelected() {
         assertTrue(ActiveThreatPolicy.isActiveThreat(
                 EntityType.HOGLIN, true, false));
