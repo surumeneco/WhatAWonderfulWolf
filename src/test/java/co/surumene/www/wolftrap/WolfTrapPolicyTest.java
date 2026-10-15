@@ -49,4 +49,12 @@ final class WolfTrapPolicyTest {
         WolfTrapPolicy.Offset edge = WolfTrapPolicy.offset(1.0, 0.0, 32.0);
         assertEquals(32.0, Math.hypot(edge.x(), edge.z()), 1.0e-9);
     }
+
+    @Test
+    void evokerOwnsMountNavigationOnlyForValidPairedTrapRider() {
+        assertTrue(WolfTrapPolicy.riderOwnsNavigation(true, true, true));
+        assertFalse(WolfTrapPolicy.riderOwnsNavigation(false, true, true));
+        assertFalse(WolfTrapPolicy.riderOwnsNavigation(true, false, true));
+        assertFalse(WolfTrapPolicy.riderOwnsNavigation(true, true, false));
+    }
 }

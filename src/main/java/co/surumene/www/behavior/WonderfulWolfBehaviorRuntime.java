@@ -35,6 +35,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
 
@@ -52,6 +53,7 @@ public final class WonderfulWolfBehaviorRuntime {
     private final Server server;
     private final Logger logger;
     private WonderfulWolfTraitRuntime traitRuntime;
+    private Predicate<Wolf> controllingTrapRider = ignored -> false;
 
     private final Map<UUID, UUID> trapRiderTargets = new HashMap<>();
     private final Map<UUID, UUID> selfAttackers = new HashMap<>();
@@ -75,6 +77,12 @@ public final class WonderfulWolfBehaviorRuntime {
         this.goals = Objects.requireNonNull(goals, "goals");
         this.server = Objects.requireNonNull(server, "server");
         this.logger = Objects.requireNonNull(logger, "logger");
+    }
+
+    /** A valid trap Evoker steers the mount using vanilla Mob navigation. */
+    public void useTrapRiderNavigation(Predicate<Wolf> controllingRider) {
+        this.controllingTrapRider = Objects.requireNonNull(
+                controllingRider, "controllingRider");
     }
 
     public void tick(long serverTick) {
@@ -369,6 +377,26 @@ public final class WonderfulWolfBehaviorRuntime {
                 serverTick,
                 settings.combat().retreatMinTicks());
         retreat.put(id, next);
+
+        if (controllingTrapRider.test(wolf)) {
+            // Rider AI owns all movement, including retreat and approach.
+            // The Wolf still shares the rider's combat target and uses its
+            // normal weapon/damage calculations when that target is in range.
+            UUID riderTargetId = trapRiderTargets.get(id);
+            LivingEntity target = riderTargetId == null
+                    ? null : livingEntity(riderTargetId);
+            if (target != null && target.isValid() && !target.isDead()
+                    && sameWorld(wolf.getLocation(), target.getLocation())) {
+                selectedTargets.put(id, target.getUniqueId());
+                if (!target.equals(wolf.getTarget())) {
+                    wolf.setTarget(target);
+                }
+            } else {
+                selectedTargets.remove(id);
+                WolfCombatState.clear(wolf);
+            }
+            return;
+        }
 
         Location reference =
                 referenceLocation(individual);

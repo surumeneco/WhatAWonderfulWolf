@@ -23,6 +23,12 @@ public final class WolfTrapPolicy {
                         == ADDITIONAL_CHECK_TIME;
     }
 
+    /** Only a live, mutually paired Evoker may steer its marked trap Wolf. */
+    public static boolean riderOwnsNavigation(
+            boolean markedMount, boolean pairedPassenger, boolean liveRider) {
+        return markedMount && pairedPassenger && liveRider;
+    }
+
     public static boolean roll(
             double draw,
             double probability) {

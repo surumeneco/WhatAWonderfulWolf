@@ -33,6 +33,7 @@ public final class WolfTrapBootstrap {
                 System::currentTimeMillis,
                 plugin.getLogger());
 
+        behavior.useTrapRiderNavigation(runtime::hasControllingTrapRider);
         runtime.restoreLoaded();
         Bukkit.getPluginManager().registerEvents(
                 new WolfTrapListener(runtime),
