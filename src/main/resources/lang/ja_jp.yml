@@ -42,6 +42,7 @@ info:
   expressed: "発現"
   not_expressed: "未発現"
   unknown: "不明"
+  unnamed: "無名の狼"
   none: "無し"
   immature: "幼体"
   stage_growing: "成長期"
@@ -49,6 +50,7 @@ info:
   stage_aging: "老化期"
   stage_elder: "高齢期"
 gui:
+  title: "わんだふるうるふ"
   info: "個体情報"
   pedigree: "血統情報"
   click_detail: "クリックで詳細"
