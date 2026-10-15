@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "co.surumene"
-version = "0.1.0-SNAPSHOT"
+version = "1.0.0"
 
 repositories {
     mavenCentral()
@@ -21,11 +21,11 @@ java {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:26.2.build.129-stable")
-    compileOnly("co.surumene:wgl-plugin:0.1.0-SNAPSHOT")
+    compileOnly("co.surumene:wgl-plugin:1.0.0")
 
     testImplementation("io.papermc.paper:paper-api:26.2.build.129-stable")
-    testImplementation("co.surumene:wgl-plugin:0.1.0-SNAPSHOT")
-    testImplementation("co.surumene:wgl-core:0.1.0-SNAPSHOT")
+    testImplementation("co.surumene:wgl-plugin:1.0.0")
+    testImplementation("co.surumene:wgl-core:1.0.0")
     testImplementation(platform("org.junit:junit-bom:6.0.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
