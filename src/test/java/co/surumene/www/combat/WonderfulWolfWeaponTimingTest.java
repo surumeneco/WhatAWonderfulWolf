@@ -24,4 +24,15 @@ final class WonderfulWolfWeaponTimingTest {
     void zeroAttackSpeedCannotProduceAnAttack() {
         assertEquals(Long.MAX_VALUE, WonderfulWolfWeaponTiming.cooldownTicks(0.0));
     }
+    @Test
+    void clipsOnlyProcessingRateAtPointZeroOne() {
+        assertEquals(0.01, WonderfulWolfWeaponTiming.attackRate(0.0));
+        assertEquals(0.01, WonderfulWolfWeaponTiming.attackRate(-3.0));
+        assertEquals(0.01, WonderfulWolfWeaponTiming.attackRate(0.009));
+        assertEquals(0.3, WonderfulWolfWeaponTiming.attackRate(0.3));
+        assertEquals(2000L, WonderfulWolfWeaponTiming.cooldownTicks(
+                WonderfulWolfWeaponTiming.attackRate(0.0)));
+        assertThrows(IllegalArgumentException.class,
+                () -> WonderfulWolfWeaponTiming.attackRate(Double.NaN));
+    }
 }
