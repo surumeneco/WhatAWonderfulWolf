@@ -200,13 +200,13 @@ public final class WwwConfigValidator {
         nonNegative(age.basePeakDurationGameDays(), "runtime.age.base-peak-duration-game-days");
         positive(age.baseAgingDurationGameDays(), "runtime.age.base-aging-duration-game-days");
         WwwConfig.AgeSensitivity sensitivity = age.sensitivity();
-        nonNegative(sensitivity.health(), "runtime.age.sensitivity.health");
+        nonNegative(sensitivity.health(), "runtime.age.sensitivity.max-health");
         nonNegative(sensitivity.defense(), "runtime.age.sensitivity.defense");
         nonNegative(sensitivity.patience(), "runtime.age.sensitivity.patience");
         nonNegative(sensitivity.size(), "runtime.age.sensitivity.size");
         nonNegative(sensitivity.inventory(), "runtime.age.sensitivity.inventory");
-        nonNegative(sensitivity.movementSpeed(), "runtime.age.sensitivity.movement-speed");
-        nonNegative(sensitivity.jump(), "runtime.age.sensitivity.jump");
+        nonNegative(sensitivity.movementSpeed(), "runtime.age.sensitivity.ground-speed");
+        nonNegative(sensitivity.jump(), "runtime.age.sensitivity.jump-strength");
         nonNegative(sensitivity.stepHeight(), "runtime.age.sensitivity.step-height");
         nonNegative(sensitivity.attackDamage(), "runtime.age.sensitivity.attack-damage");
         nonNegative(sensitivity.attackSpeed(), "runtime.age.sensitivity.attack-speed");
@@ -215,19 +215,20 @@ public final class WwwConfigValidator {
                 "runtime.relationship.passive-increase-interval-ticks");
         probability(runtime.relationship().passiveIncreaseProbability(),
                 "runtime.relationship.passive-increase-probability");
-        nonNegative(runtime.personality().modifierRate(), "runtime.personality.modifier-rate");
+        nonNegative(runtime.personality().modifierRate(), "nature.adjustment");
 
-        nonNegative(runtime.traits().auraRadiusBlocks(), "runtime.traits.aura-radius-blocks");
-        nonNegative(runtime.traits().watchmanDistanceMultiplier(), "runtime.traits.watchman-distance-multiplier");
-        nonNegative(runtime.traits().watchmanWarningMinTicks(), "runtime.traits.watchman-warning-min-ticks");
-        nonNegative(runtime.traits().watchmanWarningMaxTicks(), "runtime.traits.watchman-warning-max-ticks");
+        nonNegative(runtime.traits().auraRadiusBlocks(), "traits.aura-radius-blocks");
+        nonNegative(runtime.traits().watchmanDistanceMultiplier(), "traits.watchman-distance-multiplier");
+        nonNegative(runtime.traits().watchmanWarningMinTicks(), "traits.alert-min-interval-ticks");
+        nonNegative(runtime.traits().watchmanWarningMaxTicks(), "traits.alert-max-interval-ticks");
         if (runtime.traits().watchmanWarningMinTicks() > runtime.traits().watchmanWarningMaxTicks()) {
-            throw invalid("runtime.traits.watchman-warning-*", "must satisfy min <= max");
+            throw invalid("traits.alert-*-interval-ticks", "must satisfy min <= max");
         }
 
-        probability(runtime.spawn().naturalConversionProbability(), "runtime.spawn.natural-conversion-probability");
-        probability(runtime.spawn().wolfTrapLightningProbability(), "runtime.spawn.wolf-trap-lightning-probability");
-        nonNegative(runtime.spawn().wolfTrapActivationRadiusBlocks(), "runtime.spawn.wolf-trap-activation-radius-blocks");
+        probability(runtime.spawn().naturalConversionProbability(), "natural-spawn.chance");
+        probability(runtime.spawn().wolfTrapLightningProbability(), "wolf-trap.lightning-chance");
+        probability(runtime.spawn().wolfTrapSpawnChance(), "wolf-trap.spawn-chance");
+        nonNegative(runtime.spawn().wolfTrapActivationRadiusBlocks(), "wolf-trap.activation-radius-blocks");
     }
 
     private static void validateRange(WwwConfig.Range range, String path) {
