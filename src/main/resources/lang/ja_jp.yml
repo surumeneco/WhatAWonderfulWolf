@@ -116,55 +116,55 @@ rank:
 trait:
   mining_support:
     name: "採掘応援"
-    description: "近くのプレイヤーの採掘速度を上げる。"
+    description: "近くにいると仕事が早くなる。"
   muscle:
     name: "力こぶ"
-    description: "近くのプレイヤーの攻撃力を上げる。"
+    description: "近くにいると力が湧いてくる。"
   guardian:
     name: "守護"
-    description: "近くのプレイヤーに耐性を付与する。"
+    description: "近くにいると勇気が湧いてくる。"
   healing:
     name: "癒やし"
-    description: "近くのプレイヤーに再生を付与する。"
+    description: "近くにいると心が休まる。"
   direct_inheritance:
     name: "直伝"
-    description: "繁殖時に親の能力Genome領域を優先して引き継ぐ。"
+    description: "子供が能力を受け継ぎやすい。"
   wild:
     name: "破天荒"
-    description: "繁殖時の突然変異が起きやすくなる。"
+    description: "思いがけない子供が生まれやすい。"
   watchman:
     name: "見張り番"
-    description: "周囲の危険なMobを検知して警告する。"
+    description: "危険が近付くと教えてくれる。"
   holy_poison:
     name: "聖毒"
-    description: "攻撃した相手に毒を与え、アンデッドには聖なるダメージを与える。"
+    description: "攻撃した相手をじわじわと弱らせる。"
   quirk_boost:
     name: "クセ増し"
-    description: "性格による能力補正が強くなる。"
+    description: "性格のクセが強くなる。"
   unyielding:
     name: "不屈"
-    description: "自分の体力を少しずつ回復する。"
+    description: "傷付いても少しずつ回復する。"
   scavenger:
     name: "拾い食い"
-    description: "落ちているアイテムを回収し、負傷時は肉を食べて回復する。"
+    description: "落ちているアイテムを拾うが、肉を食べてしまうことがある。"
   life_drain:
     name: "吸命"
-    description: "Mobを倒したときに自分の体力を回復する。"
+    description: "敵を倒すと生命力を奪う。"
   fire_bird:
     name: "火の鳥"
-    description: "炎のダメージを受けない。"
+    description: "炎の中でもへっちゃら。"
   intimidation:
     name: "威嚇"
-    description: "攻撃を当てた相手に弱体化を付与する。"
+    description: "攻撃した相手が竦む。"
   lightweight:
     name: "身軽"
-    description: "落下ダメージを受けない。"
+    description: "高いところから落ちてもへっちゃら。"
   target:
     name: "標的"
-    description: "攻撃対象を発光させ、位置を見やすくする。"
+    description: "狙っている敵を教えてくれる。"
   swimmer:
     name: "泳ぎ上手"
-    description: "水中で溺れない。"
+    description: "水の中でもへっちゃら。"
   snowborn:
     name: "雪国生まれ"
-    description: "凍結ダメージを受けない。"
+    description: "冷たいところでもへっちゃら。"
