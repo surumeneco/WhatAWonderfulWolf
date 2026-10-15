@@ -180,5 +180,6 @@ public record WwwConfig(
     public record Spawn(
             double naturalConversionProbability,
             double wolfTrapLightningProbability,
-            double wolfTrapActivationRadiusBlocks) {}
+            double wolfTrapActivationRadiusBlocks,
+            double wolfTrapSpawnChance) {}
 }
