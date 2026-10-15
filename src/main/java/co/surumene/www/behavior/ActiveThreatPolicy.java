@@ -20,6 +20,7 @@ public final class ActiveThreatPolicy {
             boolean enemy,
             boolean targetingCommandChain) {
         Objects.requireNonNull(type, "type");
+        if (type == EntityType.FOX) return true;
         if (CONDITIONALLY_NEUTRAL_ENEMIES.contains(type)) {
             return targetingCommandChain;
         }
