@@ -130,6 +130,33 @@ public final class WolfTrapRuntime {
         return wolf != null && states.isMountedWolf(wolf);
     }
 
+    /**
+     * The vanilla 26.2 mob rider owns navigation only while the marked pair
+     * is valid. Do not use this for tame/death lifecycle checks.
+     */
+    public boolean hasControllingTrapRider(Wolf wolf) {
+        if (!isMountedTrapWolf(wolf)) {
+            return false;
+        }
+        UUID riderId = states.mountedRiderId(wolf).orElse(null);
+        if (riderId == null) {
+            return false;
+        }
+        for (Entity passenger : wolf.getPassengers()) {
+            if (passenger instanceof Evoker rider
+                    && rider.getUniqueId().equals(riderId)) {
+                boolean paired = rider.getVehicle() == wolf
+                        && states.riderWolfId(rider)
+                                .filter(wolf.getUniqueId()::equals).isPresent();
+                boolean live = states.isRider(rider)
+                        && rider.isValid() && !rider.isDead();
+                return WolfTrapPolicy.riderOwnsNavigation(
+                        true, paired, live);
+            }
+        }
+        return false;
+    }
+
     public void activateByAttack(Evoker evoker) {
         if (evoker != null && states.isArmed(evoker)) {
             activate(evoker);
@@ -309,10 +336,10 @@ public final class WolfTrapRuntime {
                 continue;
             }
 
+            // Keep the Wolf's attack target aligned with its Evoker.
+            // The rider's vanilla AI already navigates the mounted Wolf;
+            // another Pathfinder.moveTo here would override that control.
             behavior.setTrapRiderTarget(wolf, target);
-            if (!behavior.isRetreating(wolf.getUniqueId())) {
-                wolf.getPathfinder().moveTo(target, 1.2);
-            }
         }
     }
 
