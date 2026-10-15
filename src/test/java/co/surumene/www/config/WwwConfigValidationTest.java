@@ -20,14 +20,16 @@ final class WwwConfigValidationTest {
     void rejectsInvalidConfigurationInsteadOfPublishingPartialState() {
         assertInvalid(config -> config.set("commands.info-max-results", 0));
         assertInvalid(config -> config.set("commands.info-max-results", 2.5));
-        assertInvalid(config -> config.set("runtime.spawn.natural-conversion-probability", 1.01));
+        assertInvalid(config -> config.set("natural-spawn.chance", 1.01));
+        assertInvalid(config -> config.set("wolf-trap.spawn-chance", -0.01));
+        assertInvalid(config -> config.set("wolf-trap.lightning-chance", 1.01));
         assertInvalid(config -> config.set("runtime.relationship.passive-increase-probability", Double.NaN));
         assertInvalid(config -> config.set("runtime.action-distance.normal-blocks", 4.0));
-        assertInvalid(config -> config.set("runtime.traits.watchman-warning-min-ticks", 81));
+        assertInvalid(config -> config.set("traits.alert-min-interval-ticks", 81));
         assertInvalid(config -> config.set("runtime.age.base-growth-game-days", 0.0));
         assertInvalid(config -> config.set("runtime.age.base-peak-duration-game-days", -0.01));
         assertInvalid(config -> config.set("runtime.age.base-aging-duration-game-days", 0.0));
-        assertInvalid(config -> config.set("runtime.age.sensitivity.health", -0.01));
+        assertInvalid(config -> config.set("runtime.age.sensitivity.max-health", -0.01));
         assertInvalid(config -> config.set("founder-target.natural.abilities.standard-deviation", 0.0));
         assertInvalid(config -> config.set("founder-target.personality.standard-deviation", 0.0));
         assertInvalid(config -> config.set("genome-profile.decoder.personality.serious-spread", 1.01));
