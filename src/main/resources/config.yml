@@ -3,6 +3,31 @@
 # reload後も既存Phenotype Snapshotは再解読されません。各設定の適用時点は項目ごとのcommentを参照してください。
 config-version: 1
 
+# WWW/WWC共通のゲーム設定はWWCと同じトップレベル名を使用します。
+# 自然スポーンWolfをWonderful Wolfへ変換する確率。0.0～1.0。
+natural-spawn:
+  chance: 0.05
+# 性格による能力補正の強さ。出生済みのGenome/Snapshotには影響しません。
+nature:
+  adjustment: 0.10
+# 表現型に応じた実行時の効果。次回の評価から反映されます。
+traits:
+  # Aura型特性全体の半径。採掘応援専用のWWC haste-radiusとは効果範囲が異なります。
+  aura-radius-blocks: 7.5
+  # 見張り番の検知半径に行動距離を掛ける係数。
+  watchman-distance-multiplier: 1.5
+  # 見張り番の警告間隔。単位tick。min <= max。
+  alert-min-interval-ticks: 10
+  alert-max-interval-ticks: 80
+# ウルフトラップ: 満月深夜(18000)、嵐天、通常時刻進行の追加抽選と自然落雷の別系統。
+wolf-trap:
+  # 深夜の追加発生率。0.01 = 1%。起動時の次回判定から反映。0.0～1.0。
+  spawn-chance: 0.01
+  # 天候による自然落雷の際の抽選確率。0.05 = 5%。0.0～1.0。
+  lightning-chance: 0.05
+  # 特殊Evokerがプレイヤーの接近で起動する半径。単位block、0以上。
+  activation-radius-blocks: 10.0
+
 commands:
   # /www info により一度に表示する最大個体数です。
   info-max-results: 10
@@ -190,13 +215,13 @@ runtime:
     base-aging-duration-game-days: 4320.0
     sensitivity:
       # 能力ごとの年齢補正感受性です。0は年齢補正なし、1超も許容します。
-      health: 0.7
+      max-health: 0.7
       defense: 0.5
       patience: 0.3
       size: 0.0
       inventory: 0.0
-      movement-speed: 1.0
-      jump: 1.0
+      ground-speed: 1.0
+      jump-strength: 1.0
       step-height: 0.4
       attack-damage: 0.8
       attack-speed: 1.0
@@ -205,21 +230,3 @@ runtime:
     passive-increase-interval-ticks: 1200
     # 抽選1回あたりの上昇確率です。0.10 = 10%。
     passive-increase-probability: 0.10
-  personality:
-    # 性格の正負補正幅です。0.10 = ±10%。クセ増しはこの補正幅を強化します。
-    modifier-rate: 0.10
-  traits:
-    # Aura型特性の共通半径です。単位はblockです。
-    aura-radius-blocks: 7.5
-    # 見張り番の検知半径を行動距離へ掛ける倍率です。
-    watchman-distance-multiplier: 1.5
-    # 見張り番の距離依存警告間隔の最小/最大です。単位はtickです。
-    watchman-warning-min-ticks: 10
-    watchman-warning-max-ticks: 80
-  spawn:
-    # 通常自然スポーンWolfをWonderful Wolf化する確率です。0.05 = 5%。
-    natural-conversion-probability: 0.05
-    # 対象となる自然落雷からウルフトラップを発生させる確率です。0.05 = 5%。
-    wolf-trap-lightning-probability: 0.05
-    # 特殊Evokerの起動判定半径です。単位はblockです。
-    wolf-trap-activation-radius-blocks: 10.0
