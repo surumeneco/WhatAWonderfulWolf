@@ -125,7 +125,7 @@ public final class WonderfulWolfBehaviorRuntime {
         commandCombat.remove(id);
         pvpIntervention.remove(id);
         selectedTargets.remove(id);
-        wolf.setTarget(null);
+        WolfCombatState.clear(wolf);
         tickWolfNow(wolf);
     }
 
@@ -182,9 +182,7 @@ public final class WonderfulWolfBehaviorRuntime {
             return;
         }
         selectedTargets.remove(id);
-        if (wolf.getTarget() != null) {
-            wolf.setTarget(null);
-        }
+        WolfCombatState.clear(wolf);
         tickWolfNow(wolf);
     }
 
@@ -379,9 +377,7 @@ public final class WonderfulWolfBehaviorRuntime {
 
         if (wolf.isSitting()) {
             selectedTargets.remove(id);
-            if (wolf.getTarget() != null) {
-                wolf.setTarget(null);
-            }
+            WolfCombatState.clear(wolf);
             wolf.getPathfinder().stopPathfinding();
             return;
         }
@@ -390,9 +386,7 @@ public final class WonderfulWolfBehaviorRuntime {
                 && individual.mode() != Mode.WANDER
                 && outsideReferenceRadius(wolf, reference, radius)) {
             selectedTargets.remove(id);
-            if (wolf.getTarget() != null) {
-                wolf.setTarget(null);
-            }
+            WolfCombatState.clear(wolf);
             returnToReference(wolf, individual, reference);
             return;
         }
@@ -404,9 +398,7 @@ public final class WonderfulWolfBehaviorRuntime {
                 pvpIntervention.remove(id);
             }
             selectedTargets.remove(id);
-            if (wolf.getTarget() != null) {
-                wolf.setTarget(null);
-            }
+            WolfCombatState.clear(wolf);
             fleeOrReturn(wolf, individual, reference, radius);
             return;
         }
@@ -480,9 +472,7 @@ public final class WonderfulWolfBehaviorRuntime {
         }
 
         selectedTargets.remove(id);
-        if (wolf.getTarget() != null) {
-            wolf.setTarget(null);
-        }
+        WolfCombatState.clear(wolf);
         returnToReference(wolf, individual, reference);
     }
 
