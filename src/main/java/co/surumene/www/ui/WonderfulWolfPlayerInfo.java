@@ -106,8 +106,8 @@ public final class WonderfulWolfPlayerInfo {
         lore.add(Component.text(messages.text(viewer.locale(), "gui.bloodline") + ": " + lineageId, NamedTextColor.GRAY));
         lore.add(Component.text(messages.text(viewer.locale(), "gui.generation") + ": " + individual.generation(), NamedTextColor.GRAY));
         PedigreeSnapshot p = individual.pedigree();
-        lore.add(ancestorLine(viewer.locale(), "parent_a", p.parentA().map(ParentSnapshot::ancestor)));
-        lore.add(ancestorLine(viewer.locale(), "parent_b", p.parentB().map(ParentSnapshot::ancestor)));
+        lore.add(parentLine(viewer.locale(), "parent_a", p.parentA()));
+        lore.add(parentLine(viewer.locale(), "parent_b", p.parentB()));
         lore.add(ancestorLine(viewer.locale(), "grandparent_aa", p.grandparentAA()));
         lore.add(ancestorLine(viewer.locale(), "grandparent_ab", p.grandparentAB()));
         lore.add(ancestorLine(viewer.locale(), "grandparent_ba", p.grandparentBA()));
@@ -283,12 +283,8 @@ public final class WonderfulWolfPlayerInfo {
         return result;
     }
 
-    private String traitNames(Locale locale, List<String> ids) {
-        if (ids.isEmpty()) return messages.text(locale, "info.none");
-        return ids.stream()
-                .map(id -> traitName(locale, id))
-                .reduce((a, b) -> a + " / " + b)
-                .orElse(messages.text(locale, "info.none"));
+    private List<String> traitNames(Locale locale, List<String> ids) {
+        return ids.stream().map(id -> traitName(locale, id)).toList();
     }
 
     private String traitName(Locale locale, String id) {
@@ -296,20 +292,52 @@ public final class WonderfulWolfPlayerInfo {
             return messages.text(locale, "trait."
                     + Trait.valueOf(id).name().toLowerCase(Locale.ROOT) + ".name");
         } catch (IllegalArgumentException ignored) {
-            return id;
+            return messages.text(locale, "info.unknown");
+        }
+    }
+
+    private String personalityName(Locale locale, String id) {
+        if (id == null) return null;
+        try {
+            return messages.display(locale, "personality", Personality.valueOf(id));
+        } catch (IllegalArgumentException ignored) {
+            return null;
         }
     }
 
     private Component ancestorLine(
             Locale locale, String key, Optional<AncestorSnapshot> ancestor) {
-        return Component.text(messages.text(locale, "info." + key) + ": "
-                + ancestorText(locale, ancestor), NamedTextColor.GRAY);
+        String value = ancestor.map(snapshot -> formatAncestor(locale, snapshot))
+                .orElse(messages.text(locale, "info.none"));
+        return Component.text(messages.text(locale, "info." + key) + ": " + value,
+                NamedTextColor.GRAY);
     }
 
-    private String ancestorText(Locale locale, Optional<AncestorSnapshot> ancestor) {
-        return ancestor.map(value ->
-                value.displayName() + "(" + value.generation() + ") " + value.lineageId())
+    private Component parentLine(
+            Locale locale, String key, Optional<ParentSnapshot> parent) {
+        String value = parent.map(snapshot ->
+                        WolfPedigreeLine.format(
+                                snapshot.ancestor().displayName(),
+                                snapshot.ancestor().generation(),
+                                snapshot.ancestor().lineageId(),
+                                personalityName(locale, snapshot.personalityId()),
+                                traitNames(locale, snapshot.expressedTraitIds()),
+                                messages.text(locale,
+                                        personalityName(locale, snapshot.personalityId()) == null
+                                                ? "info.unknown" : "info.none")))
                 .orElse(messages.text(locale, "info.none"));
+        return Component.text(messages.text(locale, "info." + key) + ": " + value,
+                NamedTextColor.GRAY);
+    }
+
+    private String formatAncestor(Locale locale, AncestorSnapshot snapshot) {
+        String personality = snapshot.personalityId()
+                .map(id -> personalityName(locale, id)).orElse(null);
+        return WolfPedigreeLine.format(
+                snapshot.displayName(), snapshot.generation(), snapshot.lineageId(),
+                personality,
+                traitNames(locale, snapshot.expressedTraitIds()),
+                messages.text(locale, personality == null ? "info.unknown" : "info.none"));
     }
 
     private Component appendAncestor(
@@ -321,28 +349,7 @@ public final class WonderfulWolfPlayerInfo {
     private Component appendParent(
             Locale locale, Component base,
             String key, Optional<ParentSnapshot> parent) {
-        String label = messages.text(locale, "info." + key);
-        if (parent.isEmpty()) {
-            return base.append(Component.newline())
-                    .append(Component.text(label + ": "
-                            + messages.text(locale, "info.none"), NamedTextColor.GRAY));
-        }
-        ParentSnapshot value = parent.orElseThrow();
-        String personality;
-        try {
-            personality = messages.display(locale, "personality",
-                    Personality.valueOf(value.personalityId()));
-        } catch (IllegalArgumentException ignored) {
-            personality = messages.text(locale, "info.unknown");
-        }
-        String genetics = personality + " / " + traitNames(locale, value.expressedTraitIds())
-                + (value.divineLineageExpressed()
-                        ? " / " + messages.text(locale, "gui.divine_lineage") : "");
-        return base.append(Component.newline())
-                .append(Component.text(label + ": "
-                        + ancestorText(locale, Optional.of(value.ancestor())),
-                        NamedTextColor.GRAY))
-                .append(Component.text(" / " + genetics, NamedTextColor.WHITE));
+        return base.append(Component.newline()).append(parentLine(locale, key, parent));
     }
 
     private static ItemStack named(Material material, String name) {
