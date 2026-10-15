@@ -146,29 +146,30 @@ public final class WwwConfigLoader {
                         number(runtime, "age.base-peak-duration-game-days"),
                         number(runtime, "age.base-aging-duration-game-days"),
                         new WwwConfig.AgeSensitivity(
-                                number(runtime, "age.sensitivity.health"),
+                                number(runtime, "age.sensitivity.max-health"),
                                 number(runtime, "age.sensitivity.defense"),
                                 number(runtime, "age.sensitivity.patience"),
                                 number(runtime, "age.sensitivity.size"),
                                 number(runtime, "age.sensitivity.inventory"),
-                                number(runtime, "age.sensitivity.movement-speed"),
-                                number(runtime, "age.sensitivity.jump"),
+                                number(runtime, "age.sensitivity.ground-speed"),
+                                number(runtime, "age.sensitivity.jump-strength"),
                                 number(runtime, "age.sensitivity.step-height"),
                                 number(runtime, "age.sensitivity.attack-damage"),
                                 number(runtime, "age.sensitivity.attack-speed"))),
                 new WwwConfig.Relationship(
                         integer(runtime, "relationship.passive-increase-interval-ticks"),
                         number(runtime, "relationship.passive-increase-probability")),
-                new WwwConfig.PersonalityRuntime(number(runtime, "personality.modifier-rate")),
+                new WwwConfig.PersonalityRuntime(number(root, "nature.adjustment")),
                 new WwwConfig.Traits(
-                        number(runtime, "traits.aura-radius-blocks"),
-                        number(runtime, "traits.watchman-distance-multiplier"),
-                        integer(runtime, "traits.watchman-warning-min-ticks"),
-                        integer(runtime, "traits.watchman-warning-max-ticks")),
+                        number(root, "traits.aura-radius-blocks"),
+                        number(root, "traits.watchman-distance-multiplier"),
+                        integer(root, "traits.alert-min-interval-ticks"),
+                        integer(root, "traits.alert-max-interval-ticks")),
                 new WwwConfig.Spawn(
-                        number(runtime, "spawn.natural-conversion-probability"),
-                        number(runtime, "spawn.wolf-trap-lightning-probability"),
-                        number(runtime, "spawn.wolf-trap-activation-radius-blocks")));
+                        number(root, "natural-spawn.chance"),
+                        number(root, "wolf-trap.lightning-chance"),
+                        number(root, "wolf-trap.activation-radius-blocks"),
+                        number(root, "wolf-trap.spawn-chance")));
 
         return WwwConfigValidator.validate(new WwwConfig(
                 integer(root, "config-version"),
