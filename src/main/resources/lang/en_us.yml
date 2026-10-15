@@ -42,6 +42,7 @@ info:
   expressed: "Expressed"
   not_expressed: "Not Expressed"
   unknown: "Unknown"
+  unnamed: "Unnamed Wolf"
   none: "None"
   immature: "Pup"
   stage_growing: "Growing"
@@ -49,6 +50,7 @@ info:
   stage_aging: "Aging"
   stage_elder: "Elder"
 gui:
+  title: "Wonderful Wolf"
   info: "Wolf Info"
   pedigree: "Pedigree"
   click_detail: "Click for details"
