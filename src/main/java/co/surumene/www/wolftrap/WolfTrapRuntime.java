@@ -210,7 +210,8 @@ public final class WolfTrapRuntime {
             if (players.isEmpty()
                     || !WolfTrapPolicy.roll(
                             draw(),
-                            WolfTrapPolicy.ADDITIONAL_PROBABILITY)) {
+                            Objects.requireNonNull(config.get(), "runtime config")
+                                    .spawn().wolfTrapSpawnChance())) {
                 continue;
             }
 
