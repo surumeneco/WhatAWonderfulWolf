@@ -1,6 +1,7 @@
 package co.surumene.www.command;
 
 import co.surumene.www.util.WolfDisplayName;
+import co.surumene.www.combat.WonderfulWolfWeaponTiming;
 import co.surumene.www.ability.AbilityRank;
 import co.surumene.www.config.MessageService;
 import co.surumene.www.ability.AbilityScale;
@@ -260,6 +261,7 @@ public final class WonderfulWolfAdminInfo {
                     PaperAbilityProjector.blocksPerSecondForMovementAttribute(value);
             case JUMP ->
                     PaperAbilityProjector.heightForJumpStrength(value);
+            case ATTACK_SPEED -> WonderfulWolfWeaponTiming.attackRate(value);
             default -> value;
         };
     }
