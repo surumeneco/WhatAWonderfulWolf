@@ -1,5 +1,6 @@
 package co.surumene.www.ui;
 
+import co.surumene.www.util.WolfDisplayName;
 import co.surumene.www.ability.AbilityScale;
 import co.surumene.www.config.MessageService;
 import co.surumene.www.behavior.WonderfulWolfCommandService;
@@ -84,7 +85,7 @@ public final class WonderfulWolfInventoryService {
         Inventory inventory = Bukkit.createInventory(
                 holder,
                 WonderfulWolfInventoryPolicy.inventorySize(capacity(wolf)),
-                Component.text("Wonderful Wolf — " + wolf.getName()));
+                WolfDisplayName.fromWolf(wolf, Component.text(messages.text(player.locale(), "gui.title"))));
         holder.inventory(inventory);
         populate(inventory, player, wolf, individual);
         locks.put(wolf.getUniqueId(), player.getUniqueId());
