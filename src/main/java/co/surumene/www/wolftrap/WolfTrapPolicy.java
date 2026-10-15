@@ -5,7 +5,6 @@ import org.bukkit.event.weather.LightningStrikeEvent;
 public final class WolfTrapPolicy {
     public static final long DAY_TICKS = 24_000L;
     public static final long ADDITIONAL_CHECK_TIME = 18_000L;
-    public static final double ADDITIONAL_PROBABILITY = 0.01;
     public static final double ADDITIONAL_RADIUS_BLOCKS = 32.0;
     public static final long ADDITIONAL_GRACE_MILLIS = 3_000L;
 
