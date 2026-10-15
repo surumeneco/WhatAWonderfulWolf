@@ -1,5 +1,6 @@
 package co.surumene.www.command;
 
+import co.surumene.www.util.WolfDisplayName;
 import co.surumene.www.ability.AbilityRank;
 import co.surumene.www.config.MessageService;
 import co.surumene.www.ability.AbilityScale;
@@ -89,7 +90,7 @@ public final class WonderfulWolfAdminInfo {
             CommandSender sender) {
         Locale locale = sender instanceof Player player ? player.locale() : Locale.JAPANESE;
         Component out = Component.text("◆ ", NamedTextColor.GOLD)
-                .append(displayName(wolf).color(NamedTextColor.YELLOW)
+                .append(displayName(wolf, locale).color(NamedTextColor.YELLOW)
                         .decorate(TextDecoration.BOLD))
                 .append(Component.text(" " + index + "/" + total, NamedTextColor.YELLOW)
                         .decorate(TextDecoration.BOLD));
@@ -367,11 +368,9 @@ public final class WonderfulWolfAdminInfo {
                 + format(position.z());
     }
 
-    private static Component displayName(Wolf wolf) {
-        Component custom = wolf.customName();
-        return custom == null
-                ? Component.translatable(wolf.getType().translationKey())
-                : custom;
+    private Component displayName(Wolf wolf, Locale locale) {
+        return WolfDisplayName.fromWolf(wolf,
+                Component.text(messages.text(locale, "info.unnamed")));
     }
 
     private static Component append(Component base, Component line) {
