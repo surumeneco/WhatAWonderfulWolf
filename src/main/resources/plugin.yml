@@ -1,0 +1,31 @@
+name: WhatAWonderfulWolf
+version: '${version}'
+main: co.surumene.www.WhatAWonderfulWolfPlugin
+api-version: '26.2'
+author: surumeneco
+description: Wonderful Wolf gameplay plugin for XPlayServer.
+website: https://github.com/surumeneco/WhatAWonderfulWolf
+depend:
+  - WonderfulGenomeLib
+
+permissions:
+  www.command.info:
+    default: op
+  www.command.genome:
+    default: op
+  www.command.summon:
+    default: op
+  www.command.modify:
+    default: op
+  www.command.config:
+    default: op
+  www.command.config.get:
+    default: op
+  www.command.config.list:
+    default: op
+  www.command.config.set:
+    default: op
+  www.command.config.reset:
+    default: op
+  www.command.reload:
+    default: op
