@@ -1,12 +1,12 @@
 # What a Wonderful Wolf
 
-What a Wonderful Wolf (WWW) is a Paper plugin for the XPlayServer project.
+What a Wonderful Wolf (WWW) 1.0.0 is a Paper plugin for the XPlayServer project.
 
 The functional specification is maintained in Google Drive under `forGPT/XPlayServer/Minecraft/What a Wonderful Wolf.md` and `forGPT/XPlayServer/Minecraft/WWW/`.
 
 ## Development
 
-WWW targets Java 25 and Paper 26.2. During the WGL SNAPSHOT phase, clone the repositories as siblings:
+WWW targets Java 25 and Paper 26.2. For the WGL 1.0.0 release, clone the repositories as siblings:
 
 ```text
 workspace/
@@ -14,7 +14,7 @@ workspace/
 └─ WhatAWonderfulWolf/
 ```
 
-WWW uses Gradle Composite Build to resolve `co.surumene:wgl-plugin:0.1.0-SNAPSHOT` from the sibling `WonderfulGenomeLib` repository.
+WWW uses Gradle Composite Build to resolve `co.surumene:wgl-plugin:1.0.0` from the sibling `WonderfulGenomeLib` repository.
 
 Build with:
 
@@ -22,7 +22,7 @@ Build with:
 gradle clean build --no-daemon
 ```
 
-At runtime, Wonderful Genome Lib remains a separate Paper plugin and must be installed alongside WWW.
+At runtime, Wonderful Genome Lib 1.0.0 remains a separate Paper plugin and must be installed alongside WWW.
 
 ## Administrative commands (WWC 2.0-compatible)
 
