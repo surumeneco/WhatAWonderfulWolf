@@ -99,10 +99,16 @@ public final class WonderfulWolfAbilityRuntime {
         if (dirty.isEmpty()) return;
         WwwConfig.Runtime runtime =
                 Objects.requireNonNull(runtimeConfig.get(), "runtime config");
+        // Snapshot a bounded batch first: refreshAt may save the adulthood
+        // timestamp, which invokes markDirty and must not invalidate an iterator.
+        List<UUID> batch = new ArrayList<>(MAX_REFRESHES_PER_TICK);
         Iterator<UUID> queue = dirty.iterator();
-        for (int i = 0; i < MAX_REFRESHES_PER_TICK && queue.hasNext(); i++) {
+        while (queue.hasNext() && batch.size() < MAX_REFRESHES_PER_TICK) {
             UUID id = queue.next();
             queue.remove();
+            batch.add(id);
+        }
+        for (UUID id : batch) {
             Wolf wolf = loaded.entity(id).orElse(null);
             WonderfulWolfIndividual latest = loaded.find(id).orElse(null);
             if (wolf == null || latest == null || !wolf.isValid() || wolf.isDead()) {
