@@ -64,8 +64,13 @@ public final class WonderfulWolfLoadedIndividuals {
     }
     private Consumer<Wolf> firstCreation = wolf -> {};
     private Consumer<Wolf> registered = wolf -> {};
+    private Consumer<Wolf> abilityDirty = wolf -> {};
     private Consumer<Wolf> weaponSync = wolf -> {};
     private Consumer<UUID> removal = id -> {};
+
+    public void onAbilityDirty(Consumer<Wolf> callback) {
+        abilityDirty = Objects.requireNonNull(callback, "callback");
+    }
 
     public void onRegistered(Consumer<Wolf> callback) {
         registered = Objects.requireNonNull(callback, "callback");
@@ -100,6 +105,7 @@ public final class WonderfulWolfLoadedIndividuals {
             updateTickingTraits(id, success.individual());
             updateBehavior(id, success.individual());
             registered.accept(wolf);
+            abilityDirty.accept(wolf);
             updatePassiveAffection(id, success.individual());
             weaponSync.accept(wolf);
         } else {
@@ -134,6 +140,12 @@ public final class WonderfulWolfLoadedIndividuals {
         if (previous == null || previous.individual().phenotypeSnapshot()
                 != individual.phenotypeSnapshot()) {
             updateTickingTraits(wolf.getUniqueId(), individual);
+        }
+        if (previous == null || previous.entity() != wolf
+                || previous.individual().phenotypeSnapshot() != individual.phenotypeSnapshot()
+                || !previous.individual().adminAbilityOverrides().equals(individual.adminAbilityOverrides())
+                || previous.individual().adultBiologicalTime() != individual.adultBiologicalTime()) {
+            abilityDirty.accept(wolf);
         }
         if (newlyCreated) firstCreation.accept(wolf);
         if (weaponChanged) weaponSync.accept(wolf);
