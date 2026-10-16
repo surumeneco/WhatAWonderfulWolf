@@ -48,7 +48,7 @@ public final class WonderfulWolfRelationshipRuntime {
         Set<UUID> seen = new HashSet<>();
 
         for (WonderfulWolfLoadedIndividuals.LoadedSnapshot snapshot :
-                loaded.snapshots()) {
+                loaded.passiveAffectionSnapshots()) {
             UUID wolfId = snapshot.entity().getUniqueId();
             seen.add(wolfId);
 
