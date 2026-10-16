@@ -167,6 +167,15 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                         loaded,
                         behavior,
                         getLogger());
+        loaded.onWeaponSync(wolf -> {
+            try {
+                weapons.syncWeapon(wolf);
+            } catch (RuntimeException error) {
+                getLogger().warning("Failed to synchronize WWW weapon for "
+                        + wolf.getUniqueId() + ": " + error.getMessage());
+            }
+        });
+        loaded.onUnregister(weapons::untrack);
         WanWandService wanWand = new WanWandService(this);
         wanWand.registerRecipe();
         WonderfulWolfInventoryService inventories =
