@@ -307,6 +307,11 @@ public final class WonderfulWolfBehaviorRuntime {
         return co.surumene.www.combat.WeaponWorkSelection.activeWolves(selectedTargets);
     }
 
+    /** Target identity for other AI systems; avoids resolving a Bukkit Entity per commander wolf. */
+    public Optional<UUID> selectedTargetId(UUID wolfId) {
+        return Optional.ofNullable(selectedTargets.get(Objects.requireNonNull(wolfId, "wolfId")));
+    }
+
     public Optional<LivingEntity> selectedTarget(UUID wolfId) {
         UUID targetId = selectedTargets.get(Objects.requireNonNull(wolfId, "wolfId"));
         return targetId == null ? Optional.empty() : Optional.ofNullable(livingEntity(targetId));
