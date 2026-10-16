@@ -43,12 +43,16 @@ public final class WonderfulWolfRelationshipRuntime {
         }
         pendingFeeds.cleanup(serverTick);
 
+        var candidates = loaded.passiveAffectionSnapshots();
+        if (candidates.isEmpty()) {
+            passiveSchedule.retain(Set.of());
+            return;
+        }
         WwwConfig.Relationship settings =
                 Objects.requireNonNull(config.get(), "relationship config");
         Set<UUID> seen = new HashSet<>();
 
-        for (WonderfulWolfLoadedIndividuals.LoadedSnapshot snapshot :
-                loaded.passiveAffectionSnapshots()) {
+        for (WonderfulWolfLoadedIndividuals.LoadedSnapshot snapshot : candidates) {
             UUID wolfId = snapshot.entity().getUniqueId();
             seen.add(wolfId);
 
