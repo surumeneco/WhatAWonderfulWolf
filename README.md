@@ -29,6 +29,12 @@ gradle clean build --no-daemon
 
 At runtime, Wonderful Genome Lib 1.0.1 remains a separate Paper plugin and must be installed alongside WWW.
 
+## Config changes in 1.0.1
+
+All ten WWW abilities now expose `stats.<ability>.min/max/display` in the bundled `config.yml`. The initial canonical ranges are identical to those from 1.0.0; the `min/max` values describe normalized Genome ability scores 0 and 1, with linear extrapolation above 1. The `display` values `none`, `value`, `rank`, and `both` apply to the player GUI/detail only. Administrative `/www info` retains complete diagnostic output.
+
+New settings are validated as finite ordered ranges and approved display strings. Existing configuration without `stats` defaults to the original ranges. Reload reprojects effective abilities and never rewrites immutable Genome or birth Phenotype Snapshots. Inventory retains the hard 45-slot cap. Founder/Genome Profile settings and legacy conversion semantics are unchanged.
+
 ## Administrative commands (WWC 2.0-compatible)
 
 ```text
