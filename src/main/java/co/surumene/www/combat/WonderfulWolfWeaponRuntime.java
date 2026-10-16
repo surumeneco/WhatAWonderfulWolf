@@ -25,6 +25,10 @@ public final class WonderfulWolfWeaponRuntime {
     private final WonderfulWolfBehaviorRuntime behavior;
     private final Logger logger;
     private final Map<UUID, Long> lastAttackTick = new HashMap<>();
+    private final Map<UUID, ChaseState> activeChases = new HashMap<>();
+
+    private record ChaseState(UUID targetId, org.bukkit.Location targetLocation) {}
+
     private final Map<UUID, ItemStack> expectedWeapons = new HashMap<>();
     private long nextExternalEquipmentAudit;
 
@@ -39,16 +43,33 @@ public final class WonderfulWolfWeaponRuntime {
 
     public void tick(long serverTick) {
         // Idle wolves require no weapon work. Weapon changes sync via persistence hooks.
-        for (UUID id : behavior.activeCombatWolfIds()) {
+        java.util.Set<UUID> combatants = behavior.activeCombatWolfIds();
+        if (!activeChases.isEmpty()) activeChases.keySet().retainAll(combatants);
+        for (UUID id : combatants) {
             Wolf wolf = loaded.entity(id).orElse(null);
             if (wolf == null || !wolf.isValid() || wolf.isDead()) continue;
             try {
                 LivingEntity target = behavior.selectedTarget(id).orElse(null);
-                if (target == null || target.isDead() || !target.isValid()) continue;
-                if (!meleeReach(wolf, target)) {
-                    wolf.getPathfinder().moveTo(target, 1.0);
+                if (target == null || target.isDead() || !target.isValid()) {
+                    activeChases.remove(id);
                     continue;
                 }
+                if (!meleeReach(wolf, target)) {
+                    var pathfinder = wolf.getPathfinder();
+                    var location = target.getLocation();
+                    ChaseState previous = activeChases.get(id);
+                    boolean changed = previous == null
+                            || !previous.targetId().equals(target.getUniqueId());
+                    double moved = changed || previous.targetLocation().getWorld() != location.getWorld()
+                            ? Double.POSITIVE_INFINITY
+                            : previous.targetLocation().distanceSquared(location);
+                    if (NavigationRepathPolicy.replan(pathfinder.hasPath(), changed, moved)
+                            && pathfinder.moveTo(target, 1.0)) {
+                        activeChases.put(id, new ChaseState(target.getUniqueId(), location.clone()));
+                    }
+                    continue;
+                }
+                activeChases.remove(id);
                 AttributeInstance attackSpeed = wolf.getAttribute(Attribute.ATTACK_SPEED);
                 if (attackSpeed == null) continue;
                 double attacksPerSecond = WonderfulWolfWeaponTiming.attackRate(attackSpeed.getValue());
@@ -82,6 +103,7 @@ public final class WonderfulWolfWeaponRuntime {
     /** Drop cooldown metadata when the loaded instance is unloaded. */
     public void untrack(UUID id) {
         lastAttackTick.remove(id);
+        activeChases.remove(id);
         expectedWeapons.remove(id);
     }
 
@@ -91,6 +113,7 @@ public final class WonderfulWolfWeaponRuntime {
 
     public void clear() {
         lastAttackTick.clear();
+        activeChases.clear();
         expectedWeapons.clear();
         nextExternalEquipmentAudit = 0L;
     }

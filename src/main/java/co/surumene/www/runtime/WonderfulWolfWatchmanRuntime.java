@@ -102,10 +102,9 @@ final class WonderfulWolfWatchmanRuntime {
             return;
         }
 
-        Set<UUID> engaged = engagedTargets(wolfId, individual);
         UUID commanderId = individual.commanderId().orElse(null);
-        Set<UUID> commandWolfIds =
-                sameCommandWolfIds(wolfId, commanderId);
+        Set<UUID> engaged = null;
+        Set<UUID> commandWolfIds = null;
         double radiusSquared = radius * radius;
         double nearest = Double.POSITIVE_INFINITY;
 
@@ -114,18 +113,19 @@ final class WonderfulWolfWatchmanRuntime {
                 radius,
                 radius,
                 radius)) {
-            if (!(entity instanceof LivingEntity living)
-                    || living instanceof Player
-                    || living.isDead()
-                    || !living.isValid()
-                    || engaged.contains(living.getUniqueId())
-                    || reference.distanceSquared(living.getLocation())
-                        > radiusSquared
-                    || !isDangerous(
-                            living,
-                            wolfId,
-                            commanderId,
-                            commandWolfIds)) {
+            if (!(entity instanceof LivingEntity living)) continue;
+            if (!WatchmanCandidatePolicy.shouldInspect(
+                    true, living instanceof Player, living.isDead(), living.isValid(),
+                    reference.distanceSquared(living.getLocation()), radiusSquared)) {
+                continue;
+            }
+            // No companion lookups at all when the search area is empty.
+            if (engaged == null) {
+                engaged = engagedTargets(wolfId, individual);
+                commandWolfIds = sameCommandWolfIds(wolfId, commanderId);
+            }
+            if (engaged.contains(living.getUniqueId())
+                    || !isDangerous(living, wolfId, commanderId, commandWolfIds)) {
                 continue;
             }
 
@@ -201,9 +201,7 @@ final class WonderfulWolfWatchmanRuntime {
             UUID currentWolfId,
             WonderfulWolfIndividual individual) {
         Set<UUID> result = new HashSet<>();
-        behavior.selectedTarget(currentWolfId)
-                .map(Entity::getUniqueId)
-                .ifPresent(result::add);
+        behavior.selectedTargetId(currentWolfId).ifPresent(result::add);
 
         UUID commanderId = individual.commanderId().orElse(null);
         if (commanderId == null) {
@@ -211,9 +209,7 @@ final class WonderfulWolfWatchmanRuntime {
         }
 
         for (UUID commandWolfId : loaded.commanderWolfIds(commanderId)) {
-            behavior.selectedTarget(commandWolfId)
-                    .map(Entity::getUniqueId)
-                    .ifPresent(result::add);
+            behavior.selectedTargetId(commandWolfId).ifPresent(result::add);
         }
         return result;
     }

@@ -52,8 +52,8 @@ final class WonderfulWolfScavengerRuntime {
             return;
         }
 
-        Map<Integer, ItemStackSnapshot> cargo =
-                new HashMap<>(individual.inventory());
+        // Most scans find no collectible items; copy cargo only for actual storage work.
+        Map<Integer, ItemStackSnapshot> cargo = null;
         WonderfulWolfIndividual updatedIndividual = individual;
         boolean cargoChanged = false;
         boolean affectionChanged = false;
@@ -87,6 +87,7 @@ final class WonderfulWolfScavengerRuntime {
                 continue;
             }
 
+            if (cargo == null) cargo = new HashMap<>(individual.inventory());
             int remaining =
                     WonderfulWolfCargoStore.store(
                             cargo,
@@ -120,20 +121,11 @@ final class WonderfulWolfScavengerRuntime {
                 wolf,
                 updatedIndividual.withStorage(
                         updatedIndividual.weapon(),
-                        cargo));
+                        cargo == null ? individual.inventory() : cargo));
     }
 
     private boolean managementInventoryOpen(UUID wolfId) {
-        for (Player player : server.getOnlinePlayers()) {
-            if (player.getOpenInventory()
-                            .getTopInventory()
-                            .getHolder()
-                    instanceof WonderfulWolfInventoryHolder holder
-                    && holder.wolfId().equals(wolfId)) {
-                return true;
-            }
-        }
-        return false;
+        return loaded.managementGuiOpen(wolfId);
     }
 
     private int capacity(

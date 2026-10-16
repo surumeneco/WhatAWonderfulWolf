@@ -9,6 +9,12 @@ import org.bukkit.entity.Wolf;
 
 import java.util.ArrayDeque;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.NavigableMap;
+import java.util.TreeMap;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -32,8 +38,14 @@ public final class WonderfulWolfAbilityRuntime {
     private final Map<UUID, EffectiveAbilities> current = new HashMap<>();
     private final Map<UUID, WonderfulWolfIndividual> projectedIndividuals = new HashMap<>();
     private final Map<UUID, Long> projectedAges = new HashMap<>();
-    private final ArrayDeque<WonderfulWolfLoadedIndividuals.LoadedSnapshot> pending = new ArrayDeque<>();
-    private long nextScanTick;
+    private final Set<UUID> dirty = new LinkedHashSet<>();
+    private final Set<UUID> juveniles = new HashSet<>();
+    private final Map<UUID, Long> nextDue = new HashMap<>();
+    private final NavigableMap<Long, Set<UUID>> dueByTime = new TreeMap<>();
+    private boolean bootstrapped;
+    private long nextJuvenileTick;
+    private long nextCompatibilityTick = 6000L;
+    private long previousBiologicalTime = Long.MIN_VALUE;
 
     public WonderfulWolfAbilityRuntime(
             WonderfulWolfLoadedIndividuals loaded,
@@ -54,42 +66,89 @@ public final class WonderfulWolfAbilityRuntime {
      */
     public void tick() {
         long tick = org.bukkit.Bukkit.getCurrentTick();
-        if (pending.isEmpty()) {
-            if (tick < nextScanTick) return;
-            nextScanTick = tick + 200L;
-            var snapshots = loaded.snapshots();
-            Set<UUID> seen = new HashSet<>(snapshots.size());
-            for (var snapshot : snapshots) seen.add(snapshot.entity().getUniqueId());
-            current.keySet().retainAll(seen);
-            projectedIndividuals.keySet().retainAll(seen);
-            projectedAges.keySet().retainAll(seen);
-            pending.addAll(snapshots);
+        long now = clock.currentTime();
+
+        // Exactly one startup snapshot, then events and deadlines own updates.
+        if (!bootstrapped) {
+            bootstrapped = true;
+            for (var snapshot : loaded.snapshots()) dirty.add(snapshot.entity().getUniqueId());
+        }
+        if (previousBiologicalTime != Long.MIN_VALUE && now < previousBiologicalTime) {
+            // An administrative biological-time rollback invalidates every age projection.
+            markAllDirty();
+        }
+        previousBiologicalTime = now;
+
+        if (tick >= nextJuvenileTick) {
+            nextJuvenileTick = tick + AGE_REFRESH_QUANTUM;
+            dirty.addAll(juveniles);
+        }
+        if (tick >= nextCompatibilityTick) {
+            nextCompatibilityTick = tick + 6000L;
+            // Exception for eventless third-party edits: maintain a low-frequency audit.
+            for (var snapshot : loaded.snapshots()) dirty.add(snapshot.entity().getUniqueId());
         }
 
-        long now = clock.currentTime();
-        WwwConfig.Runtime runtime = Objects.requireNonNull(
-                runtimeConfig.get(), "runtime config");
-        for (int i = 0; i < MAX_REFRESHES_PER_TICK && !pending.isEmpty(); i++) {
-            var snapshot = pending.removeFirst();
-            Wolf wolf = snapshot.entity();
-            UUID id = wolf.getUniqueId();
-            // A newer on-demand edit can supersede a snapshot captured earlier.
-            WonderfulWolfIndividual latest = loaded.find(id).orElse(null);
-            if (latest == null || !wolf.isValid() || wolf.isDead()) {
-                current.remove(id);
-                projectedIndividuals.remove(id);
-                projectedAges.remove(id);
-                continue;
+        while (!dueByTime.isEmpty() && dueByTime.firstKey() <= now) {
+            var first = dueByTime.pollFirstEntry();
+            for (UUID id : first.getValue()) {
+                if (nextDue.remove(id, first.getKey())) dirty.add(id);
             }
+        }
 
-            long ageBucket = now / AGE_REFRESH_QUANTUM;
-            if (current.containsKey(id)
-                    && projectedIndividuals.get(id) == latest
-                    && projectedAges.getOrDefault(id, Long.MIN_VALUE) == ageBucket) {
+        if (dirty.isEmpty()) return;
+        WwwConfig.Runtime runtime =
+                Objects.requireNonNull(runtimeConfig.get(), "runtime config");
+        // Snapshot a bounded batch first: refreshAt may save the adulthood
+        // timestamp, which invokes markDirty and must not invalidate an iterator.
+        List<UUID> batch = new ArrayList<>(MAX_REFRESHES_PER_TICK);
+        Iterator<UUID> queue = dirty.iterator();
+        while (queue.hasNext() && batch.size() < MAX_REFRESHES_PER_TICK) {
+            UUID id = queue.next();
+            queue.remove();
+            batch.add(id);
+        }
+        for (UUID id : batch) {
+            Wolf wolf = loaded.entity(id).orElse(null);
+            WonderfulWolfIndividual latest = loaded.find(id).orElse(null);
+            if (wolf == null || latest == null || !wolf.isValid() || wolf.isDead()) {
+                untrack(id);
                 continue;
             }
             refreshAt(wolf, latest, now, runtime);
         }
+    }
+
+    /** Mutation callbacks enqueue an ID, never a potentially stale Bukkit entity. */
+    public void markDirty(Wolf wolf) {
+        dirty.add(Objects.requireNonNull(wolf, "wolf").getUniqueId());
+    }
+
+    /** Evict all transient ability work when an entity unloads. */
+    public void untrack(UUID id) {
+        dirty.remove(id);
+        juveniles.remove(id);
+        current.remove(id);
+        projectedIndividuals.remove(id);
+        projectedAges.remove(id);
+        unschedule(id);
+    }
+
+    private void unschedule(UUID id) {
+        Long due = nextDue.remove(id);
+        if (due == null) return;
+        Set<UUID> ids = dueByTime.get(due);
+        if (ids != null) {
+            ids.remove(id);
+            if (ids.isEmpty()) dueByTime.remove(due);
+        }
+    }
+
+    private void schedule(UUID id, long due) {
+        unschedule(id);
+        if (due == Long.MAX_VALUE) return;
+        nextDue.put(id, due);
+        dueByTime.computeIfAbsent(due, unused -> new HashSet<>()).add(id);
     }
 
     /**
@@ -164,6 +223,17 @@ public final class WonderfulWolfAbilityRuntime {
             // The adulthood timestamp can be initialized during refreshAt.
             projectedIndividuals.put(id, individual);
             projectedAges.put(id, now / AGE_REFRESH_QUANTUM);
+            if (wolf.isAdult()) {
+                juveniles.remove(id);
+                long due = AgeProjectionDeadline.next(
+                        now, individual.adultBiologicalTime(), abilities.ageCurve(),
+                        individual.phenotypeSnapshot().injuries().stream()
+                                .map(injury -> injury.onsetGameDay()).toList());
+                schedule(id, due);
+            } else {
+                juveniles.add(id);
+                unschedule(id);
+            }
         } catch (RuntimeException error) {
             logger.warning(
                     "Failed to evaluate effective abilities for Wonderful Wolf "
@@ -181,19 +251,26 @@ public final class WonderfulWolfAbilityRuntime {
                 current.get(Objects.requireNonNull(entityId, "entityId")));
     }
 
-    /** Invalidate cached projections after a runtime configuration reload. */
+    /** Invalidate cached projections after runtime configuration reload. */
     public void markAllDirty() {
-        projectedAges.clear();
-        pending.clear();
-        nextScanTick = 0L;
+        dueByTime.clear();
+        nextDue.clear();
+        dirty.clear();
+        for (var snapshot : loaded.snapshots()) dirty.add(snapshot.entity().getUniqueId());
     }
 
     public void clear() {
         current.clear();
         projectedIndividuals.clear();
         projectedAges.clear();
-        pending.clear();
-        nextScanTick = 0L;
+        dirty.clear();
+        juveniles.clear();
+        nextDue.clear();
+        dueByTime.clear();
+        bootstrapped = false;
+        nextJuvenileTick = 0L;
+        nextCompatibilityTick = 6000L;
+        previousBiologicalTime = Long.MIN_VALUE;
     }
 
     public static double ageGameDays(

@@ -92,38 +92,65 @@ public final class WonderfulWolfBehaviorRuntime {
 
         WwwConfig.Runtime settings =
                 Objects.requireNonNull(config.get(), "runtime config");
-        Set<UUID> seen = new HashSet<>();
-
+        // Active mode index is maintained by the loaded-individual registry.
+        // Reactive maps cover the exceptional WANDER wolf with combat or retreat.
+        Set<UUID> processed = new HashSet<>();
         for (WonderfulWolfLoadedIndividuals.LoadedSnapshot snapshot :
-                loaded.snapshots()) {
+                loaded.behaviorTickSnapshots()) {
             Wolf wolf = snapshot.entity();
             UUID id = wolf.getUniqueId();
-            seen.add(id);
+            processed.add(id);
+            evaluateSafely(wolf, snapshot.individual(), settings, serverTick);
+        }
 
-            if (!wolf.isValid() || wolf.isDead()) {
-                clearTransient(id);
+        Set<UUID> reactive = new HashSet<>();
+        reactive.addAll(selfAttackers.keySet());
+        reactive.addAll(commandCombat.keySet());
+        reactive.addAll(pvpIntervention.keySet());
+        reactive.addAll(trapRiderTargets.keySet());
+        reactive.addAll(selectedTargets.keySet());
+        reactive.addAll(retreat.keySet());
+        for (UUID id : reactive) {
+            if (processed.contains(id)) continue;
+            Wolf wolf = loaded.entity(id).orElse(null);
+            WonderfulWolfIndividual individual = loaded.find(id).orElse(null);
+            if (wolf == null || individual == null) {
+                untrack(id);
                 continue;
             }
-
-            goals.prepare(wolf);
-            try {
-                evaluateWolf(
-                        wolf,
-                        snapshot.individual(),
-                        settings,
-                        serverTick);
-            } catch (RuntimeException error) {
-                logger.warning(
-                        "Failed to update Wonderful Wolf behavior for "
-                                + id
-                                + ": "
-                                + safeMessage(error));
+            if (BehaviorTickEligibility.evaluate(individual.mode(), true)) {
+                evaluateSafely(wolf, individual, settings, serverTick);
             }
         }
 
-        retain(seen);
-        goals.retain(seen);
         traits().tick(serverTick);
+    }
+
+    /** Called on each entity registration, even in WANDER mode. */
+    public void onRegistered(Wolf wolf) {
+        if (wolf.isValid() && !wolf.isDead()) goals.prepare(wolf);
+    }
+
+    /** Removes only one entity's reactive state on unload or death. */
+    public void untrack(UUID id) {
+        clearTransient(id);
+        goals.forget(id);
+    }
+
+    private void evaluateSafely(Wolf wolf, WonderfulWolfIndividual individual,
+                                WwwConfig.Runtime settings, long serverTick) {
+        UUID id = wolf.getUniqueId();
+        if (!wolf.isValid() || wolf.isDead()) {
+            untrack(id);
+            return;
+        }
+        goals.prepare(wolf);
+        try {
+            evaluateWolf(wolf, individual, settings, serverTick);
+        } catch (RuntimeException error) {
+            logger.warning("Failed to update Wonderful Wolf behavior for "
+                    + id + ": " + safeMessage(error));
+        }
     }
 
     public void onCommandStateChanged(Wolf wolf) {
@@ -280,6 +307,11 @@ public final class WonderfulWolfBehaviorRuntime {
         return co.surumene.www.combat.WeaponWorkSelection.activeWolves(selectedTargets);
     }
 
+    /** Target identity for other AI systems; avoids resolving a Bukkit Entity per commander wolf. */
+    public Optional<UUID> selectedTargetId(UUID wolfId) {
+        return Optional.ofNullable(selectedTargets.get(Objects.requireNonNull(wolfId, "wolfId")));
+    }
+
     public Optional<LivingEntity> selectedTarget(UUID wolfId) {
         UUID targetId = selectedTargets.get(Objects.requireNonNull(wolfId, "wolfId"));
         return targetId == null ? Optional.empty() : Optional.ofNullable(livingEntity(targetId));
@@ -381,7 +413,8 @@ public final class WonderfulWolfBehaviorRuntime {
                 patience,
                 serverTick,
                 settings.combat().retreatMinTicks());
-        retreat.put(id, next);
+        if (next.active()) retreat.put(id, next);
+        else retreat.remove(id);
 
         if (controllingTrapRider.test(wolf)) {
             // Rider AI owns all movement, including retreat and approach.
