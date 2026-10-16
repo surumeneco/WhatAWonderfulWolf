@@ -175,7 +175,10 @@ public final class WwwConfigLoader {
                 integer(root, "config-version"),
                 founderTarget,
                 new WwwConfig.GenomeProfile(decoderConfig, synthesizer, breedingPolicy),
-                runtimeConfig));
+                new WwwConfig.Runtime(runtimeConfig.combat(), runtimeConfig.actionDistance(),
+                        runtimeConfig.wanWand(), runtimeConfig.age(), runtimeConfig.relationship(),
+                        runtimeConfig.personality(), runtimeConfig.traits(), runtimeConfig.spawn(),
+                        WwwStatLoader.load(root))));
     }
 
     private static WwwConfig.Distribution distribution(ConfigurationSection root, String path) {
