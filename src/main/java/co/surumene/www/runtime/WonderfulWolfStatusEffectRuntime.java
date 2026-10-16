@@ -97,8 +97,8 @@ final class WonderfulWolfStatusEffectRuntime {
 
         double squared = radius * radius;
         var source = wolf.getLocation();
-        for (Player player : wolf.getWorld().getPlayers()) {
-            if (source.distanceSquared(player.getLocation()) > squared) continue;
+        for (Player player : AuraNearbyPlayers.find(wolf.getWorld(), source, radius)) {
+            if (!AuraNearbyPlayers.insideSphere(source, player.getLocation(), squared)) continue;
             for (var entry : active.entrySet()) {
                 var type = switch (entry.getKey()) {
                     case MINING_SUPPORT -> PotionEffectType.HASTE;
