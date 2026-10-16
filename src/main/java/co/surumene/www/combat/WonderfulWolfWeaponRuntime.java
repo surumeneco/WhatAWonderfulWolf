@@ -13,10 +13,8 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Logger;
 
@@ -38,14 +36,11 @@ public final class WonderfulWolfWeaponRuntime {
     }
 
     public void tick(long serverTick) {
-        Set<UUID> seen = new HashSet<>();
-        for (WonderfulWolfLoadedIndividuals.LoadedSnapshot snapshot : loaded.snapshots()) {
-            Wolf wolf = snapshot.entity();
-            UUID id = wolf.getUniqueId();
-            seen.add(id);
-            if (!wolf.isValid() || wolf.isDead()) continue;
+        // Idle wolves require no weapon work. Weapon changes sync via persistence hooks.
+        for (UUID id : behavior.activeCombatWolfIds()) {
+            Wolf wolf = loaded.entity(id).orElse(null);
+            if (wolf == null || !wolf.isValid() || wolf.isDead()) continue;
             try {
-                syncWeapon(wolf, snapshot.individual());
                 LivingEntity target = behavior.selectedTarget(id).orElse(null);
                 if (target == null || target.isDead() || !target.isValid()) continue;
                 if (!meleeReach(wolf, target)) {
@@ -61,14 +56,18 @@ public final class WonderfulWolfWeaponRuntime {
                 if (cooldown != Long.MAX_VALUE && serverTick - previous >= cooldown) {
                     wolf.attack(target);
                     lastAttackTick.put(id, serverTick);
-                    syncWeapon(wolf, snapshot.individual());
+                    syncWeapon(wolf);
                 }
             } catch (RuntimeException error) {
                 logger.warning("Failed to update Wonderful Wolf weapon runtime for "
                         + id + ": " + safeMessage(error));
             }
         }
-        lastAttackTick.keySet().retainAll(seen);
+    }
+
+    /** Drop cooldown metadata when the loaded instance is unloaded. */
+    public void untrack(UUID id) {
+        lastAttackTick.remove(id);
     }
 
     public void syncWeapon(Wolf wolf) {
