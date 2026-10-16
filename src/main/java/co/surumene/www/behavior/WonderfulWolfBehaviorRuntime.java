@@ -275,6 +275,11 @@ public final class WonderfulWolfBehaviorRuntime {
                 && selected.equals(target.getUniqueId());
     }
 
+    /** Return only combatants, without traversing every loaded Wolf. */
+    public Set<UUID> activeCombatWolfIds() {
+        return co.surumene.www.combat.WeaponWorkSelection.activeWolves(selectedTargets);
+    }
+
     public Optional<LivingEntity> selectedTarget(UUID wolfId) {
         UUID targetId = selectedTargets.get(Objects.requireNonNull(wolfId, "wolfId"));
         return targetId == null ? Optional.empty() : Optional.ofNullable(livingEntity(targetId));
