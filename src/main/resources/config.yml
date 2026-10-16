@@ -3,6 +3,54 @@
 # reload後も既存Phenotype Snapshotは再解読されません。各設定の適用時点は項目ごとのcommentを参照してください。
 config-version: 1
 
+# Canonical ranges for normalized Genome ability scores (0=min, 1=max).
+# Values above 1 extrapolate. Existing Genome/Snapshot is never rewritten.
+# display modes: none, value, rank, both. Applies to the player GUI and detail;
+# administrative /www info always retains full debugging output.
+# Inventory slots remain limited to 45 after effective-value rounding.
+stats:
+  max-health:
+    min: 20.0
+    max: 60.0
+    display: rank
+  defense:
+    min: 0.0
+    max: 30.0
+    display: rank
+  patience:
+    min: 0.0
+    max: 1.0
+    display: rank
+  size:
+    min: 1.5.0
+    max: 3.0
+    display: rank
+  inventory:
+    min: 0.0
+    max: 30.0
+    display: rank
+  ground-speed:
+    min: 3.0
+    max: 24.0
+    display: rank
+  jump-strength:
+    min: 1.0
+    max: 5.0
+    display: rank
+  step-height:
+    min: 0.5.0
+    max: 1.5.0
+    display: rank
+  attack-damage:
+    min: 1.0
+    max: 10.0
+    display: rank
+  attack-speed:
+    min: 0.2.0
+    max: 2.0
+    display: rank
+
+
 # WWW/WWC共通のゲーム設定はWWCと同じトップレベル名を使用します。
 # 自然スポーンWolfをWonderful Wolfへ変換する確率。0.0～1.0。
 natural-spawn:
