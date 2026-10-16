@@ -22,7 +22,7 @@ stats:
     max: 1.0
     display: rank
   size:
-    min: 1.5.0
+    min: 1.5
     max: 3.0
     display: rank
   inventory:
@@ -38,15 +38,15 @@ stats:
     max: 5.0
     display: rank
   step-height:
-    min: 0.5.0
-    max: 1.5.0
+    min: 0.5
+    max: 1.5
     display: rank
   attack-damage:
     min: 1.0
     max: 10.0
     display: rank
   attack-speed:
-    min: 0.2.0
+    min: 0.2
     max: 2.0
     display: rank
 
