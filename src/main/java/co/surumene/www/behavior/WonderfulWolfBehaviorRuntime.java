@@ -275,6 +275,11 @@ public final class WonderfulWolfBehaviorRuntime {
                 && selected.equals(target.getUniqueId());
     }
 
+    /** Return only combatants, without traversing every loaded Wolf. */
+    public Set<UUID> activeCombatWolfIds() {
+        return co.surumene.www.combat.WeaponWorkSelection.activeWolves(selectedTargets);
+    }
+
     public Optional<LivingEntity> selectedTarget(UUID wolfId) {
         UUID targetId = selectedTargets.get(Objects.requireNonNull(wolfId, "wolfId"));
         return targetId == null ? Optional.empty() : Optional.ofNullable(livingEntity(targetId));
@@ -672,16 +677,7 @@ public final class WonderfulWolfBehaviorRuntime {
         if (commander == null) {
             return Set.of();
         }
-        Set<UUID> result = new HashSet<>();
-        for (WonderfulWolfLoadedIndividuals.LoadedSnapshot snapshot :
-                loaded.snapshots()) {
-            if (snapshot.individual().commanderId()
-                    .filter(commander::equals)
-                    .isPresent()) {
-                result.add(snapshot.entity().getUniqueId());
-            }
-        }
-        return result;
+        return loaded.commanderWolfIds(commander);
     }
 
     private void fleeOrReturn(
