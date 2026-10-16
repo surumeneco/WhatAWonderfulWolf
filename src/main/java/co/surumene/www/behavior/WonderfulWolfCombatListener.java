@@ -126,37 +126,22 @@ public final class WonderfulWolfCombatListener implements Listener {
     private void recordPvp(
             Player first,
             Player second) {
-        for (WonderfulWolfLoadedIndividuals.LoadedSnapshot snapshot :
-                loaded.snapshots()) {
-            if (snapshot.individual().commanderId().isEmpty()) {
-                continue;
-            }
-            UUID commander =
-                    snapshot.individual().commanderId().orElseThrow();
-            if (!commander.equals(first.getUniqueId())
-                    && !commander.equals(second.getUniqueId())) {
-                continue;
-            }
-            behavior.recordPvpConflict(
-                    snapshot.entity(),
-                    first,
-                    second,
-                    competitionDraw.getAsDouble());
+        java.util.Set<UUID> relevant = new java.util.HashSet<>(
+                loaded.commanderWolfIds(first.getUniqueId()));
+        relevant.addAll(loaded.commanderWolfIds(second.getUniqueId()));
+        for (UUID wolfId : relevant) {
+            loaded.entity(wolfId).ifPresent(wolf ->
+                    behavior.recordPvpConflict(
+                            wolf, first, second, competitionDraw.getAsDouble()));
         }
     }
 
     private void recordCommanderCombat(
             UUID commanderId,
             LivingEntity target) {
-        for (WonderfulWolfLoadedIndividuals.LoadedSnapshot snapshot :
-                loaded.snapshots()) {
-            if (snapshot.individual().commanderId()
-                    .filter(commanderId::equals)
-                    .isPresent()) {
-                behavior.recordCommanderCombat(
-                        snapshot.entity(),
-                        target);
-            }
+        for (UUID wolfId : loaded.commanderWolfIds(commanderId)) {
+            loaded.entity(wolfId).ifPresent(wolf ->
+                    behavior.recordCommanderCombat(wolf, target));
         }
     }
 
