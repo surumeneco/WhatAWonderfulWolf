@@ -32,9 +32,11 @@ final class AuraNearbyPlayersTest {
     }
 
     @Test void cubeCandidatesStillRequireOriginalSphericalDistanceCheck() {
-        Location source = new Location(null, 0, 0, 0);
-        assertTrue(AuraNearbyPlayers.insideSphere(source, new Location(null, 3, 0, 0), 16));
-        assertFalse(AuraNearbyPlayers.insideSphere(source, new Location(null, 3, 3, 0), 16));
+        World world = (World) Proxy.newProxyInstance(World.class.getClassLoader(),
+                new Class<?>[]{World.class}, (proxy, method, args) -> null);
+        Location source = new Location(world, 0, 0, 0);
+        assertTrue(AuraNearbyPlayers.insideSphere(source, new Location(world, 3, 0, 0), 16));
+        assertFalse(AuraNearbyPlayers.insideSphere(source, new Location(world, 3, 3, 0), 16));
     }
 
     private static Player player(Location location) {
