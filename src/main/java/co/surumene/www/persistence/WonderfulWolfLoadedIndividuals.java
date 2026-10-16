@@ -21,6 +21,20 @@ public final class WonderfulWolfLoadedIndividuals {
     private final WonderfulWolfEntityStore store;
     private final Map<UUID, LoadedIndividual> loaded = new HashMap<>();
     private final CommanderWolfIndex commanders = new CommanderWolfIndex();
+    private final ManagementGuiRoster managementGuis = new ManagementGuiRoster();
+
+    public void managementGuiOpened(UUID wolfId, UUID viewerId) {
+        managementGuis.open(wolfId, viewerId);
+    }
+
+    public void managementGuiClosed(UUID wolfId, UUID viewerId) {
+        managementGuis.close(wolfId, viewerId);
+    }
+
+    public boolean managementGuiOpen(UUID wolfId) {
+        return managementGuis.isOpen(wolfId);
+    }
+
     private final Set<UUID> tickingTraits = new HashSet<>();
     private final Set<UUID> passiveAffection = new HashSet<>();
 
@@ -79,6 +93,7 @@ public final class WonderfulWolfLoadedIndividuals {
             commanders.remove(id);
             tickingTraits.remove(id);
             passiveAffection.remove(id);
+            managementGuis.remove(id);
         }
         return result;
     }
@@ -116,6 +131,7 @@ public final class WonderfulWolfLoadedIndividuals {
             commanders.remove(wolf.getUniqueId());
             tickingTraits.remove(wolf.getUniqueId());
             passiveAffection.remove(wolf.getUniqueId());
+            managementGuis.remove(wolf.getUniqueId());
             removal.accept(wolf.getUniqueId());
         }
     }
@@ -178,6 +194,7 @@ public final class WonderfulWolfLoadedIndividuals {
         commanders.clear();
         tickingTraits.clear();
         passiveAffection.clear();
+        managementGuis.clear();
     }
 
     public record LoadedSnapshot(Wolf entity, WonderfulWolfIndividual individual) {

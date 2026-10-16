@@ -124,16 +124,7 @@ final class WonderfulWolfScavengerRuntime {
     }
 
     private boolean managementInventoryOpen(UUID wolfId) {
-        for (Player player : server.getOnlinePlayers()) {
-            if (player.getOpenInventory()
-                            .getTopInventory()
-                            .getHolder()
-                    instanceof WonderfulWolfInventoryHolder holder
-                    && holder.wolfId().equals(wolfId)) {
-                return true;
-            }
-        }
-        return false;
+        return loaded.managementGuiOpen(wolfId);
     }
 
     private int capacity(
