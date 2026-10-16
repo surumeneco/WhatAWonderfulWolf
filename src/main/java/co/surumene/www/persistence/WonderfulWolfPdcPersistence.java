@@ -5,6 +5,8 @@ import co.surumene.www.individual.WonderfulWolfIndividual;
 import co.surumene.wgl.api.DiploidGenome;
 import co.surumene.wgl.api.GenomeEngine;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -24,6 +26,18 @@ public final class WonderfulWolfPdcPersistence {
     private final PhenotypeSnapshotCodecV1 phenotypeCodec;
     private final WonderfulWolfRuntimeCodecV1 runtimeCodec;
     private final GenomePayloadFiles payloadFiles;
+
+    /**
+     * An in-process proof of which immutable objects were encoded (or validated
+     * by restore) for each committed external payload reference. Entries are
+     * deliberately bounded, so a cache miss falls back to the verified path.
+     */
+    private final Map<UUID, ImmutableRecord> recentImmutableRecords = new LinkedHashMap<>(128, .75f, true) {
+        @Override protected boolean removeEldestEntry(Map.Entry<UUID, ImmutableRecord> eldest) {
+            return size() > 128;
+        }
+    };
+    private record ImmutableRecord(DiploidGenome genome, PhenotypeSnapshot phenotype) {}
 
     public WonderfulWolfPdcPersistence(
             GenomeEngine genomeEngine,
@@ -57,17 +71,33 @@ public final class WonderfulWolfPdcPersistence {
         Objects.requireNonNull(store, "store");
         Objects.requireNonNull(individual, "individual");
 
-        byte[] genome = genomeEngine.encode(individual.genome());
-        byte[] phenotype = phenotypeCodec.encode(individual.phenotypeSnapshot());
+        // Runtime is always encoded. External immutable payloads are rewritten
+        // only when we cannot prove that their existing reference already
+        // belongs to the exact immutable Genome + Phenotype objects.
         byte[] runtime = runtimeCodec.encode(individual);
-
-        // Publish the immutable file before touching the entity marker. A previous
-        // version remains recoverable when disk writing fails.
+        byte[] genome = null;
+        byte[] phenotype = null;
         UUID externalRef = null;
         if (payloadFiles != null) {
             String previous = store.getString(GENOME_REFERENCE_KEY);
-            externalRef = payloadFiles.writeOrReuse(
-                    previous == null ? null : UUID.fromString(previous), genome, phenotype);
+            UUID previousRef = previous == null ? null : UUID.fromString(previous);
+            ImmutableRecord known = previousRef == null ? null : recentImmutableRecords.get(previousRef);
+            if (isWonderful(store)
+                    && Integer.valueOf(EXTERNAL_SCHEMA_VERSION).equals(store.getInteger(SCHEMA_VERSION_KEY))
+                    && known != null
+                    && known.genome() == individual.genome()
+                    && known.phenotype() == individual.phenotypeSnapshot()) {
+                externalRef = previousRef;
+            } else {
+                genome = genomeEngine.encode(individual.genome());
+                phenotype = phenotypeCodec.encode(individual.phenotypeSnapshot());
+                // Publish before touching any PDC marker: failed writes retain
+                // the previously committed reference and runtime payload.
+                externalRef = payloadFiles.writeOrReuse(previousRef, genome, phenotype);
+            }
+        } else {
+            genome = genomeEngine.encode(individual.genome());
+            phenotype = phenotypeCodec.encode(individual.phenotypeSnapshot());
         }
 
         // The marker is the commit point; never expose partially changed state.
@@ -85,6 +115,10 @@ public final class WonderfulWolfPdcPersistence {
         }
         store.putBytes(RUNTIME_KEY, runtime);
         store.putString(TYPE_KEY, MARKER_VALUE);
+        if (externalRef != null) {
+            recentImmutableRecords.put(externalRef,
+                    new ImmutableRecord(individual.genome(), individual.phenotypeSnapshot()));
+        }
     }
 
     public RestoreResult restore(PersistentValueStore store) {
@@ -129,6 +163,10 @@ public final class WonderfulWolfPdcPersistence {
             DiploidGenome genome = genomeEngine.decodeBinary(genomeBytes);
             PhenotypeSnapshot phenotype = phenotypeCodec.decode(phenotypeBytes);
             WonderfulWolfIndividual individual = runtimeCodec.decode(runtimeBytes, genome, phenotype);
+            if (schemaVersion == EXTERNAL_SCHEMA_VERSION && payloadFiles != null) {
+                UUID reference = UUID.fromString(store.getString(GENOME_REFERENCE_KEY));
+                recentImmutableRecords.put(reference, new ImmutableRecord(genome, phenotype));
+            }
             return new RestoreResult.Success(individual);
         } catch (RuntimeException error) {
             return failure(
