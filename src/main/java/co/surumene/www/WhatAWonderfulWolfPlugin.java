@@ -175,7 +175,11 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                         + wolf.getUniqueId() + ": " + error.getMessage());
             }
         });
-        loaded.onUnregister(weapons::untrack);
+        loaded.onRegistered(behavior::onRegistered);
+        loaded.onUnregister(id -> {
+            weapons.untrack(id);
+            behavior.untrack(id);
+        });
         WanWandService wanWand = new WanWandService(this);
         wanWand.registerRecipe();
         WonderfulWolfInventoryService inventories =
