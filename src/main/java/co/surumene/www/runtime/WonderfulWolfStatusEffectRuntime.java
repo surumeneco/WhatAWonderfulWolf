@@ -90,62 +90,25 @@ final class WonderfulWolfStatusEffectRuntime {
         }
     }
 
-    private void applyAuras(
-            Wolf wolf,
-            WonderfulWolfIndividual individual,
-            double radius) {
-        if (!(radius > 0.0)) {
-            return;
-        }
-        applyAura(
-                wolf,
-                individual,
-                Trait.MINING_SUPPORT,
-                PotionEffectType.HASTE,
-                radius);
-        applyAura(
-                wolf,
-                individual,
-                Trait.MUSCLE,
-                PotionEffectType.STRENGTH,
-                radius);
-        applyAura(
-                wolf,
-                individual,
-                Trait.GUARDIAN,
-                PotionEffectType.RESISTANCE,
-                radius);
-        applyAura(
-                wolf,
-                individual,
-                Trait.HEALING,
-                PotionEffectType.REGENERATION,
-                radius);
-    }
+    private void applyAuras(Wolf wolf, WonderfulWolfIndividual individual, double radius) {
+        if (!(radius > 0.0)) return;
+        var active = AuraSelection.select(individual.phenotypeSnapshot().expressedTraits());
+        if (active.isEmpty()) return;
 
-    private void applyAura(
-            Wolf wolf,
-            WonderfulWolfIndividual individual,
-            Trait trait,
-            PotionEffectType type,
-            double radius) {
-        TraitStrength strength =
-                ExpressedTraitLookup.strength(individual, trait)
-                        .orElse(null);
-        if (strength == null) {
-            return;
-        }
-
-        double radiusSquared = radius * radius;
-        int amplifier = EffectPolicy.amplifier(trait, strength);
+        double squared = radius * radius;
+        var source = wolf.getLocation();
         for (Player player : wolf.getWorld().getPlayers()) {
-            if (player.getLocation().distanceSquared(wolf.getLocation())
-                    <= radiusSquared) {
-                applyPotion(
-                        player,
-                        type,
-                        EFFECT_TICKS,
-                        amplifier,
+            if (source.distanceSquared(player.getLocation()) > squared) continue;
+            for (var entry : active.entrySet()) {
+                var type = switch (entry.getKey()) {
+                    case MINING_SUPPORT -> PotionEffectType.HASTE;
+                    case MUSCLE -> PotionEffectType.STRENGTH;
+                    case GUARDIAN -> PotionEffectType.RESISTANCE;
+                    case HEALING -> PotionEffectType.REGENERATION;
+                    default -> throw new IllegalStateException("Unexpected aura");
+                };
+                applyPotion(player, type, EFFECT_TICKS,
+                        EffectPolicy.amplifier(entry.getKey(), entry.getValue()),
                         REFRESH_THRESHOLD);
             }
         }
