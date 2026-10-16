@@ -50,9 +50,11 @@ public final class WonderfulWolfPlayerInfo {
             Trait.UNYIELDING, Trait.LIFE_DRAIN, Trait.INTIMIDATION);
 
     private final MessageService messages;
+    private java.util.function.Supplier<co.surumene.www.config.WwwConfig.Stats> stats;
 
     public WonderfulWolfPlayerInfo(MessageService messages) {
         this.messages = java.util.Objects.requireNonNull(messages, "messages");
+        this.stats = co.surumene.www.config.DefaultStats::create;
     }
 
     public ItemStack infoItem(
