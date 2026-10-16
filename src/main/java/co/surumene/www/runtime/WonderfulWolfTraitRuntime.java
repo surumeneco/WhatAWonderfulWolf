@@ -48,12 +48,18 @@ public final class WonderfulWolfTraitRuntime {
     }
 
     public void tick(long serverTick) {
+        var candidates = loaded.tickingTraitSnapshots();
+        if (candidates.isEmpty()) {
+            watchman.retain(Set.of());
+            // On-hit scheduled poison pulses must continue even without periodic traits.
+            triggeredEffects.tick(serverTick);
+            return;
+        }
         WwwConfig.Runtime settings =
                 Objects.requireNonNull(config.get(), "runtime config");
         Set<UUID> active = new HashSet<>();
 
-        for (WonderfulWolfLoadedIndividuals.LoadedSnapshot snapshot :
-                loaded.tickingTraitSnapshots()) {
+        for (WonderfulWolfLoadedIndividuals.LoadedSnapshot snapshot : candidates) {
             Wolf wolf = snapshot.entity();
             active.add(wolf.getUniqueId());
             if (wolf.isDead() || !wolf.isValid()) {
