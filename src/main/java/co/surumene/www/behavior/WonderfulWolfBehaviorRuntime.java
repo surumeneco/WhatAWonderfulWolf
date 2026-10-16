@@ -677,16 +677,7 @@ public final class WonderfulWolfBehaviorRuntime {
         if (commander == null) {
             return Set.of();
         }
-        Set<UUID> result = new HashSet<>();
-        for (WonderfulWolfLoadedIndividuals.LoadedSnapshot snapshot :
-                loaded.snapshots()) {
-            if (snapshot.individual().commanderId()
-                    .filter(commander::equals)
-                    .isPresent()) {
-                result.add(snapshot.entity().getUniqueId());
-            }
-        }
-        return result;
+        return loaded.commanderWolfIds(commander);
     }
 
     private void fleeOrReturn(

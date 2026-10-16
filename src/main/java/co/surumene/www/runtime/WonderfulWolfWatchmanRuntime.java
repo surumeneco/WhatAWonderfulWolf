@@ -193,14 +193,7 @@ final class WonderfulWolfWatchmanRuntime {
         if (commanderId == null) {
             return result;
         }
-        for (WonderfulWolfLoadedIndividuals.LoadedSnapshot snapshot :
-                loaded.snapshots()) {
-            if (snapshot.individual().commanderId()
-                    .filter(commanderId::equals)
-                    .isPresent()) {
-                result.add(snapshot.entity().getUniqueId());
-            }
-        }
+        result.addAll(loaded.commanderWolfIds(commanderId));
         return result;
     }
 
@@ -217,14 +210,8 @@ final class WonderfulWolfWatchmanRuntime {
             return result;
         }
 
-        for (WonderfulWolfLoadedIndividuals.LoadedSnapshot snapshot :
-                loaded.snapshots()) {
-            if (snapshot.individual().commanderId()
-                    .filter(commanderId::equals)
-                    .isEmpty()) {
-                continue;
-            }
-            behavior.selectedTarget(snapshot.entity().getUniqueId())
+        for (UUID commandWolfId : loaded.commanderWolfIds(commanderId)) {
+            behavior.selectedTarget(commandWolfId)
                     .map(Entity::getUniqueId)
                     .ifPresent(result::add);
         }
