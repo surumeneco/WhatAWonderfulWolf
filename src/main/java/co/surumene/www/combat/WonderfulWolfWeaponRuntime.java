@@ -25,6 +25,8 @@ public final class WonderfulWolfWeaponRuntime {
     private final WonderfulWolfBehaviorRuntime behavior;
     private final Logger logger;
     private final Map<UUID, Long> lastAttackTick = new HashMap<>();
+    private final Map<UUID, ItemStack> expectedWeapons = new HashMap<>();
+    private long nextExternalEquipmentAudit;
 
     public WonderfulWolfWeaponRuntime(
             WonderfulWolfLoadedIndividuals loaded,
@@ -56,11 +58,23 @@ public final class WonderfulWolfWeaponRuntime {
                 if (cooldown != Long.MAX_VALUE && serverTick - previous >= cooldown) {
                     wolf.attack(target);
                     lastAttackTick.put(id, serverTick);
-                    syncWeapon(wolf);
+                    ensureWeapon(wolf);
                 }
             } catch (RuntimeException error) {
                 logger.warning("Failed to update Wonderful Wolf weapon runtime for "
                         + id + ": " + safeMessage(error));
+            }
+        }
+        // External plugins may modify equipment without calling our persistence API.
+        // Audit infrequently, reusing cached ItemStacks instead of decoding every tick.
+        if (nextExternalEquipmentAudit == 0L) {
+            nextExternalEquipmentAudit = serverTick + 600L;
+        } else if (serverTick >= nextExternalEquipmentAudit) {
+            nextExternalEquipmentAudit = serverTick + 600L;
+            for (WonderfulWolfLoadedIndividuals.LoadedSnapshot snapshot : loaded.snapshots()) {
+                if (snapshot.entity().isValid() && !snapshot.entity().isDead()) {
+                    ensureWeapon(snapshot.entity());
+                }
             }
         }
     }
@@ -68,6 +82,7 @@ public final class WonderfulWolfWeaponRuntime {
     /** Drop cooldown metadata when the loaded instance is unloaded. */
     public void untrack(UUID id) {
         lastAttackTick.remove(id);
+        expectedWeapons.remove(id);
     }
 
     public void syncWeapon(Wolf wolf) {
@@ -76,6 +91,8 @@ public final class WonderfulWolfWeaponRuntime {
 
     public void clear() {
         lastAttackTick.clear();
+        expectedWeapons.clear();
+        nextExternalEquipmentAudit = 0L;
     }
 
     private void syncWeapon(Wolf wolf, WonderfulWolfIndividual individual) {
@@ -87,9 +104,16 @@ public final class WonderfulWolfWeaponRuntime {
             meta.setUnbreakable(true);
             expected.setItemMeta(meta);
         }
+        expectedWeapons.put(wolf.getUniqueId(), expected);
+        ensureWeapon(wolf);
+    }
+
+    private void ensureWeapon(Wolf wolf) {
+        ItemStack expected = expectedWeapons.get(wolf.getUniqueId());
+        if (expected == null) return;
         ItemStack current = wolf.getEquipment().getItemInMainHand();
         if (!same(current, expected)) {
-            wolf.getEquipment().setItemInMainHand(expected);
+            wolf.getEquipment().setItemInMainHand(expected.clone());
         }
     }
 
