@@ -66,6 +66,10 @@ public final class WonderfulWolfInventoryService {
         this.info = new WonderfulWolfPlayerInfo(messages);
     }
 
+    public void setStatsSupplier(java.util.function.Supplier<co.surumene.www.config.WwwConfig.Stats> source) {
+        info.setStatsSupplier(source);
+    }
+
     public void open(Player player, Wolf wolf) {
         if (!wolf.isTamed()) return;
         // ClickMobs restores an entity snapshot after item use; it does not
