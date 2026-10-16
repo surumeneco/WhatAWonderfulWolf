@@ -256,6 +256,7 @@ public final class WolfTrapRuntime {
     }
 
     private void tickArmedEvokers() {
+        if (armedEvokers.isEmpty()) return;
         double radius = Objects.requireNonNull(
                 config.get(),
                 "runtime config")
@@ -291,6 +292,7 @@ public final class WolfTrapRuntime {
     }
 
     private void tickRiders() {
+        if (riderEvokers.isEmpty()) return;
         for (UUID id : List.copyOf(riderEvokers)) {
             Entity entity = server.getEntity(id);
             if (!(entity instanceof Evoker evoker)
