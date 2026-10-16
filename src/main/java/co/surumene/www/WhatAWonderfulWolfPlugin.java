@@ -178,6 +178,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                         genomeLib.engine(),
                         lifecycle::currentWolfProfile,
                         messages);
+        inventories.setStatsSupplier(() -> lifecycle.currentConfig().runtime().stats());
         WonderfulWolfOffspringService offspringService =
                 new WonderfulWolfOffspringService(
                         genomeLib.engine(),
