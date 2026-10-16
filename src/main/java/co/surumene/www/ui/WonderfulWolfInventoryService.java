@@ -94,6 +94,7 @@ public final class WonderfulWolfInventoryService {
         populate(inventory, player, wolf, individual);
         locks.put(wolf.getUniqueId(), player.getUniqueId());
         player.openInventory(inventory);
+        loaded.managementGuiOpened(wolf.getUniqueId(), player.getUniqueId());
     }
 
     public void handleClick(InventoryClickEvent event) {
@@ -166,6 +167,7 @@ public final class WonderfulWolfInventoryService {
             persistCargo(wolf, top);
         }
         locks.remove(holder.wolfId(), event.getPlayer().getUniqueId());
+        loaded.managementGuiClosed(holder.wolfId(), event.getPlayer().getUniqueId());
     }
 
     public void closeAll() {
@@ -177,6 +179,7 @@ public final class WonderfulWolfInventoryService {
                 viewer.closeInventory();
             }
         }
+        locks.forEach(loaded::managementGuiClosed);
         locks.clear();
     }
 
