@@ -53,7 +53,7 @@ public final class WonderfulWolfTraitRuntime {
         Set<UUID> active = new HashSet<>();
 
         for (WonderfulWolfLoadedIndividuals.LoadedSnapshot snapshot :
-                loaded.snapshots()) {
+                loaded.tickingTraitSnapshots()) {
             Wolf wolf = snapshot.entity();
             active.add(wolf.getUniqueId());
             if (wolf.isDead() || !wolf.isValid()) {
