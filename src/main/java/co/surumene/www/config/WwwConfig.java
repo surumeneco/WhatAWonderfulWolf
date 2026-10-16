@@ -126,6 +126,20 @@ public record WwwConfig(
             double weakParentMultiplier,
             double strongParentMultiplier) {}
 
+    public record Stat(double min, double max, String display) {}
+    public record Stats(java.util.Map<co.surumene.www.domain.Ability, Stat> abilities) {
+        public Stats {
+            java.util.Objects.requireNonNull(abilities);
+            java.util.EnumMap<co.surumene.www.domain.Ability, Stat> map =
+                new java.util.EnumMap<>(co.surumene.www.domain.Ability.class);
+            map.putAll(abilities);
+            abilities = java.util.Collections.unmodifiableMap(map);
+        }
+        public Stat get(co.surumene.www.domain.Ability ability) {
+            return java.util.Objects.requireNonNull(abilities.get(ability), "missing stat " + ability);
+        }
+    }
+
     public record Runtime(
             Combat combat,
             ActionDistance actionDistance,
@@ -134,7 +148,15 @@ public record WwwConfig(
             Relationship relationship,
             PersonalityRuntime personality,
             Traits traits,
-            Spawn spawn) {}
+            Spawn spawn,
+            Stats stats) {
+        public Runtime(Combat combat, ActionDistance actionDistance, WanWand wanWand,
+                       Age age, Relationship relationship, PersonalityRuntime personality,
+                       Traits traits, Spawn spawn) {
+            this(combat, actionDistance, wanWand, age, relationship, personality,
+                    traits, spawn, DefaultStats.create());
+        }
+    }
 
     public record Combat(int retreatMinTicks) {}
 

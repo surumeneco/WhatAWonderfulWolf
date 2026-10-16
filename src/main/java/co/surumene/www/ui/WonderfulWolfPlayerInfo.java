@@ -50,9 +50,19 @@ public final class WonderfulWolfPlayerInfo {
             Trait.UNYIELDING, Trait.LIFE_DRAIN, Trait.INTIMIDATION);
 
     private final MessageService messages;
+    private java.util.function.Supplier<co.surumene.www.config.WwwConfig.Stats> stats;
 
     public WonderfulWolfPlayerInfo(MessageService messages) {
         this.messages = java.util.Objects.requireNonNull(messages, "messages");
+        this.stats = co.surumene.www.config.DefaultStats::create;
+    }
+
+    public void setStatsSupplier(java.util.function.Supplier<co.surumene.www.config.WwwConfig.Stats> supplier) {
+        this.stats = java.util.Objects.requireNonNull(supplier);
+    }
+
+    private String displayMode(Ability ability) {
+        return stats.get().get(ability).display();
     }
 
     public ItemStack infoItem(
@@ -68,11 +78,13 @@ public final class WonderfulWolfPlayerInfo {
         lore.add(ageLine(viewer.locale(), wolf, effective));
         effective.ifPresent(values -> {
             for (Ability ability : DISPLAY_ORDER) {
-                lore.add(abilityLine(viewer.locale(), ability, values.get(ability), personality));
+                if (!displayMode(ability).equals("none"))
+                    lore.add(abilityLine(viewer.locale(), ability, values.get(ability), personality));
             }
         });
         if (effective.isEmpty()) {
             for (Ability ability : DISPLAY_ORDER) {
+                if (displayMode(ability).equals("none")) continue;
                 AbilityRank rank = AbilityRank.fromNormalized(
                         individual.phenotypeSnapshot().abilities().get(ability));
                 lore.add(Component.text(
@@ -135,8 +147,9 @@ public final class WonderfulWolfPlayerInfo {
                 .append(ageLine(player.locale(), wolf, effective));
         if (effective.isPresent()) {
             for (Ability ability : DISPLAY_ORDER) {
-                message = message.append(Component.newline())
-                        .append(abilityLine(player.locale(), ability, effective.orElseThrow().get(ability), personality));
+                if (!displayMode(ability).equals("none"))
+                    message = message.append(Component.newline())
+                            .append(abilityLine(player.locale(), ability, effective.orElseThrow().get(ability), personality));
             }
         } else {
             for (Ability ability : DISPLAY_ORDER) {
@@ -198,8 +211,16 @@ public final class WonderfulWolfPlayerInfo {
         boolean changed = Math.abs(value.effectiveNormalized() - value.baseNormalized()) > 1.0e-9;
         NamedTextColor labelColor = value.injuryActive()
                 ? NamedTextColor.RED : NamedTextColor.GRAY;
-        Component line = Component.text(abilityLabel(locale, ability, personality) + ": ",
-                labelColor).append(rankComponent(locale, value.rank()));
+        String display = displayMode(ability);
+        Component label = Component.text(abilityLabel(locale, ability, personality) + ": ", labelColor);
+        if (display.equals("value")) {
+            return label.append(Component.text(String.format(Locale.ROOT, "%.2f", value.effectiveCanonical())));
+        }
+        Component line = label.append(rankComponent(locale, value.rank()));
+        if (display.equals("both")) {
+            line = line.append(Component.text(
+                    String.format(Locale.ROOT, " (%.2f)", value.effectiveCanonical()), NamedTextColor.GRAY));
+        }
         if (changed) {
             AbilityRank updated = AbilityRank.fromNormalized(value.effectiveNormalized());
             line = line.append(Component.text(" → ", NamedTextColor.DARK_GRAY))

@@ -21,6 +21,7 @@ public final class WwwConfigValidator {
         validateSynthesizer(config.genomeProfile().synthesizer());
         validateBreedingPolicy(config.genomeProfile().breedingPolicy());
         validateRuntime(config.runtime());
+        WwwStatValidator.validate(config.runtime().stats());
         return config;
     }
 
