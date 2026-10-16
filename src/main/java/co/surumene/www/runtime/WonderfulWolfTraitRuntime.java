@@ -63,10 +63,7 @@ public final class WonderfulWolfTraitRuntime {
             try {
                 WonderfulWolfIndividual individual =
                         snapshot.individual();
-                statusEffects.tick(
-                        wolf,
-                        individual,
-                        settings);
+                if (PeriodicTraitWork.has(PeriodicTraitWork.from(individual.phenotypeSnapshot().expressedTraits()), PeriodicTraitWork.STATUS)) statusEffects.tick(wolf, individual, settings);
                 watchman.tick(
                         wolf,
                         individual,
