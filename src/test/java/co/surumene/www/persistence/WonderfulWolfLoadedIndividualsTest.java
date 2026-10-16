@@ -135,7 +135,7 @@ final class WonderfulWolfLoadedIndividualsTest {
         assertTrue(loaded.behaviorTickSnapshots().isEmpty());
 
         var waiting = source.withCommandState(
-                Mode.WAIT, Optional.empty(), ActionDistance.NORMAL, Optional.empty());
+                Mode.WAIT, source.commanderId(), ActionDistance.NORMAL, Optional.empty());
         loaded.saveAndRegister(wolf, waiting);
         assertEquals(1, loaded.behaviorTickSnapshots().size());
 
