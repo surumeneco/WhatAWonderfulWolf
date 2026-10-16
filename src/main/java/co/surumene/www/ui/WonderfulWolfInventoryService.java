@@ -92,8 +92,8 @@ public final class WonderfulWolfInventoryService {
                 WolfDisplayName.fromWolf(wolf, Component.text(messages.text(player.locale(), "gui.title"))));
         holder.inventory(inventory);
         populate(inventory, player, wolf, individual);
-        locks.put(wolf.getUniqueId(), player.getUniqueId());
         player.openInventory(inventory);
+        locks.put(wolf.getUniqueId(), player.getUniqueId());
         loaded.managementGuiOpened(wolf.getUniqueId(), player.getUniqueId());
     }
 
