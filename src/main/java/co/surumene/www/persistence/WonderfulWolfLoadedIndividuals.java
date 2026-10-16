@@ -1,11 +1,13 @@
 package co.surumene.www.persistence;
 
 import co.surumene.www.individual.WonderfulWolfIndividual;
+import co.surumene.www.runtime.TickingWolfTraitSelection;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Wolf;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -18,6 +20,16 @@ public final class WonderfulWolfLoadedIndividuals {
     private final WonderfulWolfEntityStore store;
     private final Map<UUID, LoadedIndividual> loaded = new HashMap<>();
     private final CommanderWolfIndex commanders = new CommanderWolfIndex();
+    private final Set<UUID> tickingTraits = new HashSet<>();
+
+    private void updateTickingTraits(UUID id, WonderfulWolfIndividual individual) {
+        if (TickingWolfTraitSelection.needsTick(
+                individual.phenotypeSnapshot().expressedTraits())) {
+            tickingTraits.add(id);
+        } else {
+            tickingTraits.remove(id);
+        }
+    }
     private Consumer<Wolf> firstCreation = wolf -> {};
     private Consumer<Wolf> weaponSync = wolf -> {};
     private Consumer<UUID> removal = id -> {};
@@ -48,10 +60,12 @@ public final class WonderfulWolfLoadedIndividuals {
         if (result instanceof RestoreResult.Success success) {
             loaded.put(id, new LoadedIndividual(wolf, success.individual()));
             commanders.update(id, success.individual().commanderId().orElse(null));
+            updateTickingTraits(id, success.individual());
             weaponSync.accept(wolf);
         } else {
             if (loaded.remove(id) != null) removal.accept(id);
             commanders.remove(id);
+            tickingTraits.remove(id);
         }
         return result;
     }
@@ -66,6 +80,10 @@ public final class WonderfulWolfLoadedIndividuals {
         store.save(wolf, individual);
         loaded.put(wolf.getUniqueId(), new LoadedIndividual(wolf, individual));
         commanders.update(wolf.getUniqueId(), individual.commanderId().orElse(null));
+        if (previous == null || previous.individual().phenotypeSnapshot()
+                != individual.phenotypeSnapshot()) {
+            updateTickingTraits(wolf.getUniqueId(), individual);
+        }
         if (newlyCreated) firstCreation.accept(wolf);
         if (weaponChanged) weaponSync.accept(wolf);
     }
@@ -79,6 +97,7 @@ public final class WonderfulWolfLoadedIndividuals {
         if (current != null && current.entity() == wolf) {
             loaded.remove(wolf.getUniqueId());
             commanders.remove(wolf.getUniqueId());
+            tickingTraits.remove(wolf.getUniqueId());
             removal.accept(wolf.getUniqueId());
         }
     }
@@ -103,6 +122,18 @@ public final class WonderfulWolfLoadedIndividuals {
         return loaded.size();
     }
 
+    /** No full-wolf snapshot is needed if none has recurring trait work. */
+    public List<LoadedSnapshot> tickingTraitSnapshots() {
+        if (tickingTraits.isEmpty()) return List.of();
+        List<LoadedSnapshot> snapshots = new ArrayList<>(tickingTraits.size());
+        for (UUID id : tickingTraits) {
+            LoadedIndividual current = loaded.get(id);
+            if (current != null) snapshots.add(
+                    new LoadedSnapshot(current.entity(), current.individual()));
+        }
+        return snapshots;
+    }
+
     public List<LoadedSnapshot> snapshots() {
         List<LoadedSnapshot> snapshots = new ArrayList<>(loaded.size());
         for (LoadedIndividual current : loaded.values()) {
@@ -115,6 +146,7 @@ public final class WonderfulWolfLoadedIndividuals {
         for (UUID id : loaded.keySet()) removal.accept(id);
         loaded.clear();
         commanders.clear();
+        tickingTraits.clear();
     }
 
     public record LoadedSnapshot(Wolf entity, WonderfulWolfIndividual individual) {
