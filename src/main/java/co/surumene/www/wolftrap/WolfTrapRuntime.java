@@ -100,8 +100,8 @@ public final class WolfTrapRuntime {
 
     public void tick() {
         tickAdditionalSpawns();
-        tickArmedEvokers();
-        tickRiders();
+        if (!armedEvokers.isEmpty()) tickArmedEvokers();
+        if (!riderEvokers.isEmpty()) tickRiders();
     }
 
     public void markTimeSkip(World world) {
