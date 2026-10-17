@@ -274,6 +274,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         this.relationshipRuntime = relationshipRuntime;
         loadedIndividuals = loaded;
         abilityRuntime = abilities;
+        abilities.onWorkChanged(this::scheduleAbilityWakeup);
         behaviorRuntime = behavior;
         commandService = commands;
         weaponRuntime = weapons;
