@@ -383,6 +383,23 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         genomeLib = null;
     }
 
+    private void scheduleAbilityWakeup() {
+        WonderfulWolfAbilityRuntime runtime = abilityRuntime;
+        if (runtime == null || !isEnabled()) return;
+        long delay = Math.max(1L, runtime.nextWakeDelayTicks());
+        long due = Bukkit.getCurrentTick() + delay;
+        if (abilityTask != null && nextAbilityWakeTick <= due) return;
+        if (abilityTask != null) abilityTask.cancel();
+        nextAbilityWakeTick = due;
+        abilityTask = Bukkit.getScheduler().runTaskLater(this, () -> {
+            abilityTask = null;
+            nextAbilityWakeTick = Long.MAX_VALUE;
+            if (abilityRuntime != runtime || !isEnabled()) return;
+            runtime.tick();
+            scheduleAbilityWakeup();
+        }, delay);
+    }
+
     public void reloadWwwConfiguration() {
         reloadConfig();
         WwwConfig candidate = WwwConfigLoader.load(getConfig());
