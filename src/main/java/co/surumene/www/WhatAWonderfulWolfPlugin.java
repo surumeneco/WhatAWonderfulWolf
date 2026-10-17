@@ -286,11 +286,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
 
         // One bounded slice per server tick; the runtime itself caps the work
         // and avoids reevaluating unchanged wolves.
-        abilityTask = Bukkit.getScheduler().runTaskTimer(
-                this,
-                abilities::tick,
-                1L,
-                1L);
+        scheduleAbilityWakeup();
         behaviorTask = Bukkit.getScheduler().runTaskTimer(
                 this,
                 () -> {
