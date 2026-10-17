@@ -63,6 +63,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
     private AsyncWolfFounderCoordinator asyncFounders;
     private BukkitTask behaviorTask;
     private BukkitTask traitTask;
+    private long traitCadenceAnchor;
     private BukkitTask weaponTask;
 
     @Override
@@ -290,6 +291,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         abilities.tick();
         behavior.tick(Bukkit.getCurrentTick());
         weapons.tick(Bukkit.getCurrentTick());
+        traitCadenceAnchor = Bukkit.getCurrentTick();
         refreshTraitTimer();
 
         scheduleAbilityTask();
@@ -345,10 +347,12 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
             return;
         }
         if (traitTask != null) return;
+        long phase = Math.floorMod(Bukkit.getCurrentTick() - traitCadenceAnchor, 5L);
+        long delay = phase == 0L ? 5L : 5L - phase;
         traitTask = Bukkit.getScheduler().runTaskTimer(
                 this,
                 () -> behavior.tickTraits(Bukkit.getCurrentTick()),
-                5L,
+                delay,
                 5L);
     }
 
@@ -476,6 +480,8 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         WonderfulWolfBehaviorRuntime behavior = behaviorRuntime;
         if (behavior != null) {
             behavior.tick(Bukkit.getCurrentTick());
+            if (behavior.hasTimedTraitWork()) behavior.tickTraits(Bukkit.getCurrentTick());
+            refreshTraitTimer();
         }
     }
 
