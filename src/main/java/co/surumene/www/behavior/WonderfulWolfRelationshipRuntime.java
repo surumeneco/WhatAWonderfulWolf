@@ -67,10 +67,6 @@ public final class WonderfulWolfRelationshipRuntime {
         if (serverTick < 0L) {
             throw new IllegalArgumentException("serverTick must be >= 0");
         }
-        // Pending feed records still expire after one tick; unlike passive
-        // affection rolls this is a cheap, independent compatibility check.
-        pendingFeeds.cleanup(serverTick);
-
         if (!bootstrapped) {
             bootstrapped = true;
             for (var snapshot : loaded.passiveAffectionSnapshots()) {
