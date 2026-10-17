@@ -61,6 +61,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
     private BukkitTask abilityTask;
     private AsyncWolfFounderCoordinator asyncFounders;
     private BukkitTask behaviorTask;
+    private BukkitTask traitTask;
     private BukkitTask weaponTask;
 
     @Override
@@ -181,6 +182,8 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         });
         loaded.onRegistered(behavior::onRegistered);
         loaded.onAbilityDirty(abilities::markDirty);
+        loaded.onTraitWorkChanged(this::refreshTraitTimer);
+        behavior.onTraitActivityChanged(this::refreshTraitTimer);
         loaded.onUnregister(id -> {
             weapons.untrack(id);
             behavior.untrack(id);
@@ -283,6 +286,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         abilities.tick();
         behavior.tick(Bukkit.getCurrentTick());
         weapons.tick(Bukkit.getCurrentTick());
+        refreshTraitTimer();
 
         // One bounded slice per server tick; the runtime itself caps the work
         // and avoids reevaluating unchanged wolves.
@@ -305,6 +309,25 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                 () -> weapons.tick(Bukkit.getCurrentTick()),
                 1L,
                 1L);
+    }
+
+    /** The 5-tick trait timer exists only while a relevant source or pulse is active. */
+    private void refreshTraitTimer() {
+        WonderfulWolfBehaviorRuntime behavior = behaviorRuntime;
+        if (behavior == null) return;
+        if (!behavior.hasTimedTraitWork()) {
+            if (traitTask != null) {
+                traitTask.cancel();
+                traitTask = null;
+            }
+            return;
+        }
+        if (traitTask != null) return;
+        traitTask = Bukkit.getScheduler().runTaskTimer(
+                this,
+                () -> behavior.tickTraits(Bukkit.getCurrentTick()),
+                5L,
+                5L);
     }
 
     @Override
@@ -339,6 +362,10 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         if (behaviorScheduled != null) {
             behaviorScheduled.cancel();
         }
+
+        BukkitTask traitScheduled = traitTask;
+        traitTask = null;
+        if (traitScheduled != null) traitScheduled.cancel();
 
         relationshipRuntime = null;
         WonderfulWolfBehaviorRuntime behavior = behaviorRuntime;
