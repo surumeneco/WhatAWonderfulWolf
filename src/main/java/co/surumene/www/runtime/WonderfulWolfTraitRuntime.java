@@ -23,6 +23,17 @@ public final class WonderfulWolfTraitRuntime {
     private final WonderfulWolfWatchmanRuntime watchman;
     private final WonderfulWolfScavengerRuntime scavenger;
     private final Logger logger;
+    private Runnable workChanged = () -> {};
+
+    public void onWorkChanged(Runnable listener) {
+        workChanged = Objects.requireNonNull(listener);
+    }
+
+    public boolean hasTimedWork() {
+        return TraitTaskActivityPolicy.shouldRun(
+                loaded.hasTickingTraitWork() ? 1 : 0,
+                triggeredEffects.hasActiveWork());
+    }
 
     public WonderfulWolfTraitRuntime(
             WonderfulWolfLoadedIndividuals loaded,
@@ -85,6 +96,7 @@ public final class WonderfulWolfTraitRuntime {
 
         watchman.retain(watchActive);
         triggeredEffects.tick(serverTick);
+        if (!hasTimedWork()) workChanged.run();
     }
 
     public boolean isImmune(
@@ -113,6 +125,7 @@ public final class WonderfulWolfTraitRuntime {
                     individual,
                     target,
                     serverTick);
+            if (triggeredEffects.hasActiveWork()) workChanged.run();
         }
     }
 
