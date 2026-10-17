@@ -25,5 +25,7 @@ final class WwwConfigDefaultsTest {
         assertEquals(30.0, config.runtime().actionDistance().veryWideBlocks());
         assertEquals("world", config.runtime().age().clockWorld());
         assertEquals(0.05, config.runtime().spawn().naturalConversionProbability());
+        assertEquals(0.10, config.runtime().spawn().wolfTrapSpawnChance());
+        assertEquals(0.05, config.runtime().spawn().wolfTrapLightningProbability());
     }
 }
