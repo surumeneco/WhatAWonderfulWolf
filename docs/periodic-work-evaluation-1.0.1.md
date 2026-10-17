@@ -43,9 +43,31 @@ Bは **5tick毎の空キュー先頭確認480回** と、加入／変更ごと�
 
 **採択**: B。不要な全件反復を構造的に取り除け、旧アルゴリズムの抽選時刻・確率・条件を同じ単位テストで拘束できるため。ただし **PaperでのCPU／MSPT優位は未確認**。個別キューのメモリ・割当・イベント発火費が高いケースが実測された場合は再評価する。既存5tickタイマーを維持することで新規のSchedulerジョブ生成を抑える。
 
+## 2026-10-17 owner-approved follow-through (WWW 1.0.1)
+
+The 15 owner decisions in Google Drive supersede the historical candidate matrix above. This implementation intentionally retains WWC-style monitoring where a generic Paper event cannot guarantee equivalent behavior.
+
+| Decision numbers | Implemented behavior / decision |
+| --- | --- |
+| ① | Passive-affection deadline queue from PR #56 remains selected; no change here |
+| ② | Remove global 600-tick equipment force-restore and post-attack restore. Read the live wolf weapon via the normal Paper attack path. Explicit WWW saved-weapon/GUI mutations still synchronize equipment |
+| ③, ⑥ | Existing Wolf MobGoals adapter, Pathfinder navigation and active combat/mode-only reconciliation retained. Repath only for changed target, significant movement or lost path; maintain custom modes and target precedence instead of blindly restoring vanilla goals |
+| ④ | Replace empty 1-tick Ability ticker with one bounded delayed wakeup based on dirty work, biological-time deadlines, juvenile 200-tick check and compatibility 6000-tick audit. Dirty mutation can rearm an earlier wakeup |
+| ⑤ | Preserve incrementally indexed juveniles and low-frequency full-registered external Attribute compatibility check; no event-only invalidation of unknown external writes |
+| ⑦, ⑧, ⑨, ⑪ | Run periodic trait/Aura/watch/scavenge dispatcher only if a periodic trait source exists or HolyPulse has in-flight work. No global entity-move listeners; maintain active-only local range checks and external-effect priority. Clear inactive watch state |
+| ⑩ | Explicitly reject event-only Scavenger replacement; preserve existing localized periodic scan |
+| ⑫, ⑬ | Retain current per-world clock tick and armed/rider-only active trap update, matching WWC's strict natural clock progression and active physical interaction contract |
+| ⑭ | On recording a feed, arm a single earliest-expiration wakeup. Consume retains same/next-tick validation; no unrelated relationship 5-tick expiration scan |
+| ⑮ | Dispatch bounded Founder submissions on enqueue and worker-result callbacks; remove idle global 1-tick task. Retain capacity and main-thread commit contract |
+
+### Review and acceptance
+
+Automated Java 25 checks verify the code and regression suite but do not establish real-server CPU or behavior equivalence. Required integration checks include equipment changed externally before attacks, 0/1/1000 wolves for ability/trait load, biological-time rollback, late Attribute changes, same-UUID entity replacement, feed event ordering, HolyPulse without any periodic source, multiple concurrent Founder jobs, queue saturation, plugin shutdown, and Geyser/ClickMobs/Multiverse behavior. Use matched CPU/MSPT p95/p99 measurements before claiming production optimization. Keep `main` and WGL/WWC unchanged.
+
 ## 検証・未完了
 
 - 自動テスト: `PassiveAffectionDeadlineQueueTest`, `PassiveAffectionScheduleTest`, `WonderfulWolfLoadedIndividualsTest`。空候補、期限直前／期限到来、重複／変更による予定取消し、1000件の候補限定、commander変更、UUID同一別Entity・アンロードを確認。
 - 同等性の未完了: 実Paper/外部プラグインでのイベント配送、Geyser、ClickMobs、Multiverse、sleep/`/time`操作、装備・Path・Aura、実PDC復元（全シナリオ）。
 - 性能の未完了: プロセスCPU time、同一ワールドのA/B比較、0/50/200/1000個体・active比率・プレイヤー移動別のイベント入場数／allocations／MSPT p50/p95/p99。
 - CIが成功しても実機機能・実負荷の保証とはしない。`develop`への反映を`main`へのリリースと混同しない。WWC・WGLは対象外。
+

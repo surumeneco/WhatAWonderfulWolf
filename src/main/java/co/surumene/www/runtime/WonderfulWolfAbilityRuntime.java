@@ -42,6 +42,15 @@ public final class WonderfulWolfAbilityRuntime {
     private final Set<UUID> juveniles = new HashSet<>();
     private final Map<UUID, Long> nextDue = new HashMap<>();
     private final NavigableMap<Long, Set<UUID>> dueByTime = new TreeMap<>();
+    private Runnable workChanged = () -> {};
+    public void onWorkChanged(Runnable callback) { workChanged = Objects.requireNonNull(callback); }
+    public long nextWakeDelayTicks() {
+        return AbilityWakeupPolicy.delay(org.bukkit.Bukkit.getCurrentTick(),
+                clock.currentTime(), !bootstrapped || !dirty.isEmpty(),
+                juveniles.isEmpty() ? Long.MAX_VALUE : nextJuvenileTick,
+                nextCompatibilityTick,
+                dueByTime.isEmpty() ? Long.MAX_VALUE : dueByTime.firstKey());
+    }
     private boolean bootstrapped;
     private long nextJuvenileTick;
     private long nextCompatibilityTick = 6000L;
@@ -122,6 +131,7 @@ public final class WonderfulWolfAbilityRuntime {
     /** Mutation callbacks enqueue an ID, never a potentially stale Bukkit entity. */
     public void markDirty(Wolf wolf) {
         dirty.add(Objects.requireNonNull(wolf, "wolf").getUniqueId());
+        workChanged.run();
     }
 
     /** Evict all transient ability work when an entity unloads. */
@@ -257,6 +267,7 @@ public final class WonderfulWolfAbilityRuntime {
         nextDue.clear();
         dirty.clear();
         for (var snapshot : loaded.snapshots()) dirty.add(snapshot.entity().getUniqueId());
+        workChanged.run();
     }
 
     public void clear() {

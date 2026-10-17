@@ -5,9 +5,21 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.LongConsumer;
 
 public final class PendingFeedTracker {
     private final Map<UUID, PendingFeed> pending = new HashMap<>();
+    private LongConsumer wakeup = unused -> {};
+    private long armedDue = Long.MAX_VALUE;
+
+    public void onExpiryWakeup(LongConsumer callback) {
+        wakeup = java.util.Objects.requireNonNull(callback);
+        armNext();
+    }
+
+    public int pendingCount() { return pending.size(); }
+
+    public void expireAt(long tick) { cleanup(tick); }
 
     public void record(
             UUID wolfId,
@@ -21,6 +33,7 @@ public final class PendingFeedTracker {
                 new PendingFeed(
                         java.util.Objects.requireNonNull(playerId, "playerId"),
                         serverTick));
+        armNext();
     }
 
     public Optional<UUID> consume(
@@ -48,6 +61,21 @@ public final class PendingFeedTracker {
             if (serverTick - feed.serverTick() > 1L) {
                 iterator.remove();
             }
+        }
+        if (serverTick >= armedDue) armedDue = Long.MAX_VALUE;
+        armNext();
+    }
+
+    private void armNext() {
+        long earliest = Long.MAX_VALUE;
+        for (PendingFeed feed : pending.values()) {
+            long due = feed.serverTick() >= Long.MAX_VALUE - 2L
+                    ? Long.MAX_VALUE : feed.serverTick() + 2L;
+            if (due < earliest) earliest = due;
+        }
+        if (earliest < armedDue) {
+            armedDue = earliest;
+            wakeup.accept(earliest);
         }
     }
 

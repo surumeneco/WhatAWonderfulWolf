@@ -59,8 +59,8 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
     private WonderfulWolfInventoryService inventoryService;
     private WanWandService wanWandService;
     private BukkitTask abilityTask;
+    private long nextAbilityWakeTick = Long.MAX_VALUE;
     private AsyncWolfFounderCoordinator asyncFounders;
-    private BukkitTask founderTask;
     private BukkitTask behaviorTask;
     private BukkitTask weaponTask;
 
@@ -130,7 +130,6 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         asyncFounders = new AsyncWolfFounderCoordinator(this, getLogger());
         paperFactory.useAsyncCoordinator(asyncFounders);
         breedingListener.useAsyncCoordinator(asyncFounders);
-        founderTask = Bukkit.getScheduler().runTaskTimer(this, asyncFounders::tick, 1L, 1L);
         WonderfulWolfNaturalSpawnListener naturalSpawnListener =
                 new WonderfulWolfNaturalSpawnListener(
                         paperFactory,
@@ -143,6 +142,9 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         WonderfulWolfRelationshipService relationshipService =
                 new WonderfulWolfRelationshipService(loaded);
         PendingFeedTracker pendingFeeds = new PendingFeedTracker();
+        pendingFeeds.onExpiryWakeup(due -> Bukkit.getScheduler().runTaskLater(
+                this, () -> pendingFeeds.expireAt(Bukkit.getCurrentTick()),
+                Math.max(1L, due - Bukkit.getCurrentTick())));
         WonderfulWolfBehaviorRuntime behavior =
                 new WonderfulWolfBehaviorRuntime(
                         loaded,
@@ -271,6 +273,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         this.relationshipRuntime = relationshipRuntime;
         loadedIndividuals = loaded;
         abilityRuntime = abilities;
+        abilities.onWorkChanged(this::scheduleAbilityWakeup);
         behaviorRuntime = behavior;
         commandService = commands;
         weaponRuntime = weapons;
@@ -281,13 +284,8 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         behavior.tick(Bukkit.getCurrentTick());
         weapons.tick(Bukkit.getCurrentTick());
 
-        // One bounded slice per server tick; the runtime itself caps the work
-        // and avoids reevaluating unchanged wolves.
-        abilityTask = Bukkit.getScheduler().runTaskTimer(
-                this,
-                abilities::tick,
-                1L,
-                1L);
+        // Schedule bounded ability slices for dirty or due individuals only.
+        scheduleAbilityWakeup();
         behaviorTask = Bukkit.getScheduler().runTaskTimer(
                 this,
                 () -> {
@@ -306,7 +304,6 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        if (founderTask != null) founderTask.cancel();
         if (asyncFounders != null) asyncFounders.shutdown();
         WonderfulWolfInventoryService inventories = inventoryService;
         inventoryService = null;
@@ -382,6 +379,23 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
             lifecycle.close();
         }
         genomeLib = null;
+    }
+
+    private void scheduleAbilityWakeup() {
+        WonderfulWolfAbilityRuntime runtime = abilityRuntime;
+        if (runtime == null || !isEnabled()) return;
+        long delay = Math.max(1L, runtime.nextWakeDelayTicks());
+        long due = Bukkit.getCurrentTick() + delay;
+        if (abilityTask != null && nextAbilityWakeTick <= due) return;
+        if (abilityTask != null) abilityTask.cancel();
+        nextAbilityWakeTick = due;
+        abilityTask = Bukkit.getScheduler().runTaskLater(this, () -> {
+            abilityTask = null;
+            nextAbilityWakeTick = Long.MAX_VALUE;
+            if (abilityRuntime != runtime || !isEnabled()) return;
+            runtime.tick();
+            scheduleAbilityWakeup();
+        }, delay);
     }
 
     public void reloadWwwConfiguration() {
