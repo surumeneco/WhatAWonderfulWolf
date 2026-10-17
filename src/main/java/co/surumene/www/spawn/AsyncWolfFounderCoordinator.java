@@ -58,11 +58,13 @@ public final class AsyncWolfFounderCoordinator {
                     } else {
                         mainThreadCommit.accept(completed);
                     }
+                    tick();
                 });
             } catch (IllegalStateException ignored) {
                 // Plugin was disabled while computing.
             }
         });
+        tick();
         return true;
     }
 
