@@ -56,13 +56,26 @@ public final class WonderfulWolfLoadedIndividuals {
     }
 
     private void updateTickingTraits(UUID id, WonderfulWolfIndividual individual) {
+        int previousSize = tickingTraits.size();
         if (TickingWolfTraitSelection.needsTick(
                 individual.phenotypeSnapshot().expressedTraits())) {
             tickingTraits.add(id);
         } else {
             tickingTraits.remove(id);
         }
+        notifyTraitActivity(previousSize);
     }
+    private Runnable traitWorkChanged = () -> {};
+    public void onTraitWorkChanged(Runnable callback) {
+        traitWorkChanged = Objects.requireNonNull(callback);
+    }
+
+    public boolean hasTickingTraitWork() { return !tickingTraits.isEmpty(); }
+
+    private void notifyTraitActivity(int priorSize) {
+        if ((priorSize == 0) != tickingTraits.isEmpty()) traitWorkChanged.run();
+    }
+
     private Consumer<Wolf> firstCreation = wolf -> {};
     private Consumer<Wolf> registered = wolf -> {};
     private Consumer<Wolf> abilityDirty = wolf -> {};
@@ -131,7 +144,9 @@ public final class WonderfulWolfLoadedIndividuals {
                 passiveAffectionChanged.accept(id, true);
             }
             commanders.remove(id);
+            int previousTraitSize = tickingTraits.size();
             tickingTraits.remove(id);
+            notifyTraitActivity(previousTraitSize);
             behaviorActive.remove(id);
             passiveAffection.remove(id);
             managementGuis.remove(id);
@@ -183,7 +198,9 @@ public final class WonderfulWolfLoadedIndividuals {
         if (current != null && current.entity() == wolf) {
             loaded.remove(wolf.getUniqueId());
             commanders.remove(wolf.getUniqueId());
+            int previousTraitSize = tickingTraits.size();
             tickingTraits.remove(wolf.getUniqueId());
+            notifyTraitActivity(previousTraitSize);
             behaviorActive.remove(wolf.getUniqueId());
             passiveAffection.remove(wolf.getUniqueId());
             managementGuis.remove(wolf.getUniqueId());
@@ -262,7 +279,9 @@ public final class WonderfulWolfLoadedIndividuals {
         }
         loaded.clear();
         commanders.clear();
+        int previousTraitSize = tickingTraits.size();
         tickingTraits.clear();
+        notifyTraitActivity(previousTraitSize);
         behaviorActive.clear();
         passiveAffection.clear();
         managementGuis.clear();
