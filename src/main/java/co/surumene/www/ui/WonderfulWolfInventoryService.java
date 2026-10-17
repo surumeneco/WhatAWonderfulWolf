@@ -66,6 +66,10 @@ public final class WonderfulWolfInventoryService {
         this.info = new WonderfulWolfPlayerInfo(messages);
     }
 
+    public void setStatsSupplier(java.util.function.Supplier<co.surumene.www.config.WwwConfig.Stats> source) {
+        info.setStatsSupplier(source);
+    }
+
     public void open(Player player, Wolf wolf) {
         if (!wolf.isTamed()) return;
         // ClickMobs restores an entity snapshot after item use; it does not
@@ -88,8 +92,9 @@ public final class WonderfulWolfInventoryService {
                 WolfDisplayName.fromWolf(wolf, Component.text(messages.text(player.locale(), "gui.title"))));
         holder.inventory(inventory);
         populate(inventory, player, wolf, individual);
-        locks.put(wolf.getUniqueId(), player.getUniqueId());
         player.openInventory(inventory);
+        locks.put(wolf.getUniqueId(), player.getUniqueId());
+        loaded.managementGuiOpened(wolf.getUniqueId(), player.getUniqueId());
     }
 
     public void handleClick(InventoryClickEvent event) {
@@ -162,6 +167,7 @@ public final class WonderfulWolfInventoryService {
             persistCargo(wolf, top);
         }
         locks.remove(holder.wolfId(), event.getPlayer().getUniqueId());
+        loaded.managementGuiClosed(holder.wolfId(), event.getPlayer().getUniqueId());
     }
 
     public void closeAll() {
@@ -173,6 +179,7 @@ public final class WonderfulWolfInventoryService {
                 viewer.closeInventory();
             }
         }
+        locks.forEach(loaded::managementGuiClosed);
         locks.clear();
     }
 

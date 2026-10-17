@@ -100,8 +100,8 @@ public final class WolfTrapRuntime {
 
     public void tick() {
         tickAdditionalSpawns();
-        tickArmedEvokers();
-        tickRiders();
+        if (!armedEvokers.isEmpty()) tickArmedEvokers();
+        if (!riderEvokers.isEmpty()) tickRiders();
     }
 
     public void markTimeSkip(World world) {
@@ -278,11 +278,11 @@ public final class WolfTrapRuntime {
             }
 
             Location location = evoker.getLocation();
-            for (Player player : evoker.getWorld().getPlayers()) {
+            for (Player player : TrapNearbyPlayers.find(evoker.getWorld(), location, radius)) {
                 if (!player.isDead()
                         && player.isValid()
-                        && location.distanceSquared(player.getLocation())
-                            <= radiusSquared) {
+                        && TrapNearbyPlayers.withinRadius(
+                                location, player.getLocation(), radiusSquared)) {
                     activate(evoker);
                     break;
                 }

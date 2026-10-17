@@ -167,6 +167,21 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                         loaded,
                         behavior,
                         getLogger());
+        loaded.onWeaponSync(wolf -> {
+            try {
+                weapons.syncWeapon(wolf);
+            } catch (RuntimeException error) {
+                getLogger().warning("Failed to synchronize WWW weapon for "
+                        + wolf.getUniqueId() + ": " + error.getMessage());
+            }
+        });
+        loaded.onRegistered(behavior::onRegistered);
+        loaded.onAbilityDirty(abilities::markDirty);
+        loaded.onUnregister(id -> {
+            weapons.untrack(id);
+            behavior.untrack(id);
+            abilities.untrack(id);
+        });
         WanWandService wanWand = new WanWandService(this);
         wanWand.registerRecipe();
         WonderfulWolfInventoryService inventories =
@@ -178,6 +193,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                         genomeLib.engine(),
                         lifecycle::currentWolfProfile,
                         messages);
+        inventories.setStatsSupplier(() -> lifecycle.currentConfig().runtime().stats());
         WonderfulWolfOffspringService offspringService =
                 new WonderfulWolfOffspringService(
                         genomeLib.engine(),

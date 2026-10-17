@@ -52,15 +52,15 @@ public final class EffectiveAbilityPipeline {
 
             double effectiveNormalized =
                     Math.max(0.0, baseNormalized - ageReduction - injuryReduction);
-            double baseCanonical = AbilityScale.toCanonical(ability, baseNormalized);
-            double runtimeCanonical = AbilityScale.toCanonical(ability, effectiveNormalized);
+            double baseCanonical = AbilityScale.toCanonical(ability, baseNormalized, runtime.stats());
+            double runtimeCanonical = AbilityScale.toCanonical(ability, effectiveNormalized, runtime.stats());
             Double adminOverride = adminOverrides.get(ability);
             if (adminOverride != null) {
                 // Explicit admin values are canonical values, not bounded Genome scores.
                 // The standard phenotype remains intact for subsequent breeding.
                 baseCanonical = adminOverride;
-                double span = AbilityScale.toCanonical(ability, 1.0)
-                        - AbilityScale.toCanonical(ability, 0.0);
+                double span = AbilityScale.toCanonical(ability, 1.0, runtime.stats())
+                        - AbilityScale.toCanonical(ability, 0.0, runtime.stats());
                 double low = AbilityScale.toCanonical(ability, 0.0);
                 baseNormalized = Math.max(0.0, (baseCanonical - low) / span);
                 runtimeCanonical = Math.max(0.0,

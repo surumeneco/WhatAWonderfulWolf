@@ -149,6 +149,45 @@ final class WonderfulWolfPdcPersistenceTest {
                 store.operations.getLast());
     }
 
+    @Test
+    void runtimeOnlySaveReusesKnownImmutablePayloadWithoutEncoding(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) {
+        MemoryStore store = new MemoryStore();
+        java.util.concurrent.atomic.AtomicInteger encodes = new java.util.concurrent.atomic.AtomicInteger();
+        GenomeEngine countingEngine = (GenomeEngine) java.lang.reflect.Proxy.newProxyInstance(
+                GenomeEngine.class.getClassLoader(), new Class<?>[] {GenomeEngine.class},
+                (proxy, method, arguments) -> {
+                    if (method.getName().equals("encode")) encodes.incrementAndGet();
+                    try {
+                        return method.invoke(engine, arguments);
+                    } catch (java.lang.reflect.InvocationTargetException failure) {
+                        throw failure.getCause();
+                    }
+                });
+        WonderfulWolfPdcPersistence external = new WonderfulWolfPdcPersistence(
+                countingEngine, new PhenotypeSnapshotCodecV1(),
+                new WonderfulWolfRuntimeCodecV1(), new GenomePayloadFiles(dir));
+        WonderfulWolfIndividual original = individual();
+        external.save(store, original);
+        assertEquals(1, encodes.get());
+        String reference = store.getString(WonderfulWolfPdcPersistence.GENOME_REFERENCE_KEY);
+
+        WonderfulWolfIndividual runtimeUpdated = original.withAdultBiologicalTime(987654L);
+        external.save(store, runtimeUpdated);
+        assertEquals(1, encodes.get(), "runtime-only changes must not encode Genome again");
+        assertEquals(reference, store.getString(WonderfulWolfPdcPersistence.GENOME_REFERENCE_KEY));
+        assertEquals(runtimeUpdated, ((RestoreResult.Success) external.restore(store)).individual());
+
+        WonderfulWolfIndividual newImmutableIdentity = new WonderfulWolfIndividual(
+                genome(), original.phenotypeSnapshot(), original.ownerId(),
+                runtimeUpdated.adultBiologicalTime(), original.mode(),
+                original.commanderId(), original.actionDistance(),
+                original.waitLocation(), original.affection(), original.weapon(),
+                original.inventory(), original.generation(), original.pedigree(),
+                original.adminAbilityOverrides());
+        external.save(store, newImmutableIdentity);
+        assertEquals(2, encodes.get(), "different Genome instance must be fully verified");
+    }
+
     private static WonderfulWolfIndividual individual() {
         UUID owner = UUID.fromString("10000000-0000-0000-0000-000000000001");
         UUID commander = UUID.fromString("20000000-0000-0000-0000-000000000002");

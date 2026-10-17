@@ -28,6 +28,13 @@ public final class AbilityScale {
         return canonicalizeBase(ability, value);
     }
 
+    public static double toCanonical(Ability ability, double normalized,
+            co.surumene.www.config.WwwConfig.Stats stats) {
+        if (!Double.isFinite(normalized) || normalized < 0) throw new IllegalArgumentException();
+        var s = stats.get(ability);
+        return canonicalizeBase(ability, s.min() + normalized * (s.max() - s.min()));
+    }
+
     public static double finalizeEffective(Ability ability, double value) {
         Objects.requireNonNull(ability, "ability");
         if (!Double.isFinite(value) || value < 0.0) {

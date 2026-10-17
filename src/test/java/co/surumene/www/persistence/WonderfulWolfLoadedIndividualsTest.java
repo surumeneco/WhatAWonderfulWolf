@@ -118,6 +118,31 @@ final class WonderfulWolfLoadedIndividualsTest {
         assertEquals(source, second.find(id).orElseThrow());
     }
 
+    @Test
+    void behaviorTickIndexTracksModeChangesAndEntityUnload() {
+        WonderfulWolfLoadedIndividuals loaded = new WonderfulWolfLoadedIndividuals(
+                new WonderfulWolfEntityStore(plugin(), engine));
+        UUID id = UUID.randomUUID();
+        Wolf wolf = wolf(id, new MemoryPdc().proxy());
+
+        var source = individual();
+        loaded.saveAndRegister(wolf, source);
+        assertEquals(1, loaded.behaviorTickSnapshots().size());
+
+        var wandering = source.withCommandState(
+                Mode.WANDER, Optional.empty(), ActionDistance.NORMAL, Optional.empty());
+        loaded.saveAndRegister(wolf, wandering);
+        assertTrue(loaded.behaviorTickSnapshots().isEmpty());
+
+        var waiting = source.withCommandState(
+                Mode.GUARD, source.commanderId(), ActionDistance.NORMAL, Optional.empty());
+        loaded.saveAndRegister(wolf, waiting);
+        assertEquals(1, loaded.behaviorTickSnapshots().size());
+
+        loaded.unregister(wolf);
+        assertTrue(loaded.behaviorTickSnapshots().isEmpty());
+    }
+
     private static Plugin plugin() {
         return (Plugin) Proxy.newProxyInstance(
                 Plugin.class.getClassLoader(),

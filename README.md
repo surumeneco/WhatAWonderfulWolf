@@ -1,12 +1,17 @@
 # What a Wonderful Wolf
 
+## 1.0.1 patch
+
+- For runtime-only changes, reuse the previously published immutable Genome/Snapshot payload reference when verified in-process identity matches. Changed Genome or Phenotype still follows the full copy-on-write path.
+- Requires WGL 1.0.1 at runtime. Server-side TPS/MSPT improvement has not yet been measured.
+
 What a Wonderful Wolf (WWW) 1.0.0 is a Paper plugin for the XPlayServer project.
 
 The functional specification is maintained in Google Drive under `forGPT/XPlayServer/Minecraft/What a Wonderful Wolf.md` and `forGPT/XPlayServer/Minecraft/WWW/`.
 
 ## Development
 
-WWW targets Java 25 and Paper 26.2. For the WGL 1.0.0 release, clone the repositories as siblings:
+WWW targets Java 25 and Paper 26.2. For the WGL 1.0.1 release, clone the repositories as siblings:
 
 ```text
 workspace/
@@ -14,7 +19,7 @@ workspace/
 └─ WhatAWonderfulWolf/
 ```
 
-WWW uses Gradle Composite Build to resolve `co.surumene:wgl-plugin:1.0.0` from the sibling `WonderfulGenomeLib` repository.
+WWW uses Gradle Composite Build to resolve `co.surumene:wgl-plugin:1.0.1` from the sibling `WonderfulGenomeLib` repository.
 
 Build with:
 
@@ -22,7 +27,13 @@ Build with:
 gradle clean build --no-daemon
 ```
 
-At runtime, Wonderful Genome Lib 1.0.0 remains a separate Paper plugin and must be installed alongside WWW.
+At runtime, Wonderful Genome Lib 1.0.1 remains a separate Paper plugin and must be installed alongside WWW.
+
+## Config changes in 1.0.1
+
+All ten WWW abilities now expose `stats.<ability>.min/max/display` in the bundled `config.yml`. The initial canonical ranges are identical to those from 1.0.0; the `min/max` values describe normalized Genome ability scores 0 and 1, with linear extrapolation above 1. The `display` values `none`, `value`, `rank`, and `both` apply to the player GUI/detail only. Administrative `/www info` retains complete diagnostic output.
+
+New settings are validated as finite ordered ranges and approved display strings. Existing configuration without `stats` defaults to the original ranges. Reload reprojects effective abilities and never rewrites immutable Genome or birth Phenotype Snapshots. Inventory retains the hard 45-slot cap. Founder/Genome Profile settings and legacy conversion semantics are unchanged.
 
 ## Administrative commands (WWC 2.0-compatible)
 

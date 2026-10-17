@@ -30,6 +30,10 @@ public final class WonderfulWolfGoalAdapter {
         prepared.put(wolf.getUniqueId(), wolf);
     }
 
+    public void forget(UUID wolfId) {
+        prepared.remove(wolfId);
+    }
+
     public void retain(Iterable<UUID> loadedIds) {
         java.util.HashSet<UUID> ids = new java.util.HashSet<>();
         loadedIds.forEach(ids::add);

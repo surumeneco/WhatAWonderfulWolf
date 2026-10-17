@@ -50,12 +50,12 @@ public final class WonderfulWolfTraitRuntime {
     public void tick(long serverTick) {
         WwwConfig.Runtime settings =
                 Objects.requireNonNull(config.get(), "runtime config");
-        Set<UUID> active = new HashSet<>();
+        Set<UUID> watchActive = new HashSet<>();
 
         for (WonderfulWolfLoadedIndividuals.LoadedSnapshot snapshot :
-                loaded.snapshots()) {
+                loaded.tickingTraitSnapshots()) {
             Wolf wolf = snapshot.entity();
-            active.add(wolf.getUniqueId());
+            // Each individual selects only its relevant periodic subsystems.
             if (wolf.isDead() || !wolf.isValid()) {
                 continue;
             }
@@ -63,18 +63,17 @@ public final class WonderfulWolfTraitRuntime {
             try {
                 WonderfulWolfIndividual individual =
                         snapshot.individual();
-                statusEffects.tick(
-                        wolf,
-                        individual,
-                        settings);
-                watchman.tick(
-                        wolf,
-                        individual,
-                        settings,
-                        serverTick);
-                scavenger.tick(
-                        wolf,
-                        individual);
+                int flags = PeriodicTraitWork.from(individual.phenotypeSnapshot().expressedTraits());
+                if (PeriodicTraitWork.has(flags, PeriodicTraitWork.STATUS)) {
+                    statusEffects.tick(wolf, individual, settings);
+                }
+                if (PeriodicTraitWork.has(flags, PeriodicTraitWork.WATCH)) {
+                    watchActive.add(wolf.getUniqueId());
+                    watchman.tick(wolf, individual, settings, serverTick);
+                }
+                if (PeriodicTraitWork.has(flags, PeriodicTraitWork.SCAVENGE)) {
+                    scavenger.tick(wolf, individual);
+                }
             } catch (RuntimeException error) {
                 logger.warning(
                         "Failed to update Wonderful Wolf traits for "
@@ -84,7 +83,7 @@ public final class WonderfulWolfTraitRuntime {
             }
         }
 
-        watchman.retain(active);
+        watchman.retain(watchActive);
         triggeredEffects.tick(serverTick);
     }
 

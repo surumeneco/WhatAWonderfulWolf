@@ -1,22 +1,88 @@
 package co.surumene.www.persistence;
 
 import co.surumene.www.individual.WonderfulWolfIndividual;
+import co.surumene.www.behavior.PassiveRelationshipEligibility;
+import co.surumene.www.behavior.BehaviorTickEligibility;
+import co.surumene.www.runtime.TickingWolfTraitSelection;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Wolf;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 
 public final class WonderfulWolfLoadedIndividuals {
     private final WonderfulWolfEntityStore store;
     private final Map<UUID, LoadedIndividual> loaded = new HashMap<>();
+    private final CommanderWolfIndex commanders = new CommanderWolfIndex();
+    private final ManagementGuiRoster managementGuis = new ManagementGuiRoster();
+
+    public void managementGuiOpened(UUID wolfId, UUID viewerId) {
+        managementGuis.open(wolfId, viewerId);
+    }
+
+    public void managementGuiClosed(UUID wolfId, UUID viewerId) {
+        managementGuis.close(wolfId, viewerId);
+    }
+
+    public boolean managementGuiOpen(UUID wolfId) {
+        return managementGuis.isOpen(wolfId);
+    }
+
+    private final Set<UUID> tickingTraits = new HashSet<>();
+    private final Set<UUID> behaviorActive = new HashSet<>();
+    private final Set<UUID> passiveAffection = new HashSet<>();
+
+    private void updateBehavior(UUID id, WonderfulWolfIndividual individual) {
+        if (BehaviorTickEligibility.periodic(individual.mode())) behaviorActive.add(id);
+        else behaviorActive.remove(id);
+    }
+
+    private void updatePassiveAffection(UUID id, WonderfulWolfIndividual individual) {
+        if (PassiveRelationshipEligibility.eligible(
+                individual.mode(), individual.commanderId().orElse(null))) {
+            passiveAffection.add(id);
+        } else {
+            passiveAffection.remove(id);
+        }
+    }
+
+    private void updateTickingTraits(UUID id, WonderfulWolfIndividual individual) {
+        if (TickingWolfTraitSelection.needsTick(
+                individual.phenotypeSnapshot().expressedTraits())) {
+            tickingTraits.add(id);
+        } else {
+            tickingTraits.remove(id);
+        }
+    }
     private Consumer<Wolf> firstCreation = wolf -> {};
+    private Consumer<Wolf> registered = wolf -> {};
+    private Consumer<Wolf> abilityDirty = wolf -> {};
+    private Consumer<Wolf> weaponSync = wolf -> {};
+    private Consumer<UUID> removal = id -> {};
+
+    public void onAbilityDirty(Consumer<Wolf> callback) {
+        abilityDirty = Objects.requireNonNull(callback, "callback");
+    }
+
+    public void onRegistered(Consumer<Wolf> callback) {
+        registered = Objects.requireNonNull(callback, "callback");
+    }
+
+    public void onWeaponSync(Consumer<Wolf> callback) {
+        weaponSync = Objects.requireNonNull(callback, "callback");
+    }
+
+    public void onUnregister(Consumer<UUID> callback) {
+        removal = Objects.requireNonNull(callback, "callback");
+    }
 
     public void onFirstCreation(Consumer<Wolf> initializer) {
         firstCreation = Objects.requireNonNull(initializer, "initializer");
@@ -35,8 +101,20 @@ public final class WonderfulWolfLoadedIndividuals {
         UUID id = wolf.getUniqueId();
         if (result instanceof RestoreResult.Success success) {
             loaded.put(id, new LoadedIndividual(wolf, success.individual()));
+            commanders.update(id, success.individual().commanderId().orElse(null));
+            updateTickingTraits(id, success.individual());
+            updateBehavior(id, success.individual());
+            registered.accept(wolf);
+            abilityDirty.accept(wolf);
+            updatePassiveAffection(id, success.individual());
+            weaponSync.accept(wolf);
         } else {
-            loaded.remove(id);
+            if (loaded.remove(id) != null) removal.accept(id);
+            commanders.remove(id);
+            tickingTraits.remove(id);
+            behaviorActive.remove(id);
+            passiveAffection.remove(id);
+            managementGuis.remove(id);
         }
         return result;
     }
@@ -45,11 +123,32 @@ public final class WonderfulWolfLoadedIndividuals {
         Objects.requireNonNull(wolf, "wolf");
         Objects.requireNonNull(individual, "individual");
         boolean newlyCreated = !store.isWonderful(wolf);
+        LoadedIndividual previous = loaded.get(wolf.getUniqueId());
+        boolean weaponChanged = previous == null || previous.entity() != wolf
+                || !Objects.equals(previous.individual().weapon(), individual.weapon());
         store.save(wolf, individual);
         loaded.put(wolf.getUniqueId(), new LoadedIndividual(wolf, individual));
-        if (newlyCreated) {
-            firstCreation.accept(wolf);
+        commanders.update(wolf.getUniqueId(), individual.commanderId().orElse(null));
+        if (previous == null || previous.individual().mode() != individual.mode()) {
+            updateBehavior(wolf.getUniqueId(), individual);
         }
+        if (previous == null || previous.entity() != wolf) registered.accept(wolf);
+        if (previous == null || previous.individual().mode() != individual.mode()
+                || !previous.individual().commanderId().equals(individual.commanderId())) {
+            updatePassiveAffection(wolf.getUniqueId(), individual);
+        }
+        if (previous == null || previous.individual().phenotypeSnapshot()
+                != individual.phenotypeSnapshot()) {
+            updateTickingTraits(wolf.getUniqueId(), individual);
+        }
+        if (previous == null || previous.entity() != wolf
+                || previous.individual().phenotypeSnapshot() != individual.phenotypeSnapshot()
+                || !previous.individual().adminAbilityOverrides().equals(individual.adminAbilityOverrides())
+                || previous.individual().adultBiologicalTime() != individual.adultBiologicalTime()) {
+            abilityDirty.accept(wolf);
+        }
+        if (newlyCreated) firstCreation.accept(wolf);
+        if (weaponChanged) weaponSync.accept(wolf);
     }
 
     public void unregister(Entity entity) {
@@ -60,7 +159,23 @@ public final class WonderfulWolfLoadedIndividuals {
         LoadedIndividual current = loaded.get(wolf.getUniqueId());
         if (current != null && current.entity() == wolf) {
             loaded.remove(wolf.getUniqueId());
+            commanders.remove(wolf.getUniqueId());
+            tickingTraits.remove(wolf.getUniqueId());
+            behaviorActive.remove(wolf.getUniqueId());
+            passiveAffection.remove(wolf.getUniqueId());
+            managementGuis.remove(wolf.getUniqueId());
+            removal.accept(wolf.getUniqueId());
         }
+    }
+
+    /** Snapshot only loaded wolves assigned to the requested commander. */
+    public Set<UUID> commanderWolfIds(UUID commanderId) {
+        return commanders.ids(commanderId);
+    }
+
+    public Optional<Wolf> entity(UUID entityId) {
+        LoadedIndividual current = loaded.get(Objects.requireNonNull(entityId, "entityId"));
+        return current == null ? Optional.empty() : Optional.of(current.entity());
     }
 
     public Optional<WonderfulWolfIndividual> find(UUID entityId) {
@@ -73,6 +188,41 @@ public final class WonderfulWolfLoadedIndividuals {
         return loaded.size();
     }
 
+    /** Skip idle wandering wolves without a source of reactive behavior work. */
+    public List<LoadedSnapshot> behaviorTickSnapshots() {
+        if (behaviorActive.isEmpty()) return List.of();
+        List<LoadedSnapshot> result = new ArrayList<>(behaviorActive.size());
+        for (UUID id : behaviorActive) {
+            LoadedIndividual value = loaded.get(id);
+            if (value != null) result.add(new LoadedSnapshot(value.entity(), value.individual()));
+        }
+        return result;
+    }
+
+    /** No full-wolf snapshot is needed if none has recurring trait work. */
+    /** Wolves in follow/guard with a commander are the only passive-affection candidates. */
+    public List<LoadedSnapshot> passiveAffectionSnapshots() {
+        if (passiveAffection.isEmpty()) return List.of();
+        List<LoadedSnapshot> snapshots = new ArrayList<>(passiveAffection.size());
+        for (UUID id : passiveAffection) {
+            LoadedIndividual individual = loaded.get(id);
+            if (individual != null) snapshots.add(
+                    new LoadedSnapshot(individual.entity(), individual.individual()));
+        }
+        return snapshots;
+    }
+
+    public List<LoadedSnapshot> tickingTraitSnapshots() {
+        if (tickingTraits.isEmpty()) return List.of();
+        List<LoadedSnapshot> snapshots = new ArrayList<>(tickingTraits.size());
+        for (UUID id : tickingTraits) {
+            LoadedIndividual current = loaded.get(id);
+            if (current != null) snapshots.add(
+                    new LoadedSnapshot(current.entity(), current.individual()));
+        }
+        return snapshots;
+    }
+
     public List<LoadedSnapshot> snapshots() {
         List<LoadedSnapshot> snapshots = new ArrayList<>(loaded.size());
         for (LoadedIndividual current : loaded.values()) {
@@ -82,7 +232,13 @@ public final class WonderfulWolfLoadedIndividuals {
     }
 
     public void clear() {
+        for (UUID id : loaded.keySet()) removal.accept(id);
         loaded.clear();
+        commanders.clear();
+        tickingTraits.clear();
+        behaviorActive.clear();
+        passiveAffection.clear();
+        managementGuis.clear();
     }
 
     public record LoadedSnapshot(Wolf entity, WonderfulWolfIndividual individual) {
