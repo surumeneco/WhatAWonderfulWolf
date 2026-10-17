@@ -30,9 +30,13 @@ public final class WonderfulWolfTraitRuntime {
     }
 
     public boolean hasTimedWork() {
+        boolean recurring = loaded.hasTickingTraitWork();
+        if (!recurring) {
+            // Without a scheduled tick there will be no later retain(empty).
+            watchman.clear();
+        }
         return TraitTaskActivityPolicy.shouldRun(
-                loaded.hasTickingTraitWork() ? 1 : 0,
-                triggeredEffects.hasActiveWork());
+                recurring ? 1 : 0, triggeredEffects.hasActiveWork());
     }
 
     public WonderfulWolfTraitRuntime(
