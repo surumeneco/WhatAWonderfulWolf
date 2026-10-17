@@ -58,6 +58,8 @@ final class WonderfulWolfTriggeredEffectRuntime {
                                         strength)));
     }
 
+    boolean hasPendingPulses() { return !holyPulses.isEmpty(); }
+
     void tick(long serverTick) {
         var iterator = holyPulses.entrySet().iterator();
         while (iterator.hasNext()) {
