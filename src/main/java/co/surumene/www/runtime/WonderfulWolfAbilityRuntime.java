@@ -130,6 +130,7 @@ public final class WonderfulWolfAbilityRuntime {
     /** Mutation callbacks enqueue an ID, never a potentially stale Bukkit entity. */
     public void markDirty(Wolf wolf) {
         dirty.add(Objects.requireNonNull(wolf, "wolf").getUniqueId());
+        workChanged.run();
     }
 
     /** Evict all transient ability work when an entity unloads. */
