@@ -52,13 +52,13 @@ public final class AsyncWolfFounderCoordinator {
             if (closed || !plugin.isEnabled()) return;
             try {
                 Bukkit.getScheduler().runTask(plugin, () -> {
-                    if (closed || !plugin.isEnabled()) return;
-                    if (error != null) {
-                        onFailure.accept(error);
-                    } else {
-                        mainThreadCommit.accept(completed);
+                    try {
+                        if (closed || !plugin.isEnabled()) return;
+                        if (error != null) onFailure.accept(error);
+                        else mainThreadCommit.accept(completed);
+                    } finally {
+                        tick();
                     }
-                    tick();
                 });
             } catch (IllegalStateException ignored) {
                 // Plugin was disabled while computing.
