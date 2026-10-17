@@ -123,7 +123,10 @@ public final class WonderfulWolfBehaviorRuntime {
             }
         }
 
-        traits().tick(serverTick);
+        if (!loaded.tickingTraitSnapshots().isEmpty()
+                || (traitRuntime != null && traitRuntime.hasTriggeredWork())) {
+            traits().tick(serverTick);
+        }
     }
 
     /** Called on each entity registration, even in WANDER mode. */
