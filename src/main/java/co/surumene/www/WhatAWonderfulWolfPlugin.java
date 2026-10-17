@@ -59,6 +59,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
     private WonderfulWolfInventoryService inventoryService;
     private WanWandService wanWandService;
     private BukkitTask abilityTask;
+    private long nextAbilityWakeTick = Long.MAX_VALUE;
     private AsyncWolfFounderCoordinator asyncFounders;
     private BukkitTask founderTask;
     private BukkitTask behaviorTask;
