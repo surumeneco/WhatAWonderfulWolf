@@ -60,7 +60,6 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
     private WanWandService wanWandService;
     private BukkitTask abilityTask;
     private AsyncWolfFounderCoordinator asyncFounders;
-    private BukkitTask founderTask;
     private BukkitTask behaviorTask;
     private BukkitTask weaponTask;
 
@@ -130,7 +129,6 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         asyncFounders = new AsyncWolfFounderCoordinator(this, getLogger());
         paperFactory.useAsyncCoordinator(asyncFounders);
         breedingListener.useAsyncCoordinator(asyncFounders);
-        founderTask = Bukkit.getScheduler().runTaskTimer(this, asyncFounders::tick, 1L, 1L);
         WonderfulWolfNaturalSpawnListener naturalSpawnListener =
                 new WonderfulWolfNaturalSpawnListener(
                         paperFactory,
@@ -143,6 +141,11 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         WonderfulWolfRelationshipService relationshipService =
                 new WonderfulWolfRelationshipService(loaded);
         PendingFeedTracker pendingFeeds = new PendingFeedTracker();
+        pendingFeeds.onCleanupDue(delay ->
+                Bukkit.getScheduler().runTaskLater(
+                        this,
+                        () -> pendingFeeds.cleanup(Bukkit.getCurrentTick()),
+                        delay));
         WonderfulWolfBehaviorRuntime behavior =
                 new WonderfulWolfBehaviorRuntime(
                         loaded,
@@ -306,7 +309,6 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        if (founderTask != null) founderTask.cancel();
         if (asyncFounders != null) asyncFounders.shutdown();
         WonderfulWolfInventoryService inventories = inventoryService;
         inventoryService = null;
