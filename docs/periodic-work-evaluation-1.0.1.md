@@ -49,3 +49,4 @@ Bは **5tick毎の空キュー先頭確認480回** と、加入／変更ごと�
 - 同等性の未完了: 実Paper/外部プラグインでのイベント配送、Geyser、ClickMobs、Multiverse、sleep/`/time`操作、装備・Path・Aura、実PDC復元（全シナリオ）。
 - 性能の未完了: プロセスCPU time、同一ワールドのA/B比較、0/50/200/1000個体・active比率・プレイヤー移動別のイベント入場数／allocations／MSPT p50/p95/p99。
 - CIが成功しても実機機能・実負荷の保証とはしない。`develop`への反映を`main`へのリリースと混同しない。WWC・WGLは対象外。
+
