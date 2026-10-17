@@ -284,8 +284,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         behavior.tick(Bukkit.getCurrentTick());
         weapons.tick(Bukkit.getCurrentTick());
 
-        // One bounded slice per server tick; the runtime itself caps the work
-        // and avoids reevaluating unchanged wolves.
+        // Schedule bounded ability slices for dirty or due individuals only.
         scheduleAbilityWakeup();
         behaviorTask = Bukkit.getScheduler().runTaskTimer(
                 this,
