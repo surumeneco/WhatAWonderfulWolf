@@ -61,7 +61,6 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
     private BukkitTask abilityTask;
     private long nextAbilityWakeTick = Long.MAX_VALUE;
     private AsyncWolfFounderCoordinator asyncFounders;
-    private BukkitTask founderTask;
     private BukkitTask behaviorTask;
     private BukkitTask weaponTask;
 
@@ -306,7 +305,6 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        if (founderTask != null) founderTask.cancel();
         if (asyncFounders != null) asyncFounders.shutdown();
         WonderfulWolfInventoryService inventories = inventoryService;
         inventoryService = null;
