@@ -47,7 +47,8 @@ public final class WonderfulWolfAbilityRuntime {
     public long nextWakeDelayTicks() {
         return AbilityWakeupPolicy.delay(org.bukkit.Bukkit.getCurrentTick(),
                 clock.currentTime(), !bootstrapped || !dirty.isEmpty(),
-                nextJuvenileTick, nextCompatibilityTick,
+                juveniles.isEmpty() ? Long.MAX_VALUE : nextJuvenileTick,
+                nextCompatibilityTick,
                 dueByTime.isEmpty() ? Long.MAX_VALUE : dueByTime.firstKey());
     }
     private boolean bootstrapped;
