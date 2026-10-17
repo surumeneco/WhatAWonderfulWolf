@@ -142,6 +142,9 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         WonderfulWolfRelationshipService relationshipService =
                 new WonderfulWolfRelationshipService(loaded);
         PendingFeedTracker pendingFeeds = new PendingFeedTracker();
+        pendingFeeds.onExpiryWakeup(due -> Bukkit.getScheduler().runTaskLater(
+                this, () -> pendingFeeds.expireAt(Bukkit.getCurrentTick()),
+                Math.max(1L, due - Bukkit.getCurrentTick())));
         WonderfulWolfBehaviorRuntime behavior =
                 new WonderfulWolfBehaviorRuntime(
                         loaded,
