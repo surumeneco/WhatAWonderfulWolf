@@ -266,6 +266,7 @@ public final class WonderfulWolfAbilityRuntime {
         nextDue.clear();
         dirty.clear();
         for (var snapshot : loaded.snapshots()) dirty.add(snapshot.entity().getUniqueId());
+        workChanged.run();
     }
 
     public void clear() {
