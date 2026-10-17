@@ -84,6 +84,8 @@ final class WonderfulWolfTriggeredEffectRuntime {
         }
     }
 
+    boolean hasActiveWork() { return !holyPulses.isEmpty(); }
+
     void clear() {
         holyPulses.clear();
     }
