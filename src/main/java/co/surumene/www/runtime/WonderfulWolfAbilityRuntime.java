@@ -42,6 +42,8 @@ public final class WonderfulWolfAbilityRuntime {
     private final Set<UUID> juveniles = new HashSet<>();
     private final Map<UUID, Long> nextDue = new HashMap<>();
     private final NavigableMap<Long, Set<UUID>> dueByTime = new TreeMap<>();
+    private Runnable workChanged = () -> {};
+    public void onWorkChanged(Runnable callback) { workChanged = Objects.requireNonNull(callback); }
     private boolean bootstrapped;
     private long nextJuvenileTick;
     private long nextCompatibilityTick = 6000L;
