@@ -47,6 +47,8 @@ public final class WonderfulWolfTraitRuntime {
         this.logger = Objects.requireNonNull(logger, "logger");
     }
 
+    public boolean hasTriggeredWork() { return triggeredEffects.hasPendingPulses(); }
+
     public void tick(long serverTick) {
         WwwConfig.Runtime settings =
                 Objects.requireNonNull(config.get(), "runtime config");
