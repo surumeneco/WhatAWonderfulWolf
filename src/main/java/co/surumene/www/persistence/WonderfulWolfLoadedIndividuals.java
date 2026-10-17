@@ -17,6 +17,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 public final class WonderfulWolfLoadedIndividuals {
     private final WonderfulWolfEntityStore store;
@@ -67,6 +68,7 @@ public final class WonderfulWolfLoadedIndividuals {
     private Consumer<Wolf> abilityDirty = wolf -> {};
     private Consumer<Wolf> weaponSync = wolf -> {};
     private Consumer<UUID> removal = id -> {};
+    private BiConsumer<UUID, Boolean> passiveAffectionChanged = (id, replacement) -> {};
 
     public void onAbilityDirty(Consumer<Wolf> callback) {
         abilityDirty = Objects.requireNonNull(callback, "callback");
@@ -84,6 +86,14 @@ public final class WonderfulWolfLoadedIndividuals {
         removal = Objects.requireNonNull(callback, "callback");
     }
 
+    /**
+     * Callback for changes to passive-affection eligibility or commander.
+     * replacement=true invalidates the prior entity incarnation's deadlines.
+     */
+    public void onPassiveAffectionChanged(BiConsumer<UUID, Boolean> callback) {
+        passiveAffectionChanged = Objects.requireNonNull(callback, "callback");
+    }
+
     public void onFirstCreation(Consumer<Wolf> initializer) {
         firstCreation = Objects.requireNonNull(initializer, "initializer");
     }
@@ -99,6 +109,7 @@ public final class WonderfulWolfLoadedIndividuals {
         }
 
         UUID id = wolf.getUniqueId();
+        LoadedIndividual previous = loaded.get(id);
         if (result instanceof RestoreResult.Success success) {
             loaded.put(id, new LoadedIndividual(wolf, success.individual()));
             commanders.update(id, success.individual().commanderId().orElse(null));
@@ -107,9 +118,18 @@ public final class WonderfulWolfLoadedIndividuals {
             registered.accept(wolf);
             abilityDirty.accept(wolf);
             updatePassiveAffection(id, success.individual());
+            if (previous == null || previous.entity() != wolf
+                    || previous.individual().mode() != success.individual().mode()
+                    || !previous.individual().commanderId()
+                            .equals(success.individual().commanderId())) {
+                passiveAffectionChanged.accept(id, previous == null || previous.entity() != wolf);
+            }
             weaponSync.accept(wolf);
         } else {
-            if (loaded.remove(id) != null) removal.accept(id);
+            if (loaded.remove(id) != null) {
+                removal.accept(id);
+                passiveAffectionChanged.accept(id, true);
+            }
             commanders.remove(id);
             tickingTraits.remove(id);
             behaviorActive.remove(id);
@@ -133,9 +153,12 @@ public final class WonderfulWolfLoadedIndividuals {
             updateBehavior(wolf.getUniqueId(), individual);
         }
         if (previous == null || previous.entity() != wolf) registered.accept(wolf);
-        if (previous == null || previous.individual().mode() != individual.mode()
+        if (previous == null || previous.entity() != wolf
+                || previous.individual().mode() != individual.mode()
                 || !previous.individual().commanderId().equals(individual.commanderId())) {
             updatePassiveAffection(wolf.getUniqueId(), individual);
+            passiveAffectionChanged.accept(
+                    wolf.getUniqueId(), previous == null || previous.entity() != wolf);
         }
         if (previous == null || previous.individual().phenotypeSnapshot()
                 != individual.phenotypeSnapshot()) {
@@ -165,6 +188,7 @@ public final class WonderfulWolfLoadedIndividuals {
             passiveAffection.remove(wolf.getUniqueId());
             managementGuis.remove(wolf.getUniqueId());
             removal.accept(wolf.getUniqueId());
+            passiveAffectionChanged.accept(wolf.getUniqueId(), true);
         }
     }
 
@@ -232,7 +256,10 @@ public final class WonderfulWolfLoadedIndividuals {
     }
 
     public void clear() {
-        for (UUID id : loaded.keySet()) removal.accept(id);
+        for (UUID id : loaded.keySet()) {
+            removal.accept(id);
+            passiveAffectionChanged.accept(id, true);
+        }
         loaded.clear();
         commanders.clear();
         tickingTraits.clear();

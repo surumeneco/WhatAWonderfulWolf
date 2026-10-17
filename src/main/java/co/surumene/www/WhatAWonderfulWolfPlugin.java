@@ -53,6 +53,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
     private BiologicalClock biologicalClock;
     private WonderfulWolfAbilityRuntime abilityRuntime;
     private WonderfulWolfBehaviorRuntime behaviorRuntime;
+    private WonderfulWolfRelationshipRuntime relationshipRuntime;
     private WonderfulWolfCommandService commandService;
     private WonderfulWolfWeaponRuntime weaponRuntime;
     private WonderfulWolfInventoryService inventoryService;
@@ -267,6 +268,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                 persistenceListener.restoreAll(world.getEntitiesByClass(Wolf.class)));
         naturalSpawnListener.resumeLoaded();
 
+        this.relationshipRuntime = relationshipRuntime;
         loadedIndividuals = loaded;
         abilityRuntime = abilities;
         behaviorRuntime = behavior;
@@ -336,6 +338,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
             behaviorScheduled.cancel();
         }
 
+        relationshipRuntime = null;
         WonderfulWolfBehaviorRuntime behavior = behaviorRuntime;
         behaviorRuntime = null;
         commandService = null;
@@ -412,6 +415,10 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         if (abilities != null) {
             abilities.markAllDirty();
             abilities.tick();
+        }
+        WonderfulWolfRelationshipRuntime relationship = relationshipRuntime;
+        if (relationship != null) {
+            relationship.onConfigReload();
         }
         WonderfulWolfBehaviorRuntime behavior = behaviorRuntime;
         if (behavior != null) {

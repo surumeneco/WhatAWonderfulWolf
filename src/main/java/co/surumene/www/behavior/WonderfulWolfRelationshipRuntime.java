@@ -2,9 +2,10 @@ package co.surumene.www.behavior;
 
 import co.surumene.www.config.WwwConfig;
 import co.surumene.www.domain.Mode;
+import co.surumene.www.individual.WonderfulWolfIndividual;
 import co.surumene.www.persistence.WonderfulWolfLoadedIndividuals;
+import org.bukkit.entity.Wolf;
 
-import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -21,6 +22,9 @@ public final class WonderfulWolfRelationshipRuntime {
     private final Logger logger;
     private final PassiveAffectionSchedule passiveSchedule =
             new PassiveAffectionSchedule();
+    private final PassiveAffectionDeadlineQueue deadlineQueue =
+            new PassiveAffectionDeadlineQueue();
+    private boolean bootstrapped;
 
     public WonderfulWolfRelationshipRuntime(
             WonderfulWolfLoadedIndividuals loaded,
@@ -35,58 +39,82 @@ public final class WonderfulWolfRelationshipRuntime {
         this.draw = Objects.requireNonNull(draw, "draw");
         this.pendingFeeds = Objects.requireNonNull(pendingFeeds, "pendingFeeds");
         this.logger = Objects.requireNonNull(logger, "logger");
+        loaded.onPassiveAffectionChanged(this::onStateChanged);
+    }
+
+    /** A mutation changes only the affected wolf's work; it does not re-roll. */
+    private void onStateChanged(UUID id, boolean entityReplaced) {
+        if (entityReplaced) {
+            // Never apply an old incarnation's timing to a new Entity.
+            passiveSchedule.clear(id);
+        }
+        if (loaded.find(id).isEmpty()) {
+            passiveSchedule.clear(id);
+            deadlineQueue.discard(id);
+        } else {
+            deadlineQueue.changed(id);
+        }
+    }
+
+    /** Config reload may change the interval without resetting elapsed time. */
+    public void onConfigReload() {
+        for (var snapshot : loaded.passiveAffectionSnapshots()) {
+            deadlineQueue.changed(snapshot.entity().getUniqueId());
+        }
     }
 
     public void tick(long serverTick) {
         if (serverTick < 0L) {
             throw new IllegalArgumentException("serverTick must be >= 0");
         }
+        // Pending feed records still expire after one tick; unlike passive
+        // affection rolls this is a cheap, independent compatibility check.
         pendingFeeds.cleanup(serverTick);
+
+        if (!bootstrapped) {
+            bootstrapped = true;
+            for (var snapshot : loaded.passiveAffectionSnapshots()) {
+                deadlineQueue.changed(snapshot.entity().getUniqueId());
+            }
+        }
+        Set<UUID> candidates = deadlineQueue.takeReady(serverTick);
+        if (candidates.isEmpty()) {
+            return;
+        }
 
         WwwConfig.Relationship settings =
                 Objects.requireNonNull(config.get(), "relationship config");
-        Set<UUID> seen = new HashSet<>();
-
-        for (WonderfulWolfLoadedIndividuals.LoadedSnapshot snapshot :
-                loaded.passiveAffectionSnapshots()) {
-            UUID wolfId = snapshot.entity().getUniqueId();
-            seen.add(wolfId);
-
-            if ((snapshot.individual().mode() != Mode.FOLLOW
-                    && snapshot.individual().mode() != Mode.GUARD)
-                    || snapshot.individual().commanderId().isEmpty()) {
-                passiveSchedule.clear(wolfId);
+        for (UUID id : candidates) {
+            Wolf wolf = loaded.entity(id).orElse(null);
+            WonderfulWolfIndividual individual = loaded.find(id).orElse(null);
+            if (wolf == null || individual == null
+                    || (individual.mode() != Mode.FOLLOW
+                            && individual.mode() != Mode.GUARD)
+                    || individual.commanderId().isEmpty()) {
+                passiveSchedule.clear(id);
+                deadlineQueue.discard(id);
                 continue;
             }
 
-            UUID commanderId =
-                    snapshot.individual().commanderId().orElseThrow();
-            if (!passiveSchedule.isDue(
-                    wolfId,
-                    commanderId,
-                    serverTick,
-                    settings.passiveIncreaseIntervalTicks())) {
-                continue;
+            UUID commanderId = individual.commanderId().orElseThrow();
+            if (passiveSchedule.isDue(
+                    id, commanderId, serverTick,
+                    settings.passiveIncreaseIntervalTicks())
+                    && draw.getAsDouble() < settings.passiveIncreaseProbability()) {
+                try {
+                    relationships.reward(wolf, commanderId);
+                } catch (RuntimeException error) {
+                    logger.warning(
+                            "Failed to persist passive affection gain for Wonderful Wolf "
+                                    + id + ": " + safeMessage(error));
+                }
             }
 
-            if (draw.getAsDouble()
-                    >= settings.passiveIncreaseProbability()) {
-                continue;
-            }
-            try {
-                relationships.reward(
-                        snapshot.entity(),
-                        commanderId);
-            } catch (RuntimeException error) {
-                logger.warning(
-                        "Failed to persist passive affection gain for Wonderful Wolf "
-                                + wolfId
-                                + ": "
-                                + safeMessage(error));
-            }
+            deadlineQueue.schedule(
+                    id,
+                    passiveSchedule.nextCheckTick(
+                            id, settings.passiveIncreaseIntervalTicks()));
         }
-
-        passiveSchedule.retain(seen);
     }
 
     private static String safeMessage(RuntimeException error) {
