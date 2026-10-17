@@ -69,7 +69,6 @@ public final class WonderfulWolfRelationshipRuntime {
         }
         // Pending feed records still expire after one tick; unlike passive
         // affection rolls this is a cheap, independent compatibility check.
-        pendingFeeds.cleanup(serverTick);
 
         if (!bootstrapped) {
             bootstrapped = true;
