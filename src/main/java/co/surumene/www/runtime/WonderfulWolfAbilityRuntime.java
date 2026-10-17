@@ -44,6 +44,12 @@ public final class WonderfulWolfAbilityRuntime {
     private final NavigableMap<Long, Set<UUID>> dueByTime = new TreeMap<>();
     private Runnable workChanged = () -> {};
     public void onWorkChanged(Runnable callback) { workChanged = Objects.requireNonNull(callback); }
+    public long nextWakeDelayTicks() {
+        return AbilityWakeupPolicy.delay(org.bukkit.Bukkit.getCurrentTick(),
+                clock.currentTime(), !bootstrapped || !dirty.isEmpty(),
+                nextJuvenileTick, nextCompatibilityTick,
+                dueByTime.isEmpty() ? Long.MAX_VALUE : dueByTime.firstKey());
+    }
     private boolean bootstrapped;
     private long nextJuvenileTick;
     private long nextCompatibilityTick = 6000L;
