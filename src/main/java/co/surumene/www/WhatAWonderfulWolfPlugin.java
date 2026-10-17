@@ -130,7 +130,6 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         asyncFounders = new AsyncWolfFounderCoordinator(this, getLogger());
         paperFactory.useAsyncCoordinator(asyncFounders);
         breedingListener.useAsyncCoordinator(asyncFounders);
-        founderTask = Bukkit.getScheduler().runTaskTimer(this, asyncFounders::tick, 1L, 1L);
         WonderfulWolfNaturalSpawnListener naturalSpawnListener =
                 new WonderfulWolfNaturalSpawnListener(
                         paperFactory,
