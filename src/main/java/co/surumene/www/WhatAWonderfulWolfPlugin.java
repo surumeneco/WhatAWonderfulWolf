@@ -292,7 +292,6 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         behavior.tick(Bukkit.getCurrentTick());
         weapons.tick(Bukkit.getCurrentTick());
         traitCadenceAnchor = Bukkit.getCurrentTick();
-        refreshTraitTimer();
 
         scheduleAbilityTask();
         behaviorTask = Bukkit.getScheduler().runTaskTimer(
@@ -304,6 +303,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                 },
                 5L,
                 5L);
+        refreshTraitTimer();
         weaponTask = Bukkit.getScheduler().runTaskTimer(
                 this,
                 () -> weapons.tick(Bukkit.getCurrentTick()),
