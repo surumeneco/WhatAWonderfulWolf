@@ -13,7 +13,8 @@ public final class AbilityWakeupPolicy {
         if (!loaded) return Long.MAX_VALUE;
         long nextServerDeadline = compatibilityTick;
         if (juvenile) nextServerDeadline = Math.min(nextServerDeadline, juvenileTick);
-        long serverWait = Math.max(1L, nextServerDeadline - tick);
+        long serverWait = Math.min(MAX_UNNOTIFIED_CLOCK_GAP,
+                Math.max(1L, nextServerDeadline - tick));
         if (nextBiologicalDue != Long.MAX_VALUE) {
             long biologicalWait = Math.max(1L, nextBiologicalDue - biologicalNow);
             serverWait = Math.min(serverWait, Math.min(MAX_UNNOTIFIED_CLOCK_GAP, biologicalWait));
