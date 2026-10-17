@@ -126,6 +126,8 @@ public final class WonderfulWolfBehaviorRuntime {
         if (!loaded.tickingTraitSnapshots().isEmpty()
                 || (traitRuntime != null && traitRuntime.hasTriggeredWork())) {
             traits().tick(serverTick);
+        } else if (traitRuntime != null) {
+            traitRuntime.onInactive();
         }
     }
 
