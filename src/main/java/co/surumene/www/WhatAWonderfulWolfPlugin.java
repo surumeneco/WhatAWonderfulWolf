@@ -36,6 +36,8 @@ import co.surumene.www.ui.WanWandService;
 import co.surumene.www.ui.WonderfulWolfInventoryListener;
 import co.surumene.www.ui.WonderfulWolfInventoryService;
 import co.surumene.wgl.plugin.WonderfulGenomeLibService;
+import co.surumene.wcl.api.runtime.ConsumerContext;
+import co.surumene.wcl.plugin.WonderfulCoreLibraryService;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Wolf;
@@ -47,6 +49,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
     private WonderfulGenomeLibService genomeLib;
+    private ConsumerContext coreContext;
     private MessageService messages;
     private WonderfulWolfProfileLifecycle profileLifecycle;
     private WonderfulWolfLoadedIndividuals loadedIndividuals;
@@ -72,6 +75,9 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         if (genomeLib == null) {
             throw new IllegalStateException("WonderfulGenomeLib service is unavailable");
         }
+        WonderfulCoreLibraryService core = Bukkit.getServicesManager().load(WonderfulCoreLibraryService.class);
+        if (core == null) throw new IllegalStateException("WonderfulCoreLibrary service is unavailable");
+        coreContext = core.openContext(this);
 
         saveDefaultConfig();
         messages = new MessageService(this);
@@ -437,6 +443,10 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         if (lifecycle != null) {
             lifecycle.close();
         }
+        if (coreContext != null) {
+            coreContext.close();
+            coreContext = null;
+        }
         genomeLib = null;
     }
 
@@ -487,6 +497,11 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
 
     public WwwConfig currentConfig() {
         return lifecycle().currentConfig();
+    }
+
+    public ConsumerContext coreContext() {
+        if (coreContext == null || coreContext.isClosed()) throw new IllegalStateException("WCL owner context is unavailable");
+        return coreContext;
     }
 
     public WonderfulGenomeLibService genomeLib() {
