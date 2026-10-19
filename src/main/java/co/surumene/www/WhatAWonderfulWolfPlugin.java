@@ -19,7 +19,7 @@ import co.surumene.www.config.WwwConfigLoader;
 import co.surumene.www.lifecycle.WglProfileRegistryGateway;
 import co.surumene.www.lifecycle.WonderfulWolfProfileLifecycle;
 import co.surumene.www.persistence.WonderfulWolfEntityStore;
-import co.surumene.www.persistence.GenomePayloadFiles;
+import co.surumene.www.persistence.WorldGenomePayloads;
 import co.surumene.www.persistence.WonderfulWolfLoadedIndividuals;
 import co.surumene.www.persistence.WonderfulWolfPersistenceListener;
 import co.surumene.www.runtime.BiologicalClock;
@@ -101,8 +101,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
 
         WonderfulWolfEntityStore entityStore =
                 new WonderfulWolfEntityStore(this, genomeLib.engine(),
-                        new GenomePayloadFiles(Bukkit.getWorlds().getFirst().getWorldFolder().toPath()
-                                .resolve("data").resolve("wonderful").resolve("www").resolve("genomes")));
+                        new WorldGenomePayloads(coreContext(), "www"));
         WonderfulWolfLoadedIndividuals loaded =
                 new WonderfulWolfLoadedIndividuals(entityStore);
         WonderfulWolfPersistenceListener persistenceListener =

@@ -13,7 +13,7 @@ public final class WonderfulWolfEntityStore {
     private final WonderfulWolfPdcPersistence persistence;
 
     public WonderfulWolfEntityStore(Plugin plugin, GenomeEngine genomeEngine) {
-        this(plugin, genomeEngine, null);
+        this(plugin, genomeEngine, (GenomePayloadFiles) null);
     }
 
     public WonderfulWolfEntityStore(
@@ -22,6 +22,16 @@ public final class WonderfulWolfEntityStore {
                 genomeEngine,
                 new PhenotypeSnapshotCodecV1(),
                 new WonderfulWolfRuntimeCodecV1(), files));
+    }
+
+    public WonderfulWolfEntityStore(Plugin plugin, GenomeEngine engine, WorldGenomePayloads records) {
+        this(plugin, new WonderfulWolfPdcPersistence(engine,
+                new PhenotypeSnapshotCodecV1(), new WonderfulWolfRuntimeCodecV1(), records));
+    }
+
+    public boolean migrateWorldRecord(Wolf wolf, boolean dryRun) {
+        if (!wolf.isValid() || !isWonderful(wolf)) return false;
+        return persistence.migrateExternalRecord(values(wolf), dryRun);
     }
 
     WonderfulWolfEntityStore(Plugin plugin, WonderfulWolfPdcPersistence persistence) {
@@ -62,6 +72,6 @@ public final class WonderfulWolfEntityStore {
     }
 
     private PersistentValueStore values(Wolf wolf) {
-        return new PaperPersistentValueStore(plugin, wolf.getPersistentDataContainer());
+        return new PaperPersistentValueStore(plugin, wolf.getPersistentDataContainer(), wolf.getWorld());
     }
 }
