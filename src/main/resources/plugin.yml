@@ -30,3 +30,5 @@ permissions:
     default: op
   www.command.reload:
     default: op
+  www.command.storage:
+    default: op

@@ -228,7 +228,8 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                                 genomeLib.engine(),
                                 lifecycle::currentWolfProfile,
                                 messages),
-                        commands);
+                        commands,
+                        entityStore);
         getLifecycleManager().registerEventHandler(
                 io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents.COMMANDS,
                 event -> event.registrar().register(
