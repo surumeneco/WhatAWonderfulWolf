@@ -85,7 +85,9 @@ public final class WonderfulWolfAdminCommands {
         this.modifyCommands = new WonderfulWolfModifyCommands(loaded, abilities, commandService);
         this.summonCommands = new WonderfulWolfSummonCommands(factory, loaded, abilities, commandService);
         this.storageMigration = worldStore == null ? null : new WorldStorageMigration<>(
-                plugin, Wolf.class, worldStore::isWonderful, worldStore::migrateWorldRecord);
+                plugin, Wolf.class, worldStore::isWonderful, worldStore::migrateWorldRecord,
+                worldStore::knownDirectories,
+                (record, dryRun) -> worldStore.mirrorRecord(record.directory(), record.id(), dryRun));
     }
 
     public com.mojang.brigadier.tree.LiteralCommandNode<CommandSourceStack> build() {

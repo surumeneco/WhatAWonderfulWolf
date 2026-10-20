@@ -11,6 +11,7 @@ import java.util.Objects;
 public final class WonderfulWolfEntityStore {
     private final Plugin plugin;
     private final WonderfulWolfPdcPersistence persistence;
+    private WorldGenomePayloads worldRecords;
 
     public WonderfulWolfEntityStore(Plugin plugin, GenomeEngine genomeEngine) {
         this(plugin, genomeEngine, (GenomePayloadFiles) null);
@@ -27,6 +28,17 @@ public final class WonderfulWolfEntityStore {
     public WonderfulWolfEntityStore(Plugin plugin, GenomeEngine engine, WorldGenomePayloads records) {
         this(plugin, new WonderfulWolfPdcPersistence(engine,
                 new PhenotypeSnapshotCodecV1(), new WonderfulWolfRuntimeCodecV1(), records));
+        this.worldRecords = Objects.requireNonNull(records);
+    }
+
+    public java.util.List<java.nio.file.Path> knownDirectories() {
+        if (worldRecords == null) throw new IllegalStateException("World storage not configured");
+        return worldRecords.knownDirectories();
+    }
+
+    public boolean mirrorRecord(java.nio.file.Path directory, java.util.UUID id, boolean dryRun) {
+        if (worldRecords == null) throw new IllegalStateException("World storage not configured");
+        return worldRecords.mirrorExisting(directory, id, dryRun);
     }
 
     public boolean migrateWorldRecord(Wolf wolf, boolean dryRun) {
