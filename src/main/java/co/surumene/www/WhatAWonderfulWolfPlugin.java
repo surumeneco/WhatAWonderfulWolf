@@ -58,6 +58,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
     private WonderfulWolfBehaviorRuntime behaviorRuntime;
     private WonderfulWolfRelationshipRuntime relationshipRuntime;
     private WonderfulWolfCommandService commandService;
+    private co.surumene.www.command.WonderfulWolfAdminCommands adminCommands;
     private WonderfulWolfWeaponRuntime weaponRuntime;
     private WonderfulWolfInventoryService inventoryService;
     private WanWandService wanWandService;
@@ -230,6 +231,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                                 messages),
                         commands,
                         entityStore);
+        this.adminCommands = adminCommands;
         getLifecycleManager().registerEventHandler(
                 io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents.COMMANDS,
                 event -> event.registrar().register(
@@ -364,6 +366,10 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (adminCommands != null) {
+            adminCommands.close();
+            adminCommands = null;
+        }
         if (asyncFounders != null) asyncFounders.shutdown();
         WonderfulWolfInventoryService inventories = inventoryService;
         inventoryService = null;
