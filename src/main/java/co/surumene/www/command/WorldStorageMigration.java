@@ -19,13 +19,16 @@ import java.util.UUID;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Bounded migration: at most 16 entity visits and 4 immutable files per tick.
  * Neither unloaded chunks nor offline inventories are force-loaded.
  * A file-level sweep protects their Genome references in the persistent world.
  */
-public final class WorldStorageMigration<E extends Entity> {
+public final class WorldStorageMigration<E extends Entity> implements AutoCloseable {
     private static final int ENTITY_VISITS_PER_TICK = 16;
     private static final int FILE_VISITS_PER_TICK = 4;
     private final JavaPlugin plugin;
@@ -35,6 +38,9 @@ public final class WorldStorageMigration<E extends Entity> {
     private final Supplier<List<Path>> directories;
     private final BiFunction<FileRecord, Boolean, Boolean> mirror;
     private Job job;
+    private final ExecutorService fileWorker = Executors.newSingleThreadExecutor(
+            Thread.ofVirtual().name("wonderful-record-migration-", 0).factory());
+    private boolean closed;
 
     public record FileRecord(Path directory, UUID id) {}
 
@@ -51,6 +57,7 @@ public final class WorldStorageMigration<E extends Entity> {
     }
 
     public int start(CommandSender sender, boolean dryRun) {
+        if (closed) throw new IllegalStateException("Migration worker is closed");
         if (job != null && job.status.equals("RUNNING")) {
             sender.sendMessage("WCL-MIGRATION job=busy status=FAILED processed=0 copied=0 skipped=0 failed=1");
             return 0;
@@ -128,6 +135,21 @@ public final class WorldStorageMigration<E extends Entity> {
     }
 
     private void visitRecords(Job active) throws IOException {
+        // CRC verification, disk reads and atomic file publication stay off the main thread.
+        if (active.pendingCopy != null) {
+            if (!active.pendingCopy.isDone()) return;
+            try {
+                if (active.pendingCopy.join()) active.copied++;
+                else active.skipped++;
+            } catch (RuntimeException error) {
+                active.failed++;
+                plugin.getLogger().warning("Record mirror failed "
+                        + active.pendingPath + ": " + error.getMessage());
+            } finally {
+                active.pendingCopy = null;
+                active.pendingPath = null;
+            }
+        }
         int visited = 0;
         while (visited < FILE_VISITS_PER_TICK) {
             if (active.files == null || !active.files.hasNext()) {
@@ -150,14 +172,25 @@ public final class WorldStorageMigration<E extends Entity> {
             try { id = UUID.fromString(filename.substring(0, filename.length() - 4)); }
             catch (IllegalArgumentException ignored) { continue; }
             active.processed++;
-            try {
-                if (mirror.apply(new FileRecord(active.currentDirectory, id), active.dryRun)) active.copied++;
-                else active.skipped++;
-            } catch (RuntimeException error) {
-                active.failed++;
-                plugin.getLogger().warning("Record mirror failed " + source + ": " + error.getMessage());
-            }
+            FileRecord record = new FileRecord(active.currentDirectory, id);
+            active.pendingPath = source;
+            active.pendingCopy = CompletableFuture.supplyAsync(
+                    () -> mirror.apply(record, active.dryRun), fileWorker);
+            return; // at most one disk copy in flight, across scheduler ticks
         }
+    }
+
+    @Override public void close() {
+        if (closed) return;
+        closed = true;
+        if (job != null && "RUNNING".equals(job.status)) {
+            job.failed++;
+            job.status = "FAILED";
+            if (job.task != null) job.task.cancel();
+            if (job.pendingCopy != null) job.pendingCopy.cancel(true);
+            job.closeDirectory();
+        }
+        fileWorker.shutdownNow();
     }
 
     private void complete(Job active) {
@@ -182,6 +215,8 @@ public final class WorldStorageMigration<E extends Entity> {
         Iterator<Path> files;
         Path currentDirectory;
         boolean entitiesDone, recordsDone;
+        CompletableFuture<Boolean> pendingCopy;
+        Path pendingPath;
         int processed, copied, skipped, failed;
         Job(String id, List<World> worlds, List<Path> sourceDirectories, boolean dryRun) {
             this.id = id;
