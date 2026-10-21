@@ -36,7 +36,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-public final class WonderfulWolfAdminCommands {
+public final class WonderfulWolfAdminCommands implements AutoCloseable {
     private static final int MAX_TARGETS = 10;
 
     private final WhatAWonderfulWolfPlugin plugin;
@@ -50,6 +50,11 @@ public final class WonderfulWolfAdminCommands {
     private final WonderfulWolfModifyCommands modifyCommands;
     private final WonderfulWolfSummonCommands summonCommands;
     private final WorldStorageMigration<Wolf> storageMigration;
+
+    @Override public void close() {
+        if (storageMigration != null) storageMigration.close();
+    }
+
 
     public WonderfulWolfAdminCommands(
             WhatAWonderfulWolfPlugin plugin,
