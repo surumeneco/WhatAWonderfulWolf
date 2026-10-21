@@ -15,6 +15,7 @@ public final class WonderfulWolfPdcPersistence {
     public static final String SCHEMA_VERSION_KEY = "schema_version";
     public static final String GENOME_KEY = "genome";
     public static final String GENOME_REFERENCE_KEY = "genome_ref";
+    public static final String GENOME_WORLD_KEY = "genome_world_uuid";
     public static final String PHENOTYPE_KEY = "phenotype_snapshot";
     public static final String RUNTIME_KEY = "runtime_state";
 
@@ -26,6 +27,7 @@ public final class WonderfulWolfPdcPersistence {
     private final PhenotypeSnapshotCodecV1 phenotypeCodec;
     private final WonderfulWolfRuntimeCodecV1 runtimeCodec;
     private final GenomePayloadFiles payloadFiles;
+    private final WorldGenomePayloads worldPayloads;
 
     /**
      * An in-process proof of which immutable objects were encoded (or validated
@@ -43,7 +45,7 @@ public final class WonderfulWolfPdcPersistence {
             GenomeEngine genomeEngine,
             PhenotypeSnapshotCodecV1 phenotypeCodec,
             WonderfulWolfRuntimeCodecV1 runtimeCodec) {
-        this(genomeEngine, phenotypeCodec, runtimeCodec, null);
+        this(genomeEngine, phenotypeCodec, runtimeCodec, (GenomePayloadFiles) null);
     }
 
     public WonderfulWolfPdcPersistence(
@@ -55,10 +57,50 @@ public final class WonderfulWolfPdcPersistence {
         this.phenotypeCodec = Objects.requireNonNull(phenotypeCodec, "phenotypeCodec");
         this.runtimeCodec = Objects.requireNonNull(runtimeCodec, "runtimeCodec");
         this.payloadFiles = payloadFiles;
+        this.worldPayloads = null;
+    }
+
+    public WonderfulWolfPdcPersistence(
+            GenomeEngine genomeEngine,
+            PhenotypeSnapshotCodecV1 phenotypeCodec,
+            WonderfulWolfRuntimeCodecV1 runtimeCodec,
+            WorldGenomePayloads worldPayloads) {
+        this.genomeEngine = Objects.requireNonNull(genomeEngine, "genomeEngine");
+        this.phenotypeCodec = Objects.requireNonNull(phenotypeCodec, "phenotypeCodec");
+        this.runtimeCodec = Objects.requireNonNull(runtimeCodec, "runtimeCodec");
+        this.payloadFiles = null;
+        this.worldPayloads = Objects.requireNonNull(worldPayloads, "worldPayloads");
+    }
+
+    private org.bukkit.World entityWorld(PersistentValueStore store) {
+        if (store instanceof PaperPersistentValueStore paper) return paper.world();
+        throw new IllegalStateException("World-scoped persistence requires an actual Paper Wolf");
+    }
+
+    private UUID savedWorld(PersistentValueStore store) {
+        String raw = store.getString(GENOME_WORLD_KEY);
+        return raw == null ? null : UUID.fromString(raw);
+    }
+
+    /** Called by a bounded operator migration task. Never deletes old records. */
+    public boolean migrateExternalRecord(PersistentValueStore store, boolean dryRun) {
+        if (worldPayloads == null) throw new IllegalStateException("World storage is not configured");
+        String raw = store.getString(GENOME_REFERENCE_KEY);
+        if (raw == null) return false;
+        UUID id = UUID.fromString(raw);
+        var world = entityWorld(store);
+        boolean wasLocal = worldPayloads.isLocal(world, id);
+        if (dryRun) {
+            worldPayloads.read(world, savedWorld(store), id);
+            return !wasLocal;
+        }
+        boolean copied = worldPayloads.ensureLocal(world, savedWorld(store), id);
+        store.putString(GENOME_WORLD_KEY, world.getUID().toString());
+        return copied;
     }
 
     public boolean needsExternalMigration(PersistentValueStore store) {
-        return payloadFiles != null && isWonderful(store)
+        return (payloadFiles != null || worldPayloads != null) && isWonderful(store)
                 && Integer.valueOf(SCHEMA_VERSION).equals(store.getInteger(SCHEMA_VERSION_KEY));
     }
 
@@ -78,7 +120,7 @@ public final class WonderfulWolfPdcPersistence {
         byte[] genome = null;
         byte[] phenotype = null;
         UUID externalRef = null;
-        if (payloadFiles != null) {
+        if (payloadFiles != null || worldPayloads != null) {
             String previous = store.getString(GENOME_REFERENCE_KEY);
             UUID previousRef = previous == null ? null : UUID.fromString(previous);
             ImmutableRecord known = previousRef == null ? null : recentImmutableRecords.get(previousRef);
@@ -87,13 +129,16 @@ public final class WonderfulWolfPdcPersistence {
                     && known != null
                     && known.genome() == individual.genome()
                     && known.phenotype() == individual.phenotypeSnapshot()) {
+                if (worldPayloads != null) worldPayloads.ensureLocal(entityWorld(store), savedWorld(store), previousRef);
                 externalRef = previousRef;
             } else {
                 genome = genomeEngine.encode(individual.genome());
                 phenotype = phenotypeCodec.encode(individual.phenotypeSnapshot());
                 // Publish before touching any PDC marker: failed writes retain
                 // the previously committed reference and runtime payload.
-                externalRef = payloadFiles.writeOrReuse(previousRef, genome, phenotype);
+                externalRef = worldPayloads == null
+                        ? payloadFiles.writeOrReuse(previousRef, genome, phenotype)
+                        : worldPayloads.writeOrReuse(entityWorld(store), savedWorld(store), previousRef, genome, phenotype);
             }
         } else {
             genome = genomeEngine.encode(individual.genome());
@@ -106,9 +151,11 @@ public final class WonderfulWolfPdcPersistence {
             store.putBytes(GENOME_KEY, genome);
             store.putBytes(PHENOTYPE_KEY, phenotype);
             store.remove(GENOME_REFERENCE_KEY);
+            store.remove(GENOME_WORLD_KEY);
             store.putInteger(SCHEMA_VERSION_KEY, SCHEMA_VERSION);
         } else {
             store.putString(GENOME_REFERENCE_KEY, externalRef.toString());
+            if (worldPayloads != null) store.putString(GENOME_WORLD_KEY, entityWorld(store).getUID().toString());
             store.remove(GENOME_KEY);
             store.remove(PHENOTYPE_KEY);
             store.putInteger(SCHEMA_VERSION_KEY, EXTERNAL_SCHEMA_VERSION);
@@ -147,12 +194,18 @@ public final class WonderfulWolfPdcPersistence {
             byte[] phenotypeBytes;
             if (schemaVersion == EXTERNAL_SCHEMA_VERSION) {
                 String reference = store.getString(GENOME_REFERENCE_KEY);
-                if (reference == null || payloadFiles == null) {
+                if (reference == null || (payloadFiles == null && worldPayloads == null)) {
                     return failure(RestoreFailureReason.MISSING_DATA, "missing WWW external Genome reference");
                 }
-                GenomePayloadFiles.Payload payload = payloadFiles.read(UUID.fromString(reference));
-                genomeBytes = payload.genome();
-                phenotypeBytes = payload.phenotype();
+                if (worldPayloads != null) {
+                    var payload = worldPayloads.read(entityWorld(store), savedWorld(store), UUID.fromString(reference));
+                    genomeBytes = payload.genome();
+                    phenotypeBytes = payload.phenotype();
+                } else {
+                    var payload = payloadFiles.read(UUID.fromString(reference));
+                    genomeBytes = payload.genome();
+                    phenotypeBytes = payload.phenotype();
+                }
             } else {
                 genomeBytes = requiredBytes(store, GENOME_KEY);
                 phenotypeBytes = requiredBytes(store, PHENOTYPE_KEY);
@@ -163,7 +216,7 @@ public final class WonderfulWolfPdcPersistence {
             DiploidGenome genome = genomeEngine.decodeBinary(genomeBytes);
             PhenotypeSnapshot phenotype = phenotypeCodec.decode(phenotypeBytes);
             WonderfulWolfIndividual individual = runtimeCodec.decode(runtimeBytes, genome, phenotype);
-            if (schemaVersion == EXTERNAL_SCHEMA_VERSION && payloadFiles != null) {
+            if (schemaVersion == EXTERNAL_SCHEMA_VERSION && (payloadFiles != null || worldPayloads != null)) {
                 UUID reference = UUID.fromString(store.getString(GENOME_REFERENCE_KEY));
                 recentImmutableRecords.put(reference, new ImmutableRecord(genome, phenotype));
             }

@@ -11,9 +11,10 @@ import java.util.Objects;
 public final class WonderfulWolfEntityStore {
     private final Plugin plugin;
     private final WonderfulWolfPdcPersistence persistence;
+    private WorldGenomePayloads worldRecords;
 
     public WonderfulWolfEntityStore(Plugin plugin, GenomeEngine genomeEngine) {
-        this(plugin, genomeEngine, null);
+        this(plugin, genomeEngine, (GenomePayloadFiles) null);
     }
 
     public WonderfulWolfEntityStore(
@@ -22,6 +23,27 @@ public final class WonderfulWolfEntityStore {
                 genomeEngine,
                 new PhenotypeSnapshotCodecV1(),
                 new WonderfulWolfRuntimeCodecV1(), files));
+    }
+
+    public WonderfulWolfEntityStore(Plugin plugin, GenomeEngine engine, WorldGenomePayloads records) {
+        this(plugin, new WonderfulWolfPdcPersistence(engine,
+                new PhenotypeSnapshotCodecV1(), new WonderfulWolfRuntimeCodecV1(), records));
+        this.worldRecords = Objects.requireNonNull(records);
+    }
+
+    public java.util.List<java.nio.file.Path> knownDirectories() {
+        if (worldRecords == null) throw new IllegalStateException("World storage not configured");
+        return worldRecords.knownDirectories();
+    }
+
+    public boolean mirrorRecord(java.nio.file.Path directory, java.util.UUID id, boolean dryRun) {
+        if (worldRecords == null) throw new IllegalStateException("World storage not configured");
+        return worldRecords.mirrorExisting(directory, id, dryRun);
+    }
+
+    public boolean migrateWorldRecord(Wolf wolf, boolean dryRun) {
+        if (!wolf.isValid() || !isWonderful(wolf)) return false;
+        return persistence.migrateExternalRecord(values(wolf), dryRun);
     }
 
     WonderfulWolfEntityStore(Plugin plugin, WonderfulWolfPdcPersistence persistence) {
@@ -62,6 +84,6 @@ public final class WonderfulWolfEntityStore {
     }
 
     private PersistentValueStore values(Wolf wolf) {
-        return new PaperPersistentValueStore(plugin, wolf.getPersistentDataContainer());
+        return new PaperPersistentValueStore(plugin, wolf.getPersistentDataContainer(), wolf.getWorld());
     }
 }

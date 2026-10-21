@@ -19,7 +19,7 @@ import co.surumene.www.config.WwwConfigLoader;
 import co.surumene.www.lifecycle.WglProfileRegistryGateway;
 import co.surumene.www.lifecycle.WonderfulWolfProfileLifecycle;
 import co.surumene.www.persistence.WonderfulWolfEntityStore;
-import co.surumene.www.persistence.GenomePayloadFiles;
+import co.surumene.www.persistence.WorldGenomePayloads;
 import co.surumene.www.persistence.WonderfulWolfLoadedIndividuals;
 import co.surumene.www.persistence.WonderfulWolfPersistenceListener;
 import co.surumene.www.runtime.BiologicalClock;
@@ -36,6 +36,8 @@ import co.surumene.www.ui.WanWandService;
 import co.surumene.www.ui.WonderfulWolfInventoryListener;
 import co.surumene.www.ui.WonderfulWolfInventoryService;
 import co.surumene.wgl.plugin.WonderfulGenomeLibService;
+import co.surumene.wcl.api.runtime.ConsumerContext;
+import co.surumene.wcl.plugin.WonderfulCoreLibraryService;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Wolf;
@@ -47,6 +49,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
     private WonderfulGenomeLibService genomeLib;
+    private ConsumerContext coreContext;
     private MessageService messages;
     private WonderfulWolfProfileLifecycle profileLifecycle;
     private WonderfulWolfLoadedIndividuals loadedIndividuals;
@@ -55,6 +58,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
     private WonderfulWolfBehaviorRuntime behaviorRuntime;
     private WonderfulWolfRelationshipRuntime relationshipRuntime;
     private WonderfulWolfCommandService commandService;
+    private co.surumene.www.command.WonderfulWolfAdminCommands adminCommands;
     private WonderfulWolfWeaponRuntime weaponRuntime;
     private WonderfulWolfInventoryService inventoryService;
     private WanWandService wanWandService;
@@ -72,6 +76,9 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         if (genomeLib == null) {
             throw new IllegalStateException("WonderfulGenomeLib service is unavailable");
         }
+        WonderfulCoreLibraryService core = Bukkit.getServicesManager().load(WonderfulCoreLibraryService.class);
+        if (core == null) throw new IllegalStateException("WonderfulCoreLibrary service is unavailable");
+        coreContext = core.openContext(this);
 
         saveDefaultConfig();
         messages = new MessageService(this);
@@ -95,8 +102,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
 
         WonderfulWolfEntityStore entityStore =
                 new WonderfulWolfEntityStore(this, genomeLib.engine(),
-                        new GenomePayloadFiles(Bukkit.getWorlds().getFirst().getWorldFolder().toPath()
-                                .resolve("data").resolve("wonderful").resolve("www").resolve("genomes")));
+                        new WorldGenomePayloads(coreContext(), "www"));
         WonderfulWolfLoadedIndividuals loaded =
                 new WonderfulWolfLoadedIndividuals(entityStore);
         WonderfulWolfPersistenceListener persistenceListener =
@@ -223,7 +229,9 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                                 genomeLib.engine(),
                                 lifecycle::currentWolfProfile,
                                 messages),
-                        commands);
+                        commands,
+                        entityStore);
+        this.adminCommands = adminCommands;
         getLifecycleManager().registerEventHandler(
                 io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents.COMMANDS,
                 event -> event.registrar().register(
@@ -358,6 +366,10 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (adminCommands != null) {
+            adminCommands.close();
+            adminCommands = null;
+        }
         if (asyncFounders != null) asyncFounders.shutdown();
         WonderfulWolfInventoryService inventories = inventoryService;
         inventoryService = null;
@@ -437,6 +449,10 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         if (lifecycle != null) {
             lifecycle.close();
         }
+        if (coreContext != null) {
+            coreContext.close();
+            coreContext = null;
+        }
         genomeLib = null;
     }
 
@@ -487,6 +503,11 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
 
     public WwwConfig currentConfig() {
         return lifecycle().currentConfig();
+    }
+
+    public ConsumerContext coreContext() {
+        if (coreContext == null || coreContext.isClosed()) throw new IllegalStateException("WCL owner context is unavailable");
+        return coreContext;
     }
 
     public WonderfulGenomeLibService genomeLib() {
