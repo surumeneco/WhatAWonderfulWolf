@@ -105,6 +105,53 @@ public final class WonderfulWolfRuntimeCodecV1 {
         }
     }
 
+    /** Decode owner, commander and all real inventory slots without a Genome or live Entity.
+     * The remainder of the runtime payload is also parsed and validated (no silent partial read).
+     */
+    public record RuntimeStorage(Optional<UUID> ownerId, Optional<UUID> commanderId,
+            Optional<ItemStackSnapshot> weapon, Map<Integer, ItemStackSnapshot> inventory) {
+        public RuntimeStorage {
+            Objects.requireNonNull(ownerId);
+            Objects.requireNonNull(commanderId);
+            Objects.requireNonNull(weapon);
+            inventory=Map.copyOf(inventory);
+        }
+    }
+
+    public RuntimeStorage decodeStorage(byte[] bytes) {
+        Objects.requireNonNull(bytes, "bytes");
+        try {
+            DataInputStream in = new DataInputStream(new ByteArrayInputStream(bytes));
+            if (in.readInt() != MAGIC) throw new PersistenceCodecException("invalid runtime state magic");
+            int version = in.readUnsignedByte();
+            if (version < 1 || version > CONTAINER_VERSION)
+                throw new PersistenceCodecException("unsupported runtime state container version: " + version);
+            Optional<UUID> owner = readOptionalUuid(in);
+            in.readLong(); // adultBiologicalTime, outside the external-storage API
+            readEnum(in, Mode.class);
+            Optional<UUID> commander = readOptionalUuid(in);
+            readEnum(in, ActionDistance.class);
+            readOptionalPosition(in);
+            readAffection(in);
+            Optional<ItemStackSnapshot> weapon = readOptionalItem(in);
+            Map<Integer, ItemStackSnapshot> inventory = readInventory(in);
+            in.readInt(); // generation
+            readPedigree(in, version);
+            if (version >= 2) readAbilityOverrides(in);
+            if (in.available() != 0)
+                throw new PersistenceCodecException("trailing bytes are not allowed in runtime state");
+            return new RuntimeStorage(owner, commander, weapon, inventory);
+        } catch (PersistenceCodecException e) {
+            throw e;
+        } catch (EOFException e) {
+            throw new PersistenceCodecException("truncated runtime state", e);
+        } catch (IOException e) {
+            throw new PersistenceCodecException("failed to decode runtime state", e);
+        } catch (IllegalArgumentException e) {
+            throw new PersistenceCodecException("malformed runtime state: " + e.getMessage(), e);
+        }
+    }
+
     private static void writeAbilityOverrides(
             DataOutputStream out, Map<Ability, Double> overrides) throws IOException {
         out.writeByte(overrides.size());

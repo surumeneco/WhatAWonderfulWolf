@@ -105,6 +105,10 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                         new WorldGenomePayloads(coreContext(), "www"));
         WonderfulWolfLoadedIndividuals loaded =
                 new WonderfulWolfLoadedIndividuals(entityStore);
+        Bukkit.getServicesManager().register(
+                co.surumene.wcl.plugin.inventory.WonderfulStorageReader.class,
+                new co.surumene.www.persistence.WonderfulWolfStorageReader(this, loaded),
+                this, org.bukkit.plugin.ServicePriority.Normal);
         WonderfulWolfPersistenceListener persistenceListener =
                 new WonderfulWolfPersistenceListener(loaded, getLogger());
         WonderfulWolfBreedingService breedingService =
@@ -366,6 +370,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        Bukkit.getServicesManager().unregisterAll(this);
         if (adminCommands != null) {
             adminCommands.close();
             adminCommands = null;
