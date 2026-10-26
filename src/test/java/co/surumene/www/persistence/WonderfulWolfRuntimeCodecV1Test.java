@@ -124,6 +124,21 @@ final class WonderfulWolfRuntimeCodecV1Test {
         assertEquals(founder, codec.decode(previous, founder.genome(), founder.phenotypeSnapshot()));
     }
 
+    @Test void storageDecoderReadsCompleteDataWithoutLoadingGenomeOrEntity() {
+        WonderfulWolfIndividual source = individual(false);
+        byte[] bytes = codec.encode(source);
+        var storage = codec.decodeStorage(bytes);
+        assertEquals(source.ownerId(),storage.ownerId());
+        assertEquals(source.commanderId(),storage.commanderId());
+        assertEquals(source.weapon(),storage.weapon());
+        assertEquals(source.inventory(),storage.inventory());
+        assertThrows(PersistenceCodecException.class,
+                () -> codec.decodeStorage(Arrays.copyOf(bytes,bytes.length+1)));
+        byte[] unsupported=bytes.clone();
+        unsupported[4]=4;
+        assertThrows(PersistenceCodecException.class,()->codec.decodeStorage(unsupported));
+    }
+
     private static WonderfulWolfIndividual withPedigree(
             WonderfulWolfIndividual source, PedigreeSnapshot pedigree) {
         return new WonderfulWolfIndividual(
