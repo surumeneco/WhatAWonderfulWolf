@@ -30,13 +30,5 @@ public enum AbilityRank {
     }
 
     public static AbilityRank fromNormalized(double normalized) {
-        if (!Double.isFinite(normalized)) {
-            throw new IllegalArgumentException("normalized must be finite");
-        }
-        if (normalized > 1.25) return IMPOSSIBLE;
-        if (normalized > 1.0) return MYTHICAL;
-        double clamped = Math.max(0.0, Math.min(1.0, normalized));
-        int index = Math.min(8, (int) Math.floor(clamped * 9.0));
-        return values()[index];
-    }
-}
+        return values()[co.surumene.wcl.api.ability.NormalizedRankIndex.of(normalized, true)];
+    }}
