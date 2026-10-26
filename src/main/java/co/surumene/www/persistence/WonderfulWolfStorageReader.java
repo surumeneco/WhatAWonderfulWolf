@@ -37,10 +37,14 @@ public final class WonderfulWolfStorageReader implements WonderfulStorageReader 
         if(individual.isEmpty())return new StorageReadResult.Failure("MISSING_DATA","Missing WWW loaded state");
         var entity=wolf.orElseThrow();
         var place=entity.getLocation();
-        return snapshot(entityId,entity.getWorld().getUID(),
-                Optional.of(new StorageSnapshot.Position(place.getX(),place.getY(),place.getZ())),
-                individual.orElseThrow().ownerId(),individual.orElseThrow().commanderId(),
-                individual.orElseThrow().weapon(),individual.orElseThrow().inventory());
+        try {
+            return snapshot(entityId,entity.getWorld().getUID(),
+                    Optional.of(new StorageSnapshot.Position(place.getX(),place.getY(),place.getZ())),
+                    individual.orElseThrow().ownerId(),individual.orElseThrow().commanderId(),
+                    individual.orElseThrow().weapon(),individual.orElseThrow().inventory());
+        } catch (RuntimeException problem) {
+            return new StorageReadResult.Failure("CORRUPT_DATA",String.valueOf(problem.getMessage()));
+        }
     }
 
     @Override public StorageReadResult readStored(UUID entityId,UUID worldId,
@@ -87,10 +91,17 @@ public final class WonderfulWolfStorageReader implements WonderfulStorageReader 
         owner.ifPresent(id->relations.put("owner",id));
         commander.ifPresent(id->relations.put("commander",id));
         List<StoredItem> items=new ArrayList<>();
-        weapon.ifPresent(item->items.add(new StoredItem("weapon",item.bytes())));
-        new TreeMap<>(inventory).forEach((slot,item)->items.add(new StoredItem("cargo:"+slot,item.bytes())));
+        weapon.ifPresent(item->addItem(items,"weapon",item));
+        new TreeMap<>(inventory).forEach((slot,item)->addItem(items,"cargo:"+slot,item));
         return new StorageReadResult.Success(
                 new StorageSnapshot(entityId,providerId(),worldId,position,relations,items));
+    }
+    private static void addItem(List<StoredItem> items,String slot,ItemStackSnapshot snapshot) {
+        byte[] bytes=snapshot.bytes();
+        org.bukkit.inventory.ItemStack restored=org.bukkit.inventory.ItemStack.deserializeBytes(bytes);
+        if(restored==null || restored.isEmpty())
+            throw new IllegalArgumentException("Empty serialized WWW item in "+slot);
+        items.add(new StoredItem(slot,bytes));
     }
     private NamespacedKey key(String name){return new NamespacedKey(plugin,name);}
 }
