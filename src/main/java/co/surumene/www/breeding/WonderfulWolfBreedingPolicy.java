@@ -39,7 +39,8 @@ public final class WonderfulWolfBreedingPolicy {
         Objects.requireNonNull(strength, "strength");
         Objects.requireNonNull(policy, "policy");
         double weak = policy.directInheritance().weakPreferProbability();
-        return strength == TraitStrength.STRONG ? Math.min(1.0, weak * 2.0) : weak;
+        return co.surumene.wcl.api.genetics.BreedingMath.directRetention(
+                strength == TraitStrength.STRONG, weak, Math.min(1.0, weak * 2.0));
     }
 
     public static List<InheritanceConstraint> resolveSoftAgainstHard(
@@ -72,9 +73,10 @@ public final class WonderfulWolfBreedingPolicy {
             PhenotypeSnapshot snapshot,
             WwwConfig.BreedingPolicy policy) {
         return expressedTrait(snapshot, Trait.WILD)
-                .map(strength -> strength == TraitStrength.STRONG
-                        ? policy.wildTrait().strongParentMultiplier()
-                        : policy.wildTrait().weakParentMultiplier())
+                .map(strength -> co.surumene.wcl.api.genetics.BreedingMath.parentTraitMultiplier(
+                        strength == TraitStrength.STRONG,
+                        policy.wildTrait().weakParentMultiplier(),
+                        policy.wildTrait().strongParentMultiplier()))
                 .orElse(1.0);
     }
 
