@@ -269,6 +269,9 @@ public final class WonderfulWolfRuntimeCodecV1 {
         Map<Integer, ItemStackSnapshot> inventory = new HashMap<>();
         for (int i = 0; i < count; i++) {
             int slot = in.readInt();
+            if (slot < 0) {
+                throw new PersistenceCodecException("negative inventory slot: " + slot);
+            }
             ItemStackSnapshot item = readItem(in);
             if (inventory.put(slot, item) != null) {
                 throw new PersistenceCodecException("duplicate inventory slot: " + slot);
