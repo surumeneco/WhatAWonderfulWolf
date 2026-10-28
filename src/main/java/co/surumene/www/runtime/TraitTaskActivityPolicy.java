@@ -5,10 +5,10 @@ public final class TraitTaskActivityPolicy {
     private TraitTaskActivityPolicy() {}
 
     public static boolean shouldRun(int activeSources, boolean pulsesActive) {
-        return activeSources > 0 || pulsesActive;
+        return co.surumene.wcl.api.runtime.TraitActivityGate.shouldRun(activeSources, pulsesActive);
     }
 
     public static boolean shouldStop(int activeSources, boolean pulsesActive) {
-        return !shouldRun(activeSources, pulsesActive);
+        return co.surumene.wcl.api.runtime.TraitActivityGate.shouldStop(activeSources, pulsesActive);
     }
 }
