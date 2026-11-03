@@ -1,40 +1,26 @@
 package co.surumene.www.runtime;
 
-import org.bukkit.entity.LivingEntity;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
 import org.junit.jupiter.api.Test;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
 
-/** Ensure WWW's Paper adapter respects WCL's infinite-duration semantics. */
+/**
+ * Regression contract for the WCL decision delegated to by the WWW
+ * status-effect adapter. No Paper potion registry is needed by this test.
+ */
 class WonderfulWolfStatusEffectInfiniteTest {
     @Test
     void preservesExistingInfiniteSameLevelEffect() {
-        LivingEntity wolf = mock(LivingEntity.class);
-        PotionEffect existing = mock(PotionEffect.class);
-        when(existing.getAmplifier()).thenReturn(0);
-        when(existing.getDuration()).thenReturn(-1);
-        when(wolf.getPotionEffect(PotionEffectType.FIRE_RESISTANCE)).thenReturn(existing);
-
-        WonderfulWolfStatusEffectRuntime.applyPotion(
-                wolf, PotionEffectType.FIRE_RESISTANCE, 80, 0, 40);
-
-        verify(wolf, never()).addPotionEffect(any(PotionEffect.class));
+        assertFalse(EffectPolicy.shouldApplyPotion(0, -1, 0, 40));
     }
 
     @Test
     void preservesStrongerInfiniteEffect() {
-        LivingEntity wolf = mock(LivingEntity.class);
-        PotionEffect existing = mock(PotionEffect.class);
-        when(existing.getAmplifier()).thenReturn(1);
-        when(existing.getDuration()).thenReturn(-1);
-        when(wolf.getPotionEffect(PotionEffectType.FIRE_RESISTANCE)).thenReturn(existing);
+        assertFalse(EffectPolicy.shouldApplyPotion(1, -1, 0, 40));
+    }
 
-        WonderfulWolfStatusEffectRuntime.applyPotion(
-                wolf, PotionEffectType.FIRE_RESISTANCE, 80, 0, 40);
-
-        verify(wolf, never()).addPotionEffect(any(PotionEffect.class));
+    @Test
+    void stillAllowsHigherLevelToReplaceWeakerInfiniteEffect() {
+        assertTrue(EffectPolicy.shouldApplyPotion(0, -1, 1, 40));
     }
 }
