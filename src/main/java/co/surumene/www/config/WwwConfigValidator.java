@@ -260,45 +260,45 @@ public final class WwwConfigValidator {
 
     private static void unit(double value, String path) {
         finite(value, path);
-        if (value < 0.0 || value > 1.0) {
+        if (!co.surumene.wcl.api.config.NumericValidation.unit(value)) {
             throw invalid(path, "must be in [0, 1]");
         }
     }
 
     private static void positive(double value, String path) {
         finite(value, path);
-        if (value <= 0.0) {
+        if (!co.surumene.wcl.api.config.NumericValidation.positive(value)) {
             throw invalid(path, "must be > 0");
         }
     }
 
     private static void nonNegative(double value, String path) {
         finite(value, path);
-        if (value < 0.0) {
+        if (!co.surumene.wcl.api.config.NumericValidation.nonNegative(value)) {
             throw invalid(path, "must be >= 0");
         }
     }
 
     private static void nonNegative(int value, String path) {
-        if (value < 0) {
+        if (!co.surumene.wcl.api.config.NumericValidation.nonNegative(value)) {
             throw invalid(path, "must be >= 0");
         }
     }
 
     private static void atLeastOne(int value, String path) {
-        if (value < 1) {
+        if (!co.surumene.wcl.api.config.NumericValidation.atLeastOne(value)) {
             throw invalid(path, "must be >= 1");
         }
     }
 
     private static void finite(double value, String path) {
-        if (!Double.isFinite(value)) {
+        if (!co.surumene.wcl.api.config.NumericValidation.finite(value)) {
             throw invalid(path, "must be finite");
         }
     }
 
     private static void ordered(double min, double max, String minPath, String maxPath) {
-        if (min > max) {
+        if (!co.surumene.wcl.api.config.NumericValidation.ordered(min, max)) {
             throw invalid(minPath + "/" + maxPath, "must satisfy min <= max");
         }
     }

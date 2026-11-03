@@ -143,6 +143,45 @@ final class WonderfulWolfLoadedIndividualsTest {
         assertTrue(loaded.behaviorTickSnapshots().isEmpty());
     }
 
+
+    @Test
+    void passiveAffectionIndexNotifiesOnlyLifecycleOrEligibilityChanges() {
+        WonderfulWolfLoadedIndividuals loaded = new WonderfulWolfLoadedIndividuals(
+                new WonderfulWolfEntityStore(plugin(), engine));
+        UUID id = UUID.fromString("dddddddd-dddd-dddd-dddd-dddddddddddd");
+        MemoryPdc pdc = new MemoryPdc();
+        Wolf original = wolf(id, pdc.proxy());
+        WonderfulWolfIndividual source = individual();
+        List<String> changes = new ArrayList<>();
+        loaded.onPassiveAffectionChanged(
+                (changedId, replaced) -> changes.add(changedId + ":" + replaced));
+
+        loaded.saveAndRegister(original, source);
+        loaded.saveAndRegister(original, source);
+        assertEquals(List.of(id + ":true"), changes);
+
+        WonderfulWolfIndividual wandering = source.withCommandState(
+                Mode.WANDER, Optional.empty(), ActionDistance.NORMAL, Optional.empty());
+        loaded.saveAndRegister(original, wandering);
+        assertEquals(List.of(id + ":true", id + ":false"), changes);
+
+        WonderfulWolfIndividual following = wandering.withCommandState(
+                Mode.FOLLOW, source.commanderId(), ActionDistance.NORMAL, Optional.empty());
+        loaded.saveAndRegister(original, following);
+        assertEquals(List.of(id + ":true", id + ":false", id + ":false"), changes);
+
+        Wolf replacement = wolf(id, pdc.proxy());
+        assertInstanceOf(RestoreResult.Success.class, loaded.register(replacement));
+        assertEquals(4, changes.size());
+        assertEquals(id + ":true", changes.get(3));
+
+        loaded.unregister(original);
+        assertEquals(4, changes.size());
+        loaded.unregister(replacement);
+        assertEquals(5, changes.size());
+        assertEquals(id + ":true", changes.get(4));
+    }
+
     private static Plugin plugin() {
         return (Plugin) Proxy.newProxyInstance(
                 Plugin.class.getClassLoader(),

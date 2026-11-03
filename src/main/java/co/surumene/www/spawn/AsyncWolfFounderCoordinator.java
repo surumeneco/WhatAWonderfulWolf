@@ -3,7 +3,6 @@ package co.surumene.www.spawn;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 
-import java.util.ArrayDeque;
 import java.util.Objects;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Callable;
@@ -18,7 +17,7 @@ public final class AsyncWolfFounderCoordinator {
     private final Plugin plugin;
     private final Logger logger;
     private final ThreadPoolExecutor worker;
-    private final ArrayDeque<Runnable> waiting = new ArrayDeque<>();
+    private final FounderDispatchQueue<Runnable> waiting = new FounderDispatchQueue<>();
     private volatile boolean closed;
 
     public AsyncWolfFounderCoordinator(Plugin plugin, Logger logger) {
@@ -39,7 +38,7 @@ public final class AsyncWolfFounderCoordinator {
         Objects.requireNonNull(mainThreadCommit);
         Objects.requireNonNull(onFailure);
         if (closed || waiting.size() >= 128) return false;
-        waiting.addLast(() -> {
+        waiting.offer(() -> {
             T result = null;
             Exception failure = null;
             try {
@@ -53,28 +52,29 @@ public final class AsyncWolfFounderCoordinator {
             try {
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     if (closed || !plugin.isEnabled()) return;
-                    if (error != null) {
-                        onFailure.accept(error);
-                    } else {
-                        mainThreadCommit.accept(completed);
+                    try {
+                        if (error != null) {
+                            onFailure.accept(error);
+                        } else {
+                            mainThreadCommit.accept(completed);
+                        }
+                    } finally {
+                        pump();
                     }
                 });
             } catch (IllegalStateException ignored) {
                 // Plugin was disabled while computing.
             }
         });
+        pump();
         return true;
     }
 
-    public void tick() {
-        if (closed || waiting.isEmpty()
-                || worker.getQueue().remainingCapacity() == 0) return;
-        Runnable task = waiting.removeFirst();
-        try {
-            worker.execute(task);
-        } catch (RejectedExecutionException rejected) {
-            if (!closed) waiting.addFirst(task);
-        }
+    private void pump() {
+        if (closed || waiting.isEmpty()) return;
+        waiting.drain(
+                () -> worker.getQueue().remainingCapacity(),
+                worker::execute);
     }
 
     public Plugin plugin() { return plugin; }

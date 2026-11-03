@@ -48,4 +48,18 @@ final class PassiveAffectionScheduleTest {
         assertFalse(schedule.isDue(WOLF, A, 5000L, 1200L));
         assertFalse(schedule.isDue(other, A, 5000L, 1200L));
     }
+
+    @Test
+    void nextDueTracksLastActualCheckIncludingOwnerTransitionsAndZeroInterval() {
+        PassiveAffectionSchedule schedule = new PassiveAffectionSchedule();
+
+        assertFalse(schedule.isDue(WOLF, A, 100L, 1200L));
+        assertEquals(1300L, schedule.nextCheckTick(WOLF, 1200L));
+        assertTrue(schedule.isDue(WOLF, A, 1300L, 1200L));
+        assertEquals(2500L, schedule.nextCheckTick(WOLF, 1200L));
+        assertFalse(schedule.isDue(WOLF, B, 1600L, 1200L));
+        assertEquals(2800L, schedule.nextCheckTick(WOLF, 1200L));
+        assertTrue(schedule.isDue(WOLF, B, 1605L, 0L));
+    }
+
 }

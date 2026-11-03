@@ -84,12 +84,7 @@ public final class EffectPolicy {
             int currentDurationTicks,
             int desiredAmplifier,
             int refreshThresholdTicks) {
-        if (currentDurationTicks < 0 || refreshThresholdTicks < 0) {
-            throw new IllegalArgumentException(
-                    "durations must be >= 0");
-        }
-        return currentAmplifier < desiredAmplifier
-                || (currentAmplifier == desiredAmplifier
-                    && currentDurationTicks <= refreshThresholdTicks);
+        return co.surumene.wcl.api.traits.PotionRefreshDecision.shouldApply(
+                currentAmplifier, currentDurationTicks, desiredAmplifier, refreshThresholdTicks);
     }
 }

@@ -11,11 +11,22 @@ import java.util.Objects;
 final class PaperPersistentValueStore implements PersistentValueStore {
     private final String namespace;
     private final PersistentDataContainer container;
+    private final org.bukkit.World world;
 
     PaperPersistentValueStore(Plugin plugin, PersistentDataContainer container) {
+        this(plugin, container, null);
+    }
+
+    PaperPersistentValueStore(Plugin plugin, PersistentDataContainer container, org.bukkit.World world) {
         Plugin checkedPlugin = Objects.requireNonNull(plugin, "plugin");
         this.namespace = checkedPlugin.getName().toLowerCase(Locale.ROOT);
         this.container = Objects.requireNonNull(container, "container");
+        this.world = world;
+    }
+
+    org.bukkit.World world() {
+        if (world == null) throw new IllegalStateException("PersistentValueStore has no live World");
+        return world;
     }
 
     @Override

@@ -19,7 +19,7 @@ import co.surumene.www.config.WwwConfigLoader;
 import co.surumene.www.lifecycle.WglProfileRegistryGateway;
 import co.surumene.www.lifecycle.WonderfulWolfProfileLifecycle;
 import co.surumene.www.persistence.WonderfulWolfEntityStore;
-import co.surumene.www.persistence.GenomePayloadFiles;
+import co.surumene.www.persistence.WorldGenomePayloads;
 import co.surumene.www.persistence.WonderfulWolfLoadedIndividuals;
 import co.surumene.www.persistence.WonderfulWolfPersistenceListener;
 import co.surumene.www.runtime.BiologicalClock;
@@ -36,6 +36,8 @@ import co.surumene.www.ui.WanWandService;
 import co.surumene.www.ui.WonderfulWolfInventoryListener;
 import co.surumene.www.ui.WonderfulWolfInventoryService;
 import co.surumene.wgl.plugin.WonderfulGenomeLibService;
+import co.surumene.wcl.api.runtime.ConsumerContext;
+import co.surumene.wcl.plugin.WonderfulCoreLibraryService;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Wolf;
@@ -47,20 +49,25 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
     private WonderfulGenomeLibService genomeLib;
+    private ConsumerContext coreContext;
     private MessageService messages;
     private WonderfulWolfProfileLifecycle profileLifecycle;
     private WonderfulWolfLoadedIndividuals loadedIndividuals;
     private BiologicalClock biologicalClock;
     private WonderfulWolfAbilityRuntime abilityRuntime;
     private WonderfulWolfBehaviorRuntime behaviorRuntime;
+    private WonderfulWolfRelationshipRuntime relationshipRuntime;
     private WonderfulWolfCommandService commandService;
+    private co.surumene.www.command.WonderfulWolfAdminCommands adminCommands;
     private WonderfulWolfWeaponRuntime weaponRuntime;
     private WonderfulWolfInventoryService inventoryService;
     private WanWandService wanWandService;
     private BukkitTask abilityTask;
+    private long abilityScheduledFor = Long.MAX_VALUE;
     private AsyncWolfFounderCoordinator asyncFounders;
-    private BukkitTask founderTask;
     private BukkitTask behaviorTask;
+    private BukkitTask traitTask;
+    private long traitCadenceAnchor;
     private BukkitTask weaponTask;
 
     @Override
@@ -69,6 +76,9 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         if (genomeLib == null) {
             throw new IllegalStateException("WonderfulGenomeLib service is unavailable");
         }
+        WonderfulCoreLibraryService core = Bukkit.getServicesManager().load(WonderfulCoreLibraryService.class);
+        if (core == null) throw new IllegalStateException("WonderfulCoreLibrary service is unavailable");
+        coreContext = core.openContext(this);
 
         saveDefaultConfig();
         messages = new MessageService(this);
@@ -92,10 +102,13 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
 
         WonderfulWolfEntityStore entityStore =
                 new WonderfulWolfEntityStore(this, genomeLib.engine(),
-                        new GenomePayloadFiles(Bukkit.getWorlds().getFirst().getWorldFolder().toPath()
-                                .resolve("data").resolve("wonderful").resolve("www").resolve("genomes")));
+                        new WorldGenomePayloads(coreContext(), "www"));
         WonderfulWolfLoadedIndividuals loaded =
                 new WonderfulWolfLoadedIndividuals(entityStore);
+        Bukkit.getServicesManager().register(
+                co.surumene.wcl.plugin.inventory.WonderfulStorageReader.class,
+                new co.surumene.www.persistence.WonderfulWolfStorageReader(this, loaded),
+                this, org.bukkit.plugin.ServicePriority.Normal);
         WonderfulWolfPersistenceListener persistenceListener =
                 new WonderfulWolfPersistenceListener(loaded, getLogger());
         WonderfulWolfBreedingService breedingService =
@@ -129,7 +142,6 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         asyncFounders = new AsyncWolfFounderCoordinator(this, getLogger());
         paperFactory.useAsyncCoordinator(asyncFounders);
         breedingListener.useAsyncCoordinator(asyncFounders);
-        founderTask = Bukkit.getScheduler().runTaskTimer(this, asyncFounders::tick, 1L, 1L);
         WonderfulWolfNaturalSpawnListener naturalSpawnListener =
                 new WonderfulWolfNaturalSpawnListener(
                         paperFactory,
@@ -142,6 +154,11 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         WonderfulWolfRelationshipService relationshipService =
                 new WonderfulWolfRelationshipService(loaded);
         PendingFeedTracker pendingFeeds = new PendingFeedTracker();
+        pendingFeeds.onCleanupDue(delay ->
+                Bukkit.getScheduler().runTaskLater(
+                        this,
+                        () -> pendingFeeds.cleanup(Bukkit.getCurrentTick()),
+                        delay));
         WonderfulWolfBehaviorRuntime behavior =
                 new WonderfulWolfBehaviorRuntime(
                         loaded,
@@ -176,7 +193,12 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
             }
         });
         loaded.onRegistered(behavior::onRegistered);
-        loaded.onAbilityDirty(abilities::markDirty);
+        loaded.onAbilityDirty(wolf -> {
+            abilities.markDirty(wolf);
+            scheduleAbilityTask();
+        });
+        loaded.onTraitWorkChanged(this::refreshTraitTimer);
+        behavior.onTraitActivityChanged(this::refreshTraitTimer);
         loaded.onUnregister(id -> {
             weapons.untrack(id);
             behavior.untrack(id);
@@ -211,7 +233,9 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                                 genomeLib.engine(),
                                 lifecycle::currentWolfProfile,
                                 messages),
-                        commands);
+                        commands,
+                        entityStore);
+        this.adminCommands = adminCommands;
         getLifecycleManager().registerEventHandler(
                 io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents.COMMANDS,
                 event -> event.registrar().register(
@@ -267,6 +291,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                 persistenceListener.restoreAll(world.getEntitiesByClass(Wolf.class)));
         naturalSpawnListener.resumeLoaded();
 
+        this.relationshipRuntime = relationshipRuntime;
         loadedIndividuals = loaded;
         abilityRuntime = abilities;
         behaviorRuntime = behavior;
@@ -278,14 +303,9 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         abilities.tick();
         behavior.tick(Bukkit.getCurrentTick());
         weapons.tick(Bukkit.getCurrentTick());
+        traitCadenceAnchor = Bukkit.getCurrentTick();
 
-        // One bounded slice per server tick; the runtime itself caps the work
-        // and avoids reevaluating unchanged wolves.
-        abilityTask = Bukkit.getScheduler().runTaskTimer(
-                this,
-                abilities::tick,
-                1L,
-                1L);
+        scheduleAbilityTask();
         behaviorTask = Bukkit.getScheduler().runTaskTimer(
                 this,
                 () -> {
@@ -295,6 +315,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                 },
                 5L,
                 5L);
+        refreshTraitTimer();
         weaponTask = Bukkit.getScheduler().runTaskTimer(
                 this,
                 () -> weapons.tick(Bukkit.getCurrentTick()),
@@ -302,9 +323,58 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
                 1L);
     }
 
+    /** On-demand wakeup instead of a global empty ability tick every server tick. */
+    private void scheduleAbilityTask() {
+        WonderfulWolfAbilityRuntime abilities = abilityRuntime;
+        if (abilities == null) return;
+        long delay = abilities.nextWakeupDelay();
+        if (delay == Long.MAX_VALUE) {
+            if (abilityTask != null) abilityTask.cancel();
+            abilityTask = null;
+            abilityScheduledFor = Long.MAX_VALUE;
+            return;
+        }
+        long due = Bukkit.getCurrentTick() + delay;
+        if (abilityTask != null && abilityScheduledFor <= due) return;
+        if (abilityTask != null) abilityTask.cancel();
+        abilityScheduledFor = due;
+        abilityTask = Bukkit.getScheduler().runTaskLater(this, () -> {
+            abilityTask = null;
+            abilityScheduledFor = Long.MAX_VALUE;
+            if (abilityRuntime == null) return;
+            abilities.tick();
+            scheduleAbilityTask();
+        }, delay);
+    }
+
+    /** The 5-tick trait timer exists only while a relevant source or pulse is active. */
+    private void refreshTraitTimer() {
+        WonderfulWolfBehaviorRuntime behavior = behaviorRuntime;
+        if (behavior == null) return;
+        if (!behavior.hasTimedTraitWork()) {
+            if (traitTask != null) {
+                traitTask.cancel();
+                traitTask = null;
+            }
+            return;
+        }
+        if (traitTask != null) return;
+        long phase = Math.floorMod(Bukkit.getCurrentTick() - traitCadenceAnchor, 5L);
+        long delay = phase == 0L ? 5L : 5L - phase;
+        traitTask = Bukkit.getScheduler().runTaskTimer(
+                this,
+                () -> behavior.tickTraits(Bukkit.getCurrentTick()),
+                delay,
+                5L);
+    }
+
     @Override
     public void onDisable() {
-        if (founderTask != null) founderTask.cancel();
+        Bukkit.getServicesManager().unregisterAll(this);
+        if (adminCommands != null) {
+            adminCommands.close();
+            adminCommands = null;
+        }
         if (asyncFounders != null) asyncFounders.shutdown();
         WonderfulWolfInventoryService inventories = inventoryService;
         inventoryService = null;
@@ -336,6 +406,11 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
             behaviorScheduled.cancel();
         }
 
+        BukkitTask traitScheduled = traitTask;
+        traitTask = null;
+        if (traitScheduled != null) traitScheduled.cancel();
+
+        relationshipRuntime = null;
         WonderfulWolfBehaviorRuntime behavior = behaviorRuntime;
         behaviorRuntime = null;
         commandService = null;
@@ -348,6 +423,7 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         if (task != null) {
             task.cancel();
         }
+        abilityScheduledFor = Long.MAX_VALUE;
 
         WonderfulWolfAbilityRuntime abilities = abilityRuntime;
         abilityRuntime = null;
@@ -377,6 +453,10 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         profileLifecycle = null;
         if (lifecycle != null) {
             lifecycle.close();
+        }
+        if (coreContext != null) {
+            coreContext.close();
+            coreContext = null;
         }
         genomeLib = null;
     }
@@ -412,15 +492,27 @@ public final class WhatAWonderfulWolfPlugin extends JavaPlugin {
         if (abilities != null) {
             abilities.markAllDirty();
             abilities.tick();
+            scheduleAbilityTask();
+        }
+        WonderfulWolfRelationshipRuntime relationship = relationshipRuntime;
+        if (relationship != null) {
+            relationship.onConfigReload();
         }
         WonderfulWolfBehaviorRuntime behavior = behaviorRuntime;
         if (behavior != null) {
             behavior.tick(Bukkit.getCurrentTick());
+            if (behavior.hasTimedTraitWork()) behavior.tickTraits(Bukkit.getCurrentTick());
+            refreshTraitTimer();
         }
     }
 
     public WwwConfig currentConfig() {
         return lifecycle().currentConfig();
+    }
+
+    public ConsumerContext coreContext() {
+        if (coreContext == null || coreContext.isClosed()) throw new IllegalStateException("WCL owner context is unavailable");
+        return coreContext;
     }
 
     public WonderfulGenomeLibService genomeLib() {

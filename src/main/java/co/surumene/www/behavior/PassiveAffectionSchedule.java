@@ -35,6 +35,22 @@ public final class PassiveAffectionSchedule {
         return true;
     }
 
+    /** Deadline from the last observed roll, without advancing its RNG state. */
+    public long nextCheckTick(UUID wolfId, long intervalTicks) {
+        Objects.requireNonNull(wolfId, "wolfId");
+        if (intervalTicks < 0L) {
+            throw new IllegalArgumentException("intervalTicks must be >= 0");
+        }
+        State state = states.get(wolfId);
+        if (state == null) {
+            throw new IllegalStateException("Wolf has not been observed");
+        }
+        long last = state.lastCheckTick();
+        return last > Long.MAX_VALUE - intervalTicks
+                ? Long.MAX_VALUE
+                : last + intervalTicks;
+    }
+
     public void clear(UUID wolfId) {
         states.remove(Objects.requireNonNull(wolfId, "wolfId"));
     }

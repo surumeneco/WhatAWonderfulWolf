@@ -18,9 +18,8 @@ public final class WolfTrapPolicy {
     public static boolean reachedAdditionalCheckTime(
             long previousFullTime,
             long currentFullTime) {
-        return currentFullTime == previousFullTime + 1L
-                && Math.floorMod(currentFullTime, DAY_TICKS)
-                        == ADDITIONAL_CHECK_TIME;
+        return co.surumene.wcl.api.runtime.EncounterMath.naturalArrival(
+                previousFullTime, currentFullTime, DAY_TICKS, ADDITIONAL_CHECK_TIME);
     }
 
     /** Only a live, mutually paired Evoker may steer its marked trap Wolf. */
@@ -44,7 +43,7 @@ public final class WolfTrapPolicy {
             throw new IllegalArgumentException(
                     "probability must be finite and in [0, 1]");
         }
-        return draw < probability;
+        return co.surumene.wcl.api.runtime.EncounterMath.roll(draw, probability);
     }
 
     public static boolean inGrace(
@@ -74,11 +73,9 @@ public final class WolfTrapPolicy {
                     "radius must be finite and >= 0");
         }
 
-        double distance = StrictMath.sqrt(radialDraw) * radius;
-        double angle = angleDraw * StrictMath.PI * 2.0;
-        return new Offset(
-                StrictMath.cos(angle) * distance,
-                StrictMath.sin(angle) * distance);
+        var offset = co.surumene.wcl.api.runtime.EncounterMath.diskOffset(
+                radialDraw, angleDraw, radius);
+        return new Offset(offset.x(), offset.z());
     }
 
     public record Offset(double x, double z) {}
