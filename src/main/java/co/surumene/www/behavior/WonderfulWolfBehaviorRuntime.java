@@ -123,8 +123,14 @@ public final class WonderfulWolfBehaviorRuntime {
             }
         }
 
-        traits().tick(serverTick);
     }
+
+    /** Recurring trait work is scheduled separately only while a source exists. */
+    public void tickTraits(long serverTick) { traits().tick(serverTick); }
+
+    public boolean hasTimedTraitWork() { return traits().hasTimedWork(); }
+
+    public void onTraitActivityChanged(Runnable listener) { traits().onWorkChanged(listener); }
 
     /** Called on each entity registration, even in WANDER mode. */
     public void onRegistered(Wolf wolf) {

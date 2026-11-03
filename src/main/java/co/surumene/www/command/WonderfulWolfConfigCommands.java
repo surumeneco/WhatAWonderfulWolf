@@ -47,10 +47,12 @@ final class WonderfulWolfConfigCommands {
                 .then(Commands.literal("get")
                         .requires(source -> allowed(source.getSender(), "get"))
                         .then(Commands.argument("path", StringArgumentType.word())
+                                .suggests((ctx, builder) -> co.surumene.wcl.plugin.config.ConfigPathSuggestions.suggest(builder, plugin.getConfig(), false, value -> true))
                                 .executes(this::get)))
                 .then(Commands.literal("set")
                         .requires(source -> allowed(source.getSender(), "set"))
                         .then(Commands.argument("path", StringArgumentType.word())
+                                .suggests((ctx, builder) -> co.surumene.wcl.plugin.config.ConfigPathSuggestions.suggest(builder, defaults, false, value -> true))
                                 .then(Commands.argument("value",
                                         StringArgumentType.greedyString())
                                         .executes(this::set))))
@@ -58,6 +60,7 @@ final class WonderfulWolfConfigCommands {
                         .requires(source -> allowed(source.getSender(), "list"))
                         .executes(context -> list(context, ""))
                         .then(Commands.argument("path", StringArgumentType.word())
+                                .suggests((ctx, builder) -> co.surumene.wcl.plugin.config.ConfigPathSuggestions.suggest(builder, plugin.getConfig(), true, value -> true))
                                 .executes(context -> list(context,
                                         StringArgumentType.getString(context, "path")))))
                 .then(Commands.literal("reset")
@@ -65,14 +68,17 @@ final class WonderfulWolfConfigCommands {
                         .then(Commands.literal("numeric")
                                 .executes(context -> resetCategory(context, "numeric", ""))
                                 .then(Commands.argument("path", StringArgumentType.word())
+                                        .suggests((ctx, builder) -> co.surumene.wcl.plugin.config.ConfigPathSuggestions.suggest(builder, defaults, true, value -> value instanceof Number))
                                         .executes(context -> resetCategory(context, "numeric",
                                                 StringArgumentType.getString(context, "path")))))
                         .then(Commands.literal("other")
                                 .executes(context -> resetCategory(context, "other", ""))
                                 .then(Commands.argument("path", StringArgumentType.word())
+                                        .suggests((ctx, builder) -> co.surumene.wcl.plugin.config.ConfigPathSuggestions.suggest(builder, defaults, true, value -> !(value instanceof Number)))
                                         .executes(context -> resetCategory(context, "other",
                                                 StringArgumentType.getString(context, "path")))))
                         .then(Commands.argument("path", StringArgumentType.word())
+                                .suggests((ctx, builder) -> co.surumene.wcl.plugin.config.ConfigPathSuggestions.suggest(builder, defaults, false, value -> true))
                                 .executes(this::reset)));
     }
 

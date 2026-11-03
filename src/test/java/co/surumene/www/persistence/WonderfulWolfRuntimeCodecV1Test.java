@@ -124,6 +124,45 @@ final class WonderfulWolfRuntimeCodecV1Test {
         assertEquals(founder, codec.decode(previous, founder.genome(), founder.phenotypeSnapshot()));
     }
 
+    @Test void storageDecoderReadsCompleteDataWithoutLoadingGenomeOrEntity() {
+        WonderfulWolfIndividual source = individual(false);
+        byte[] bytes = codec.encode(source);
+        var storage = codec.decodeStorage(bytes);
+        assertEquals(source.ownerId(),storage.ownerId());
+        assertEquals(source.commanderId(),storage.commanderId());
+        assertEquals(source.weapon(),storage.weapon());
+        assertEquals(source.inventory(),storage.inventory());
+        assertThrows(PersistenceCodecException.class,
+                () -> codec.decodeStorage(Arrays.copyOf(bytes,bytes.length+1)));
+        byte[] unsupported=bytes.clone();
+        unsupported[4]=4;
+        assertThrows(PersistenceCodecException.class,()->codec.decodeStorage(unsupported));
+    }
+
+    @Test
+    void offlineStorageDecoderRejectsCorruptNegativeSlot() {
+        byte[] data = codec.encode(individual(false));
+        // The canonical fixture has inventory slot 44 followed by a 4-byte item.
+        byte[] pattern = {0, 0, 0, 44, 0, 0, 0, 4, 9, 8, 7, 6};
+        int slotOffset = -1;
+        for (int i = 0; i <= data.length - pattern.length; i++) {
+            boolean match = true;
+            for (int j = 0; j < pattern.length; j++) {
+                if (data[i + j] != pattern[j]) {
+                    match = false;
+                    break;
+                }
+            }
+            if (match) {
+                slotOffset = i;
+                break;
+            }
+        }
+        assertTrue(slotOffset >= 0, "fixture must contain inventory slot 44");
+        Arrays.fill(data, slotOffset, slotOffset + 4, (byte) 0xff);
+        assertThrows(PersistenceCodecException.class, () -> codec.decodeStorage(data));
+    }
+
     private static WonderfulWolfIndividual withPedigree(
             WonderfulWolfIndividual source, PedigreeSnapshot pedigree) {
         return new WonderfulWolfIndividual(

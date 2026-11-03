@@ -8,6 +8,7 @@ public final class NavigationRepathPolicy {
 
     public static boolean replan(
             boolean hasPath, boolean targetChanged, double movedSquared) {
-        return !hasPath || targetChanged || movedSquared >= TARGET_DISPLACEMENT_SQUARED;
+        return co.surumene.wcl.api.behavior.RepathDecision.needsRepath(
+                hasPath, targetChanged, movedSquared, TARGET_DISPLACEMENT_SQUARED);
     }
 }

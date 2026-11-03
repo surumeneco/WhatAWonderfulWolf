@@ -5,6 +5,7 @@ import co.surumene.www.breeding.WonderfulWolfOffspringService;
 import co.surumene.www.behavior.WonderfulWolfCommandService;
 import co.surumene.www.persistence.RestoreResult;
 import co.surumene.www.persistence.WonderfulWolfLoadedIndividuals;
+import co.surumene.www.persistence.WonderfulWolfEntityStore;
 import co.surumene.www.runtime.WonderfulWolfAbilityRuntime;
 import co.surumene.www.spawn.PaperWonderfulWolfFactory;
 import co.surumene.www.spawn.WonderfulWolfEntityCreationResult;
@@ -35,7 +36,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-public final class WonderfulWolfAdminCommands {
+public final class WonderfulWolfAdminCommands implements AutoCloseable {
     private static final int MAX_TARGETS = 10;
 
     private final WhatAWonderfulWolfPlugin plugin;
@@ -48,6 +49,12 @@ public final class WonderfulWolfAdminCommands {
     private final WonderfulWolfConfigCommands configCommands;
     private final WonderfulWolfModifyCommands modifyCommands;
     private final WonderfulWolfSummonCommands summonCommands;
+    private final WorldStorageMigration<Wolf> storageMigration;
+
+    @Override public void close() {
+        if (storageMigration != null) storageMigration.close();
+    }
+
 
     public WonderfulWolfAdminCommands(
             WhatAWonderfulWolfPlugin plugin,
@@ -58,6 +65,19 @@ public final class WonderfulWolfAdminCommands {
             WonderfulWolfOffspringService offspringService,
             WonderfulWolfAdminInfo info,
             WonderfulWolfCommandService commandService) {
+        this(plugin, loaded, abilities, engine, factory, offspringService, info, commandService, null);
+    }
+
+    public WonderfulWolfAdminCommands(
+            WhatAWonderfulWolfPlugin plugin,
+            WonderfulWolfLoadedIndividuals loaded,
+            WonderfulWolfAbilityRuntime abilities,
+            GenomeEngine engine,
+            PaperWonderfulWolfFactory factory,
+            WonderfulWolfOffspringService offspringService,
+            WonderfulWolfAdminInfo info,
+            WonderfulWolfCommandService commandService,
+            WonderfulWolfEntityStore worldStore) {
         this.plugin = Objects.requireNonNull(plugin, "plugin");
         this.loaded = Objects.requireNonNull(loaded, "loaded");
         this.abilities = Objects.requireNonNull(abilities, "abilities");
@@ -69,12 +89,17 @@ public final class WonderfulWolfAdminCommands {
         this.configCommands = new WonderfulWolfConfigCommands(plugin);
         this.modifyCommands = new WonderfulWolfModifyCommands(loaded, abilities, commandService);
         this.summonCommands = new WonderfulWolfSummonCommands(factory, loaded, abilities, commandService);
+        this.storageMigration = worldStore == null ? null : new WorldStorageMigration<>(
+                plugin, Wolf.class, worldStore::isWonderful, worldStore::migrateWorldRecord,
+                worldStore::knownDirectories,
+                (record, dryRun) -> worldStore.mirrorRecord(record.directory(), record.id(), dryRun));
     }
 
     public com.mojang.brigadier.tree.LiteralCommandNode<CommandSourceStack> build() {
         LiteralArgumentBuilder<CommandSourceStack> root =
                 Commands.literal("www");
         root.then(infoNode());
+        if (storageMigration != null) root.then(storageNode());
         root.then(genomeNode());
         root.then(summonNode());
         root.then(modifyCommands.build());
@@ -84,6 +109,17 @@ public final class WonderfulWolfAdminCommands {
                         .hasPermission("www.command.reload"))
                 .executes(this::reload));
         return root.build();
+    }
+
+    private LiteralArgumentBuilder<CommandSourceStack> storageNode() {
+        return Commands.literal("storage")
+                .requires(source -> source.getSender().hasPermission("www.command.storage"))
+                .then(Commands.literal("migrate")
+                        .executes(ctx -> storageMigration.start(ctx.getSource().getSender(), false))
+                        .then(Commands.literal("dry-run")
+                                .executes(ctx -> storageMigration.start(ctx.getSource().getSender(), true))))
+                .then(Commands.literal("status")
+                        .executes(ctx -> storageMigration.status(ctx.getSource().getSender())));
     }
 
     private LiteralArgumentBuilder<CommandSourceStack> infoNode() {

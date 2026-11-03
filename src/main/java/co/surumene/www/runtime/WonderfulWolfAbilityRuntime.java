@@ -119,6 +119,15 @@ public final class WonderfulWolfAbilityRuntime {
         }
     }
 
+    /** Single next wakeup for dirty projections, growth deadlines and low-frequency audits. */
+    public long nextWakeupDelay() {
+        long biologicalDue = dueByTime.isEmpty() ? Long.MAX_VALUE : dueByTime.firstKey();
+        return AbilityWakeupPolicy.delay(
+                org.bukkit.Bukkit.getCurrentTick(), !dirty.isEmpty(), loaded.size() > 0,
+                !juveniles.isEmpty(), nextJuvenileTick, nextCompatibilityTick,
+                biologicalDue, clock.currentTime());
+    }
+
     /** Mutation callbacks enqueue an ID, never a potentially stale Bukkit entity. */
     public void markDirty(Wolf wolf) {
         dirty.add(Objects.requireNonNull(wolf, "wolf").getUniqueId());
