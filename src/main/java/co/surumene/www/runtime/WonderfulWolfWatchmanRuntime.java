@@ -3,15 +3,12 @@ package co.surumene.www.runtime;
 import co.surumene.www.behavior.ActiveThreatPolicy;
 import co.surumene.www.behavior.WonderfulWolfBehaviorRuntime;
 import co.surumene.www.config.WwwConfig;
-import co.surumene.www.domain.Mode;
 import co.surumene.www.domain.Trait;
 import co.surumene.www.individual.WonderfulWolfIndividual;
-import co.surumene.www.individual.WorldPosition;
 import co.surumene.www.persistence.WonderfulWolfLoadedIndividuals;
 import org.bukkit.Location;
 import org.bukkit.Server;
 import org.bukkit.Sound;
-import org.bukkit.World;
 import org.bukkit.entity.Enemy;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
@@ -33,7 +30,6 @@ final class WonderfulWolfWatchmanRuntime {
 
     private final WonderfulWolfLoadedIndividuals loaded;
     private final WonderfulWolfBehaviorRuntime behavior;
-    private final Server server;
     private final Map<UUID, Long> lastAlert = new HashMap<>();
 
     WonderfulWolfWatchmanRuntime(
@@ -42,7 +38,7 @@ final class WonderfulWolfWatchmanRuntime {
             Server server) {
         this.loaded = Objects.requireNonNull(loaded, "loaded");
         this.behavior = Objects.requireNonNull(behavior, "behavior");
-        this.server = Objects.requireNonNull(server, "server");
+        Objects.requireNonNull(server, "server");
     }
 
     void tick(
@@ -88,7 +84,8 @@ final class WonderfulWolfWatchmanRuntime {
             return;
         }
 
-        Location reference = referenceLocation(wolf, individual);
+        // Watchman is a property of the wolf, never of its commander or wait point.
+        Location reference = wolf.getLocation();
         if (reference == null || reference.getWorld() == null) {
             lastAlert.remove(wolfId);
             return;
@@ -214,32 +211,4 @@ final class WonderfulWolfWatchmanRuntime {
         return result;
     }
 
-    private Location referenceLocation(
-            Wolf wolf,
-            WonderfulWolfIndividual individual) {
-        if (individual.mode() == Mode.WANDER) {
-            return wolf.getLocation();
-        }
-        if (individual.mode() == Mode.WAIT) {
-            WorldPosition wait = individual.waitLocation().orElse(null);
-            if (wait == null) {
-                return null;
-            }
-            World world = server.getWorld(wait.worldId());
-            return world == null
-                    ? null
-                    : new Location(
-                            world,
-                            wait.x(),
-                            wait.y(),
-                            wait.z());
-        }
-
-        Player commander = individual.commanderId()
-                .map(server::getPlayer)
-                .orElse(null);
-        return commander == null || !commander.isOnline()
-                ? null
-                : commander.getLocation();
-    }
 }
