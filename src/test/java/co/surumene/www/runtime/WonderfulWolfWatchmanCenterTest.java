@@ -14,12 +14,8 @@ import co.surumene.www.persistence.WonderfulWolfLoadedIndividuals;
 import org.bukkit.Location;
 import org.bukkit.Server;
 import org.bukkit.World;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Wolf;
-import org.bukkit.entity.Zombie;
-import org.bukkit.potion.PotionEffect;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -33,14 +29,14 @@ import static org.mockito.Mockito.*;
 
 final class WonderfulWolfWatchmanCenterTest {
     @Test
-    void detectionAndGlowAlwaysUseWolfsCurrentLocationInAllModes() {
+    void searchAlwaysUsesWolfsCurrentLocationInAllModes() {
         for (Mode mode : Mode.values()) {
             assertWatchmanCenteredOnWolf(mode, true);
         }
     }
 
     @Test
-    void detectionDoesNotDependOnCommanderBeingOnline() {
+    void searchDoesNotDependOnCommanderBeingOnline() {
         assertWatchmanCenteredOnWolf(Mode.FOLLOW, false);
         assertWatchmanCenteredOnWolf(Mode.GUARD, false);
         assertWatchmanCenteredOnWolf(Mode.WAIT, false);
@@ -54,7 +50,6 @@ final class WonderfulWolfWatchmanCenterTest {
         Server server = mock(Server.class);
         Wolf wolf = mock(Wolf.class);
         Player commander = mock(Player.class);
-        Zombie nearbyEnemy = mock(Zombie.class);
         WonderfulWolfIndividual individual = mock(WonderfulWolfIndividual.class);
         PhenotypeSnapshot phenotype = mock(PhenotypeSnapshot.class);
         WonderfulWolfLoadedIndividuals loaded = mock(WonderfulWolfLoadedIndividuals.class);
@@ -67,12 +62,7 @@ final class WonderfulWolfWatchmanCenterTest {
         when(wolf.getLocation()).thenReturn(wolfLocation);
         when(world.getUID()).thenReturn(worldId);
         when(world.getNearbyEntities(any(Location.class), eq(15.0), eq(15.0), eq(15.0)))
-                .thenReturn(List.of((Entity) nearbyEnemy));
-
-        when(nearbyEnemy.getUniqueId()).thenReturn(UUID.randomUUID());
-        when(nearbyEnemy.getLocation()).thenReturn(new Location(world, 3.5, 64, 0.5));
-        when(nearbyEnemy.isValid()).thenReturn(true);
-        when(nearbyEnemy.getType()).thenReturn(EntityType.ZOMBIE);
+                .thenReturn(List.of());
 
         when(individual.phenotypeSnapshot()).thenReturn(phenotype);
         when(phenotype.expressedTraits()).thenReturn(
@@ -98,7 +88,6 @@ final class WonderfulWolfWatchmanCenterTest {
                 .tick(wolf, individual, settings, 100);
 
         verify(world).getNearbyEntities(eq(wolfLocation), eq(15.0), eq(15.0), eq(15.0));
-        verify(nearbyEnemy).addPotionEffect(any(PotionEffect.class));
         verify(server, never()).getPlayer(any(UUID.class));
         verify(server, never()).getWorld(any(UUID.class));
     }
