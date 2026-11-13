@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "co.surumene"
-version = "1.1.0"
+version = "1.1.1"
 
 repositories {
     mavenCentral()
@@ -85,6 +85,11 @@ val verifyPluginJar by tasks.registering {
         val pluginYml = contents.matching { include("plugin.yml") }.singleFile.readText()
         check(!pluginYml.contains("\${version}")) {
             "plugin.yml version placeholder was not expanded"
+        }
+        check(pluginYml.lineSequence().any {
+            it.trim() == "version: '${project.version}'"
+        }) {
+            "plugin.yml version must match Gradle project.version (${project.version})"
         }
         check(pluginYml.contains("WonderfulCoreLibrary")) {
             "plugin.yml must require WonderfulCoreLibrary"
