@@ -4,7 +4,7 @@
 
 - Fix **Watchman (見張り番)** detection, glowing and warning distance to use the wolf's current position in every behavior mode (wander, follow, guard and wait). The search center no longer follows the commander or a saved wait location.
 - Watchman detection no longer depends on the commander being online. Existing engaged-target exclusions and combat AI behavior are unchanged.
-- Regression coverage includes all behavior modes and offline commanders. Verified on the XPlayServer test environment after the fix.
+- Regression coverage includes all behavior modes and offline commanders. The user confirmed the corrected in-game behavior after the fix.
 - Paper 26.2 / Java 25. Requires **WonderfulGenomeLib 1.0.1** and **WonderfulCoreLibrary 0.1.0** as separate runtime plugins.
 
 ### Previous release: 1.1.0
