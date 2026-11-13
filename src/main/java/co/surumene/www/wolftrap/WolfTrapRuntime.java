@@ -9,6 +9,8 @@ import co.surumene.www.spawn.WonderfulWolfEntityCreationResult;
 import io.papermc.paper.world.MoonPhase;
 import org.bukkit.HeightMap;
 import org.bukkit.Location;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.Server;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
@@ -19,7 +21,9 @@ import org.bukkit.entity.Wolf;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.weather.LightningStrikeEvent;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -45,6 +49,15 @@ public final class WolfTrapRuntime {
     private final Set<UUID> armedEvokers = new HashSet<>();
     private final Set<UUID> riderEvokers = new HashSet<>();
     private final Set<UUID> activatingEvokers = new HashSet<>();
+    // In-memory preparation results never outlive this runtime or the current entity.
+    private final Map<UUID, PreparedTrapPair> prepared = new HashMap<>();
+    private final Map<UUID, UUID> preparing = new HashMap<>();
+    private final Map<UUID, Long> preparationStarted = new HashMap<>();
+    private final Map<UUID, Long> retryAfter = new HashMap<>();
+    private static final long PREPARATION_TIMEOUT_MILLIS = 60_000L;
+
+    private record PreparedTrapPair(PaperWonderfulWolfFactory.PreparedPair pair,
+                                    WwwConfig.Runtime configSnapshot) {}
     private final Set<UUID> skippedWorlds = new HashSet<>();
     private boolean creatingOwnLightning;
 
@@ -90,6 +103,7 @@ public final class WolfTrapRuntime {
         if (entity instanceof Evoker evoker) {
             if (states.isArmed(evoker)) {
                 armedEvokers.add(evoker.getUniqueId());
+                requestPreparation(evoker);
             } else if (states.isRider(evoker)) {
                 riderEvokers.add(evoker.getUniqueId());
             }
@@ -157,10 +171,23 @@ public final class WolfTrapRuntime {
         return false;
     }
 
-    public void activateByAttack(Evoker evoker) {
-        if (evoker != null && states.isArmed(evoker)) {
-            activate(evoker);
+    /** Accept only an already-prepared player-triggered conversion. */
+    public boolean activateByAttack(Evoker evoker) {
+        return evoker != null && activate(evoker);
+    }
+
+    /** All damage is blocked until both genomes are ready, with attack feedback. */
+    public boolean protectDamage(Entity victim, boolean entityAttack) {
+        if (!(victim instanceof Evoker evoker)
+                || !states.isArmed(evoker) || isPrepared(evoker)) return false;
+        if (entityAttack) {
+            Location effect = evoker.getLocation().add(0.0, 1.0, 0.0);
+            World world = evoker.getWorld();
+            world.spawnParticle(Particle.TOTEM_OF_UNDYING, effect, 30,
+                    0.45, 0.65, 0.45, 0.2);
+            world.playSound(effect, Sound.ITEM_TOTEM_USE, 1.0f, 1.0f);
         }
+        return true;
     }
 
     public void onEvokerDeath(Evoker evoker) {
@@ -169,6 +196,7 @@ public final class WolfTrapRuntime {
         }
         armedEvokers.remove(evoker.getUniqueId());
         riderEvokers.remove(evoker.getUniqueId());
+        forgetPreparation(evoker.getUniqueId());
 
         if (!states.isRider(evoker)) {
             states.clearArmed(evoker);
@@ -271,7 +299,19 @@ public final class WolfTrapRuntime {
                     || !evoker.isValid()
                     || !states.isArmed(evoker)) {
                 armedEvokers.remove(id);
+                forgetPreparation(id);
                 continue;
+            }
+            if (!isPrepared(evoker)) {
+                Long started = preparationStarted.get(id);
+                if (started != null && now - started > PREPARATION_TIMEOUT_MILLIS) {
+                    logger.warning("WWW trap founder preparation timed out for " + id);
+                    preparing.remove(id);
+                    preparationStarted.remove(id);
+                    retryAfter.put(id, now + WolfTrapPolicy.ADDITIONAL_GRACE_MILLIS);
+                }
+                requestPreparation(evoker);
+                continue; // proximity cannot activate until both founders are prepared
             }
             if (now < states.graceUntil(evoker)) {
                 continue;
@@ -343,21 +383,83 @@ public final class WolfTrapRuntime {
         }
     }
 
-    private void activate(Evoker initial) {
-        if (!states.isArmed(initial) || !activatingEvokers.add(initial.getUniqueId())) return;
+
+    private boolean isPrepared(Evoker evoker) {
+        UUID id = evoker.getUniqueId();
+        PreparedTrapPair ready = prepared.get(id);
+        if (ready == null) return false;
+        if (ready.configSnapshot() != config.get()) {
+            prepared.remove(id);
+            requestPreparation(evoker);
+            return false;
+        }
+        return true;
+    }
+
+    private void requestPreparation(Evoker initial) {
         UUID id = initial.getUniqueId();
+        long now = wallClockMillis.getAsLong();
+        if (!initial.isValid() || initial.isDead() || !states.isArmed(initial)
+                || prepared.containsKey(id) || preparing.containsKey(id)
+                || now < retryAfter.getOrDefault(id, 0L)) return;
+
+        UUID generation = UUID.randomUUID();
+        WwwConfig.Runtime snapshot = config.get();
         long firstSeed = seeds.getAsLong();
         long secondSeed = seeds.getAsLong();
+        preparing.put(id, generation);
+        preparationStarted.put(id, now);
         boolean queued = wolves.prepareTrapPairAsync(firstSeed, secondSeed, pair -> {
-            activatingEvokers.remove(id);
-            if (!initial.isValid() || initial.isDead() || !states.isArmed(initial)) return;
-            if (!(pair.first() instanceof co.surumene.www.spawn.WonderfulWolfCreationResult.Success first)
-                    || !(pair.second() instanceof co.surumene.www.spawn.WonderfulWolfCreationResult.Success second)) {
-                logger.warning("Could not prepare both Wonderful Wolf trap founders");
-                states.markArmed(initial, wallClockMillis.getAsLong()
+            if (!generation.equals(preparing.get(id))) return; // stale/timed-out job
+            preparing.remove(id);
+            preparationStarted.remove(id);
+            if (!initial.isValid() || initial.isDead()
+                    || server.getEntity(id) != initial || !states.isArmed(initial)) {
+                forgetPreparation(id);
+                return;
+            }
+            if (config.get() != snapshot) {
+                retryAfter.remove(id); // changed configuration: recompute on next tick
+                return;
+            }
+            if (!(pair.first() instanceof co.surumene.www.spawn.WonderfulWolfCreationResult.Success)
+                    || !(pair.second() instanceof co.surumene.www.spawn.WonderfulWolfCreationResult.Success)) {
+                logger.warning("Could not prepare both Wonderful Wolf trap founders for " + id);
+                retryAfter.put(id, wallClockMillis.getAsLong()
                         + WolfTrapPolicy.ADDITIONAL_GRACE_MILLIS);
                 return;
             }
+            prepared.put(id, new PreparedTrapPair(pair, snapshot));
+            retryAfter.remove(id);
+        });
+        if (!queued) {
+            preparing.remove(id, generation);
+            preparationStarted.remove(id);
+            retryAfter.put(id, now + WolfTrapPolicy.ADDITIONAL_GRACE_MILLIS);
+            logger.warning("WWW trap founder preparation queue full: " + id);
+        }
+    }
+
+    private void forgetPreparation(UUID id) {
+        prepared.remove(id);
+        preparing.remove(id);
+        preparationStarted.remove(id);
+        retryAfter.remove(id);
+        activatingEvokers.remove(id);
+    }
+
+    /** Apply the already-prepared pair on the primary thread, without synthesizing on attack. */
+    private boolean activate(Evoker initial) {
+        if (!initial.isValid() || initial.isDead() || !states.isArmed(initial)
+                || !isPrepared(initial)) return false;
+        UUID id = initial.getUniqueId();
+        if (!activatingEvokers.add(id)) return false;
+        try {
+            PreparedTrapPair ready = prepared.get(id);
+            if (ready == null) return false;
+            var pair = ready.pair();
+            var first = (co.surumene.www.spawn.WonderfulWolfCreationResult.Success) pair.first();
+            var second = (co.surumene.www.spawn.WonderfulWolfCreationResult.Success) pair.second();
             Location origin = initial.getLocation();
             Wolf one = null;
             Wolf two = null;
@@ -370,23 +472,24 @@ public final class WolfTrapRuntime {
                                 second.individual());
                 one = createdWolf(firstResult);
                 two = createdWolf(secondResult);
-                if (one == null || two == null) throw new IllegalStateException("Could not spawn trap wolves");
+                if (one == null || two == null)
+                    throw new IllegalStateException("Could not spawn trap wolves");
                 secondRider = initial.getWorld().spawn(
                         origin.clone().add(1.0, 0.0, 0.0),
                         Evoker.class, CreatureSpawnEvent.SpawnReason.CUSTOM);
                 secondRider.setPersistent(true);
                 initial.setPersistent(true);
-                strikeOwnLightning(origin);
 
                 armedEvokers.remove(id);
                 states.markRider(initial, one.getUniqueId());
                 states.markRider(secondRider, two.getUniqueId());
                 states.markMountedWolf(one, id);
                 states.markMountedWolf(two, secondRider.getUniqueId());
-                one.addPassenger(initial);
-                two.addPassenger(secondRider);
+                if (!one.addPassenger(initial) || !two.addPassenger(secondRider))
+                    throw new IllegalStateException("Could not mount trap Evokers");
                 riderEvokers.add(id);
                 riderEvokers.add(secondRider.getUniqueId());
+                prepared.remove(id);
             } catch (RuntimeException error) {
                 if (one != null) discardWolf(one);
                 if (two != null) discardWolf(two);
@@ -396,14 +499,21 @@ public final class WolfTrapRuntime {
                     states.markArmed(initial, wallClockMillis.getAsLong()
                             + WolfTrapPolicy.ADDITIONAL_GRACE_MILLIS);
                     armedEvokers.add(id);
+                } else {
+                    forgetPreparation(id);
                 }
                 logger.warning("WWW trap activation failed: " + error);
+                return true; // the triggering hit was still consumed
             }
-        });
-        if (!queued) {
+            // Effect follows a successful conversion, never an incomplete spawn.
+            try {
+                strikeOwnLightning(origin);
+            } catch (RuntimeException error) {
+                logger.warning("WWW trap activation lightning failed: " + error);
+            }
+            return true;
+        } finally {
             activatingEvokers.remove(id);
-            states.markArmed(initial, wallClockMillis.getAsLong()
-                    + WolfTrapPolicy.ADDITIONAL_GRACE_MILLIS);
         }
     }
 
@@ -431,6 +541,7 @@ public final class WolfTrapRuntime {
         evoker.setPersistent(true);
         states.markArmed(evoker, graceUntilMillis);
         armedEvokers.add(evoker.getUniqueId());
+        requestPreparation(evoker);
     }
 
     private Location randomSkyLocation(Player player) {
