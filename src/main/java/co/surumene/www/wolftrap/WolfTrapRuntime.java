@@ -479,6 +479,8 @@ public final class WolfTrapRuntime {
                         Evoker.class, CreatureSpawnEvent.SpawnReason.CUSTOM);
                 secondRider.setPersistent(true);
                 initial.setPersistent(true);
+                // Retain the existing lightning timing before rider pairing.
+                strikeOwnLightning(origin);
 
                 armedEvokers.remove(id);
                 states.markRider(initial, one.getUniqueId());
@@ -504,12 +506,6 @@ public final class WolfTrapRuntime {
                 }
                 logger.warning("WWW trap activation failed: " + error);
                 return true; // the triggering hit was still consumed
-            }
-            // Effect follows a successful conversion, never an incomplete spawn.
-            try {
-                strikeOwnLightning(origin);
-            } catch (RuntimeException error) {
-                logger.warning("WWW trap activation lightning failed: " + error);
             }
             return true;
         } finally {
