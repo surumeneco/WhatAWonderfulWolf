@@ -1,5 +1,14 @@
 # What a Wonderful Wolf
 
+## 1.1.1 patch
+
+- Fix **Watchman (見張り番)** detection, glowing and warning distance to use the wolf's current position in every behavior mode (wander, follow, guard and wait). The search center no longer follows the commander or a saved wait location.
+- Watchman detection no longer depends on the commander being online. Existing engaged-target exclusions and combat AI behavior are unchanged.
+- Regression coverage includes all behavior modes and offline commanders. Verified on the XPlayServer test environment after the fix.
+- Paper 26.2 / Java 25. Requires **WonderfulGenomeLib 1.0.1** and **WonderfulCoreLibrary 0.1.0** as separate runtime plugins.
+
+### Previous release: 1.1.0
+
 ## 1.1.0 release
 
 - Paper 26.2 / Java 25. Requires **WonderfulGenomeLib 1.0.1** and **WonderfulCoreLibrary 0.1.0** as separate runtime plugins.
@@ -13,13 +22,13 @@
 - For runtime-only changes, reuse the previously published immutable Genome/Snapshot payload reference when verified in-process identity matches. Changed Genome or Phenotype still follows the full copy-on-write path.
 - Requires WGL 1.0.1 at runtime. Server-side TPS/MSPT improvement has not yet been measured.
 
-What a Wonderful Wolf (WWW) 1.1.0 is a Paper plugin for the XPlayServer project.
+What a Wonderful Wolf (WWW) 1.1.1 is a Paper plugin for the XPlayServer project.
 
 The functional specification is maintained in Google Drive under `forGPT/XPlayServer/OriginalPlugins/WWW/`.
 
 ## Development
 
-WWW targets Java 25 and Paper 26.2. For the WWW 1.1.0 release, clone WGL and WCL as sibling repositories:
+WWW targets Java 25 and Paper 26.2. For the WWW 1.1.1 release, clone WGL and WCL as sibling repositories:
 
 ```text
 workspace/
