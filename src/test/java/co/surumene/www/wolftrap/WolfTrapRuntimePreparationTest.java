@@ -67,6 +67,6 @@ class WolfTrapRuntimePreparationTest {
                 mock(WonderfulWolfCreationResult.Success.class)));
         assertFalse(runtime.protectDamage(bait, false));
         assertTrue(runtime.activateByAttack(bait));
-        verify(factory, times(2)).spawnPreparedFounder(any(), any());
+        verify(factory, times(2)).spawnPreparedFounder(any(Location.class), isNull());
     }
 }
