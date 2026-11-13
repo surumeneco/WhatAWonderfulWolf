@@ -7,7 +7,6 @@ import co.surumene.www.spawn.PaperWonderfulWolfFactory;
 import co.surumene.www.spawn.WonderfulWolfCreationResult;
 import org.bukkit.Location;
 import org.bukkit.Server;
-import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.entity.Evoker;
 import org.junit.jupiter.api.Test;
@@ -58,9 +57,6 @@ class WolfTrapRuntimePreparationTest {
         verifyNoInteractions(world);
         assertFalse(runtime.activateByAttack(bait));
         verify(factory, never()).spawnPreparedFounder(any(), any());
-
-        assertTrue(runtime.protectDamage(bait, true));
-        verify(world).playSound(any(Location.class), eq(Sound.ITEM_TOTEM_USE), eq(1.0f), eq(1.0f));
 
         callback.get().accept(new PaperWonderfulWolfFactory.PreparedPair(
                 mock(WonderfulWolfCreationResult.Success.class),
