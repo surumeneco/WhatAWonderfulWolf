@@ -467,13 +467,17 @@ public final class WolfTrapRuntime {
             try {
                 WonderfulWolfEntityCreationResult firstResult =
                         wolves.spawnPreparedFounder(origin, first.individual());
+                one = createdWolf(firstResult);
+                if (one == null)
+                    throw new IllegalStateException("Could not spawn first trap wolf");
+                // Keep the first Wolf reference before starting the second spawn;
+                // otherwise a second-spawn exception bypasses rollback of the first.
                 WonderfulWolfEntityCreationResult secondResult =
                         wolves.spawnPreparedFounder(origin.clone().add(1.0, 0.0, 0.0),
                                 second.individual());
-                one = createdWolf(firstResult);
                 two = createdWolf(secondResult);
-                if (one == null || two == null)
-                    throw new IllegalStateException("Could not spawn trap wolves");
+                if (two == null)
+                    throw new IllegalStateException("Could not spawn second trap wolf");
                 secondRider = initial.getWorld().spawn(
                         origin.clone().add(1.0, 0.0, 0.0),
                         Evoker.class, CreatureSpawnEvent.SpawnReason.CUSTOM);
