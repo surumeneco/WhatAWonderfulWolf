@@ -9,6 +9,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityTameEvent;
 import org.bukkit.event.weather.LightningStrikeEvent;
@@ -29,13 +30,22 @@ public final class WolfTrapListener implements Listener {
         runtime.onLightning(event);
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onProtect(EntityDamageEvent event) {
+        if (runtime.protectDamage(event.getEntity(),
+                event instanceof EntityDamageByEntityEvent)) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onAttack(EntityDamageByEntityEvent event) {
         if (!(event.getEntity() instanceof Evoker evoker)
-                || !playerAttack(event.getDamager())) {
-            return;
+                || !playerAttack(event.getDamager())) return;
+        if (runtime.activateByAttack(evoker)) {
+            // Cancel the triggering hit before it can kill the converted rider.
+            event.setCancelled(true);
         }
-        runtime.activateByAttack(evoker);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
