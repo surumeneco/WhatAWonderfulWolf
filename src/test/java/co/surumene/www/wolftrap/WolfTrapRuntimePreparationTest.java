@@ -64,9 +64,24 @@ class WolfTrapRuntimePreparationTest {
         callback.get().accept(new PaperWonderfulWolfFactory.PreparedPair(
                 mock(WonderfulWolfCreationResult.Success.class),
                 mock(WonderfulWolfCreationResult.Success.class)));
+        Wolf firstWolf = mock(Wolf.class);
+        Wolf secondWolf = mock(Wolf.class);
+        Evoker secondRider = mock(Evoker.class);
+        WonderfulWolfIndividual firstIndividual = mock(WonderfulWolfIndividual.class);
+        WonderfulWolfIndividual secondIndividual = mock(WonderfulWolfIndividual.class);
+        when(factory.spawnPreparedFounder(any(Location.class), isNull()))
+                .thenReturn(new WonderfulWolfEntityCreationResult.Success(firstWolf, firstIndividual))
+                .thenReturn(new WonderfulWolfEntityCreationResult.Success(secondWolf, secondIndividual));
+        when(world.spawn(any(Location.class), eq(Evoker.class),
+                eq(org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.CUSTOM)))
+                .thenReturn(secondRider);
+        when(firstWolf.addPassenger(bait)).thenReturn(true);
+        when(secondWolf.addPassenger(secondRider)).thenReturn(true);
         assertFalse(runtime.protectDamage(bait, false));
         assertTrue(runtime.activateByAttack(bait));
         verify(factory, times(2)).spawnPreparedFounder(any(Location.class), isNull());
+        verify(states).markRider(eq(bait), any(UUID.class));
+        verify(states).markMountedWolf(eq(firstWolf), eq(id));
     }
 
     @Test
