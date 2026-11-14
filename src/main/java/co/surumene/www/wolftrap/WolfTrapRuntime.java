@@ -176,18 +176,20 @@ public final class WolfTrapRuntime {
         return evoker != null && activate(evoker);
     }
 
-    /** All damage is blocked until both genomes are ready, with attack feedback. */
-    public boolean protectDamage(Entity victim, boolean entityAttack) {
-        if (!(victim instanceof Evoker evoker)
-                || !states.isArmed(evoker) || isPrepared(evoker)) return false;
-        if (entityAttack) {
-            Location effect = evoker.getLocation().add(0.0, 1.0, 0.0);
-            World world = evoker.getWorld();
-            world.spawnParticle(Particle.TOTEM_OF_UNDYING, effect, 30,
-                    0.45, 0.65, 0.45, 0.2);
-            world.playSound(effect, Sound.ITEM_TOTEM_USE, 1.0f, 1.0f);
-        }
-        return true;
+    /** Pure protection decision: cancellation must be committed before feedback. */
+    public boolean protectDamage(Entity victim) {
+        return victim instanceof Evoker evoker
+                && states.isArmed(evoker) && !isPrepared(evoker);
+    }
+
+    /** Only invoked after the corresponding damage event is already cancelled. */
+    public void playProtectedHitEffect(Entity victim) {
+        if (!(victim instanceof Evoker evoker) || !states.isArmed(evoker)) return;
+        Location effect = evoker.getLocation().add(0.0, 1.0, 0.0);
+        World world = evoker.getWorld();
+        world.spawnParticle(Particle.TOTEM_OF_UNDYING, effect, 30,
+                0.45, 0.65, 0.45, 0.2);
+        world.playSound(effect, Sound.ITEM_TOTEM_USE, 1.0f, 1.0f);
     }
 
     public void onEvokerDeath(Evoker evoker) {
