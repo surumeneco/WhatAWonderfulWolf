@@ -67,6 +67,9 @@ class WolfTrapRuntimePreparationTest {
         Wolf firstWolf = mock(Wolf.class);
         Wolf secondWolf = mock(Wolf.class);
         Evoker secondRider = mock(Evoker.class);
+        when(firstWolf.getUniqueId()).thenReturn(UUID.randomUUID());
+        when(secondWolf.getUniqueId()).thenReturn(UUID.randomUUID());
+        when(secondRider.getUniqueId()).thenReturn(UUID.randomUUID());
         WonderfulWolfIndividual firstIndividual = mock(WonderfulWolfIndividual.class);
         WonderfulWolfIndividual secondIndividual = mock(WonderfulWolfIndividual.class);
         when(factory.spawnPreparedFounder(any(Location.class), isNull()))
