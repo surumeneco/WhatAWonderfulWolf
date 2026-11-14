@@ -56,7 +56,7 @@ class WolfTrapRuntimePreparationTest {
 
         runtime.register(bait);
         assertNotNull(callback.get());
-        assertTrue(runtime.protectDamage(bait, false));
+        assertTrue(runtime.protectDamage(bait));
         verifyNoInteractions(world);
         assertFalse(runtime.activateByAttack(bait));
         verify(factory, never()).spawnPreparedFounder(any(), any());
@@ -80,7 +80,7 @@ class WolfTrapRuntimePreparationTest {
                 .thenReturn(secondRider);
         when(firstWolf.addPassenger(bait)).thenReturn(true);
         when(secondWolf.addPassenger(secondRider)).thenReturn(true);
-        assertFalse(runtime.protectDamage(bait, false));
+        assertFalse(runtime.protectDamage(bait));
         assertTrue(runtime.activateByAttack(bait));
         verify(factory, times(2)).spawnPreparedFounder(any(Location.class), isNull());
         verify(states).markRider(eq(bait), any(UUID.class));
