@@ -2,7 +2,7 @@
 kind: tce
 id: www.trap.tce.lifecycle
 cat_version: '0.3'
-status: draft
+status: confirmed
 process: www.trap
 source_refs:
   - https://drive.google.com/file/d/1rjCFOOnkObvx-FNXDDkjhgbChCk451L6/view
@@ -11,6 +11,7 @@ refs:
   - www.trap.pi.event
 semantic_contract: markdown-v2
 language: ja
+decision_ref: user-chat:2026-11-13T21:18:12Z
 ---
 
 # TCE: www.trap.tce.lifecycle

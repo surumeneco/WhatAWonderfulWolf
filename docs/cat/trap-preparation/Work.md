@@ -19,7 +19,8 @@ parent: ''
 depends_on: []
 issue_ref: user-chat:2026-11-14/trap-waiting-mob-request
 project_entry_ref: https://drive.google.com/file/d/1oyuQJfvjho_RsWIrlPI_XCmLlc4Df0dl/view
-spec_status: draft
+spec_status: confirmed
+decision_ref: user-chat:2026-11-13T21:18:12Z
 ---
 
 # Work: www.trap.review
@@ -27,7 +28,7 @@ spec_status: draft
 ## Evidence
 | URI |
 | --- |
-| https://github.com/surumeneco/WhatAWonderfulWolf/commit/af3a8080992c0f26fce60ee76b2e12f91bbd41ba |
+| https://github.com/surumeneco/WhatAWonderfulWolf/commit/03aac1c01fc5ce4960fde162cc4207596065594c |
 
 ## Scope
 | Process IDs | Changed IDs | Preserved IDs |
@@ -67,4 +68,4 @@ spec_status: draft
 ## Compilation
 | Process | PI | TCE | Domain rule | Common rules | Domain specs | Model | Vectors | Queue | Binding | Tests | Obligations | Conformance binding | Allow draft |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| @work/Process.md | @work/PI.md | @work/TCE.md | — | — | — | @work/TestModel.json | @work/vectors.json | @work/TDD/Queue.json | — | @work/generated/current.test.java | @work/obligations.json | — | true |
+| @work/confirmed/Process.md | @work/confirmed/PI.md | @work/confirmed/TCE.md | — | — | — | @work/TestModel.json | @work/vectors.json | @work/TDD/Queue.json | — | @work/generated/current.test.java | @work/obligations.json | — | false |

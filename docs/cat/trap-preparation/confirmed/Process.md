@@ -2,7 +2,7 @@
 kind: process
 id: www.trap
 cat_version: '0.3'
-status: draft
+status: confirmed
 process: www.trap
 source_refs:
   - https://drive.google.com/file/d/1rjCFOOnkObvx-FNXDDkjhgbChCk451L6/view
@@ -10,6 +10,7 @@ source_refs:
 refs: []
 semantic_contract: markdown-v2
 language: ja
+decision_ref: user-chat:2026-11-13T21:18:12Z
 ---
 
 # Process: www.trap
