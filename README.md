@@ -1,6 +1,6 @@
 # What a Wonderful Wolf
 
-## 1.1.2 patch (develop; awaiting live verification)
+## 1.1.2 patch release
 
 - Wolf Trap now prepares both founder genomes asynchronously when the bait Evoker appears; proximity and attack activation remain disabled until both are ready.
 - While preparation is pending, all bait damage is cancelled; entity attacks emit totem-like particles and sound only after damage cancellation, so a feedback error cannot invalidate immunity.
