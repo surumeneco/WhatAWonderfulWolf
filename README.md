@@ -1,5 +1,12 @@
 # What a Wonderful Wolf
 
+## 1.1.2 patch (develop; awaiting live verification)
+
+- Wolf Trap now prepares both founder genomes asynchronously when the bait Evoker appears; proximity and attack activation remain disabled until both are ready.
+- While preparation is pending, all bait damage is cancelled; entity attacks emit totem-like particles and sound only after damage cancellation, so a feedback error cannot invalidate immunity.
+- Once ready, only direct player or player-fired projectile attacks trigger the trap (in addition to the existing proximity/grace rule). Non-player mobs cannot trigger it. Failed pair activation rolls back partially spawned wolves and riders.
+- Requires WonderfulGenomeLib 1.0.1 and WonderfulCoreLibrary 0.1.0 unchanged. JE/BE live verification, release, and production deployment remain separate.
+
 ## 1.1.1 patch
 
 - Fix **Watchman (見張り番)** detection, glowing and warning distance to use the wolf's current position in every behavior mode (wander, follow, guard and wait). The search center no longer follows the commander or a saved wait location.
@@ -22,13 +29,13 @@
 - For runtime-only changes, reuse the previously published immutable Genome/Snapshot payload reference when verified in-process identity matches. Changed Genome or Phenotype still follows the full copy-on-write path.
 - Requires WGL 1.0.1 at runtime. Server-side TPS/MSPT improvement has not yet been measured.
 
-What a Wonderful Wolf (WWW) 1.1.1 is a Paper plugin for the XPlayServer project.
+What a Wonderful Wolf (WWW) 1.1.2 is a Paper plugin for the XPlayServer project.
 
 The functional specification is maintained in Google Drive under `forGPT/XPlayServer/OriginalPlugins/WWW/`.
 
 ## Development
 
-WWW targets Java 25 and Paper 26.2. For the WWW 1.1.1 release, clone WGL and WCL as sibling repositories:
+WWW targets Java 25 and Paper 26.2. For the WWW 1.1.2 build, clone WGL and WCL as sibling repositories:
 
 ```text
 workspace/

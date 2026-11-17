@@ -1,0 +1,71 @@
+---
+cat_version: '0.2'
+kind: work
+id: www.trap.review
+status: draft
+process: www.trap
+source_refs:
+  - https://drive.google.com/file/d/1rjCFOOnkObvx-FNXDDkjhgbChCk451L6/view
+  - user-chat:2026-11-14/trap-waiting-mob-request
+refs:
+  - www.trap
+  - www.trap.pi.event
+  - www.trap.tce.lifecycle
+entry: issue
+mode: shadow
+flow: issue-work
+work_kind: verification
+parent: ''
+depends_on: []
+issue_ref: user-chat:2026-11-14/trap-waiting-mob-request
+project_entry_ref: https://drive.google.com/file/d/1oyuQJfvjho_RsWIrlPI_XCmLlc4Df0dl/view
+spec_status: confirmed
+decision_ref: user-chat:2026-11-13T21:18:12Z
+---
+
+# Work: www.trap.review
+
+## Evidence
+| URI |
+| --- |
+| https://github.com/surumeneco/WhatAWonderfulWolf/commit/03aac1c01fc5ce4960fde162cc4207596065594c |
+
+## Scope
+| Process IDs | Changed IDs | Preserved IDs |
+| --- | --- | --- |
+| www.trap | www.trap.tce.lifecycle | www.trap.pi.event |
+
+## Technologies
+| Technology |
+| --- |
+| Java |
+| JUnit |
+
+## Repositories
+| Name | Path | Base ref | Branch pattern | Allowed paths | Production paths | Test paths |
+| --- | --- | --- | --- | --- | --- | --- |
+| surumeneco/WhatAWonderfulWolf | ../../.. | develop | feature/* | src/main/java/**;src/test/java/**;docs/cat/** | src/main/java/** | src/test/java/** |
+
+## Checks
+| ID | Stage | Runner | CWD | Command | Test IDs | Inputs | Outputs | Timeout |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+
+## Gates
+| Gate | Status | Evidence |
+| --- | --- | --- |
+| process-closure | passed | CAT 896cae8; deterministic finite closed-world proof |
+| model-conformance | passed | CAT 896cae8; TestModel SHA 7200eafc1a88a812702525502ea24f196c1096b9e7cb47692b10e5dbfccebf87 |
+| implementation-conformance | inconclusive | Exploratory result only; stage_in_flow=false for issue-work / verification. Java Inspector/Generated Green not covered; no Gate pass claimed |
+| semantic-review | not-run | — |
+| test-oracle-review | not-run | — |
+| red-review | not-run | — |
+| pr-review | not-run | — |
+| ci | passed | GitHub Actions run 43568285550 |
+| merge | passed | develop PR #89; merge SHA 4428ccbd2e5fa6a684c3aae5625dee26c9bd896f |
+| deployment | not-run | — |
+| real-use | not-run | — |
+
+## Compilation
+| Process | PI | TCE | Domain rule | Common rules | Domain specs | Model | Vectors | Queue | Binding | Tests | Obligations | Conformance binding | Allow draft |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| @work/confirmed/Process.md | @work/confirmed/PI.md | @work/confirmed/TCE.md | — | — | — | @work/TestModel.json | @work/vectors.json | @work/TDD/Queue.json | — | @work/generated/current.test.java | @work/obligations.json | — | false |
